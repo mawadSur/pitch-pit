@@ -10,16 +10,7 @@ Sentry.init({
   // lower if you blow through the free-tier quota.
   tracesSampleRate: 0.1,
 
-  // Session Replay — masked + media-blocked so we don't capture PII from the
-  // pitch textarea. Only fires on errors, not on every session.
-  replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 1.0,
-  integrations: [
-    Sentry.replayIntegration({
-      maskAllText: true,
-      blockAllMedia: true,
-    }),
-  ],
+  // Replay integration dropped: error capture stays, session replay is gone, ~80 KB recovered from First Load JS.
 
   // Skip Sentry locally — keeps the dev console clean and avoids burning quota.
   enabled: process.env.NODE_ENV === "production",

@@ -219,6 +219,61 @@ export function ShareMenu({
     }
   }
 
+  // ─── shared menu items (rendered inside both desktop dropdown + mobile sheet) ──
+  const menuItems = (
+    <>
+      {hasNativeShare && (
+        <MenuItem
+          onClick={() => handle("native")}
+          icon={<NativeShareIcon />}
+          label="Share…"
+          hint="System share sheet"
+        />
+      )}
+      <MenuItem
+        onClick={() => handle("copy")}
+        icon={<LinkIcon />}
+        label={copied === "copy" ? "Copied!" : "Copy link"}
+        hint={copied === "copy" ? undefined : "URL to this idea"}
+        accent={copied === "copy"}
+      />
+      <Divider />
+      <MenuItem
+        onClick={() => handle("twitter")}
+        icon={<XIcon />}
+        label="Share on X"
+        hint="Pre-filled tweet"
+      />
+      <MenuItem
+        onClick={() => handle("linkedin")}
+        icon={<LinkedInIcon />}
+        label={copied === "linkedin" ? "Post copied — open LinkedIn" : "Share on LinkedIn"}
+        hint={
+          copied === "linkedin"
+            ? "Paste in LinkedIn compose"
+            : "Copies a formatted post"
+        }
+        accent={copied === "linkedin"}
+      />
+      <MenuItem
+        onClick={() => handle("facebook")}
+        icon={<FacebookIcon />}
+        label="Share on Facebook"
+      />
+      <MenuItem
+        onClick={() => handle("reddit")}
+        icon={<RedditIcon />}
+        label="Share on Reddit"
+      />
+      <Divider />
+      <MenuItem
+        onClick={() => handle("email")}
+        icon={<EmailIcon />}
+        label="Share via email"
+      />
+    </>
+  );
+
   // ─── trigger ──────────────────────────────────────────────────
   const triggerClass =
     variant === "primary"
@@ -246,65 +301,49 @@ export function ShareMenu({
 
       <AnimatePresence>
         {open && (
-          <motion.div
-            role="menu"
-            aria-label="Share options"
-            initial={{ opacity: 0, y: -4, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.96 }}
-            transition={{ duration: 0.12, ease: "easeOut" }}
-            className="absolute right-0 z-30 mt-3 w-72 overflow-hidden rounded-xl border border-white/12 bg-[#0e0e10]/95 shadow-[0_24px_72px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md"
-          >
-            {hasNativeShare && (
-              <MenuItem
-                onClick={() => handle("native")}
-                icon={<NativeShareIcon />}
-                label="Share…"
-                hint="System share sheet"
+          <>
+            {/* Desktop dropdown: anchored to trigger, unchanged */}
+            <motion.div
+              role="menu"
+              aria-label="Share options"
+              initial={{ opacity: 0, y: -4, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.96 }}
+              transition={{ duration: 0.12, ease: "easeOut" }}
+              className="absolute right-0 z-30 mt-3 hidden w-72 overflow-hidden rounded-xl border border-white/12 bg-[#0e0e10]/95 shadow-[0_24px_72px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md sm:block"
+            >
+              {menuItems}
+            </motion.div>
+
+            {/* Mobile bottom sheet: full-width, slides up from bottom */}
+            <motion.div
+              key="scrim"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              onClick={() => setOpen(false)}
+              aria-hidden
+              className="fixed inset-0 z-40 bg-black/60 sm:hidden"
+            />
+            <motion.div
+              key="sheet"
+              role="menu"
+              aria-label="Share options"
+              aria-modal="true"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "tween", duration: 0.22, ease: "easeOut" }}
+              className="fixed inset-x-0 bottom-0 z-50 overflow-hidden rounded-t-2xl border-t border-white/12 bg-[#0e0e10]/95 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-24px_72px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md sm:hidden"
+            >
+              <div
+                aria-hidden
+                className="mx-auto mt-3 mb-2 h-1 w-12 rounded-full bg-white/20"
               />
-            )}
-            <MenuItem
-              onClick={() => handle("copy")}
-              icon={<LinkIcon />}
-              label={copied === "copy" ? "Copied!" : "Copy link"}
-              hint={copied === "copy" ? undefined : "URL to this idea"}
-              accent={copied === "copy"}
-            />
-            <Divider />
-            <MenuItem
-              onClick={() => handle("twitter")}
-              icon={<XIcon />}
-              label="Share on X"
-              hint="Pre-filled tweet"
-            />
-            <MenuItem
-              onClick={() => handle("linkedin")}
-              icon={<LinkedInIcon />}
-              label={copied === "linkedin" ? "Post copied — open LinkedIn" : "Share on LinkedIn"}
-              hint={
-                copied === "linkedin"
-                  ? "Paste in LinkedIn compose"
-                  : "Copies a formatted post"
-              }
-              accent={copied === "linkedin"}
-            />
-            <MenuItem
-              onClick={() => handle("facebook")}
-              icon={<FacebookIcon />}
-              label="Share on Facebook"
-            />
-            <MenuItem
-              onClick={() => handle("reddit")}
-              icon={<RedditIcon />}
-              label="Share on Reddit"
-            />
-            <Divider />
-            <MenuItem
-              onClick={() => handle("email")}
-              icon={<EmailIcon />}
-              label="Share via email"
-            />
-          </motion.div>
+              {menuItems}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

@@ -6,6 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
+// How long the inline "Confirm delete" affordance stays open before
+// reverting back to the safe "Delete" button. Short enough that an
+// accidental click can't linger and become a tap-trap.
+const CONFIRM_DELETE_TIMEOUT_MS = 5000;
+
 export type Comment = {
   id: string;
   user_id: string;
@@ -242,14 +247,51 @@ function CommentRow({
   const [draft, setDraft] = useState(comment.body);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const rowRef = useRef<HTMLLIElement>(null);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasEdited =
     new Date(comment.updated_at).getTime() -
       new Date(comment.created_at).getTime() >
     1000; // > 1s diff = edited (avoid flagging the trigger-set updated_at on insert)
 
+  function clearConfirmTimer() {
+    if (confirmTimerRef.current) {
+      clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = null;
+    }
+  }
+
+  // Cleanup on unmount so a stale timer can't fire setState into nothing.
+  useEffect(() => clearConfirmTimer, []);
+
+  // Auto-revert + click-outside-to-cancel only while the inline confirm is open.
+  useEffect(() => {
+    if (!confirmingDelete) return;
+
+    confirmTimerRef.current = setTimeout(() => {
+      setConfirmingDelete(false);
+    }, CONFIRM_DELETE_TIMEOUT_MS);
+
+    function handlePointerDown(e: MouseEvent | TouchEvent) {
+      if (rowRef.current && !rowRef.current.contains(e.target as Node)) {
+        setConfirmingDelete(false);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+
+    return () => {
+      clearConfirmTimer();
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [confirmingDelete]);
+
   function startEdit() {
     setDraft(comment.body);
     setError(null);
+    setConfirmingDelete(false);
     setEditing(true);
   }
 
@@ -293,10 +335,21 @@ function CommentRow({
     });
   }
 
-  function remove() {
-    // Native confirm — fast, system-style. Could be replaced with a
-    // styled modal later if the UX is judged too brusque.
-    if (!window.confirm("Delete this comment? This can't be undone.")) return;
+  function requestDelete() {
+    // First click — arm the inline confirm. The auto-revert + click-outside
+    // listeners are wired up by the effect that watches `confirmingDelete`.
+    setError(null);
+    setConfirmingDelete(true);
+  }
+
+  function cancelDelete() {
+    clearConfirmTimer();
+    setConfirmingDelete(false);
+  }
+
+  function confirmDelete() {
+    // Stop the auto-revert from firing mid-request.
+    clearConfirmTimer();
     setError(null);
     startTransition(async () => {
       try {
@@ -309,20 +362,23 @@ function CommentRow({
           };
           throw new Error(err.error ?? "Couldn't delete.");
         }
+        // Optimistic delete; the realtime DELETE echo is a no-op (already filtered).
         onDeleted(comment.id);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
+        setConfirmingDelete(false);
       }
     });
   }
 
   return (
     <motion.li
+      ref={rowRef}
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 6 }}
       transition={{ duration: 0.25 }}
-      className="scene-card group flex gap-4 px-5 py-4 sm:px-6"
+      className="scene-card flex gap-4 px-5 py-4 sm:px-6"
     >
       <Avatar name={comment.display_name} url={comment.avatar_url} />
       <div className="min-w-0 flex-1">
@@ -342,23 +398,48 @@ function CommentRow({
             </p>
           </div>
           {isOwn && !editing && (
-            <div className="scene-mono flex items-center gap-3 text-[0.55rem] uppercase tracking-[0.3em] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-              <button
-                type="button"
-                onClick={startEdit}
-                disabled={pending}
-                className="text-white/45 transition-colors hover:text-white disabled:opacity-50"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={remove}
-                disabled={pending}
-                className="text-red-300/70 transition-colors hover:text-red-200 disabled:opacity-50"
-              >
-                Delete
-              </button>
+            <div className="scene-mono flex items-center gap-3 text-[0.55rem] uppercase tracking-[0.3em]">
+              {confirmingDelete ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={cancelDelete}
+                    disabled={pending}
+                    className="text-white/55 transition-colors hover:text-white focus:text-white focus:outline-none disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDelete}
+                    disabled={pending}
+                    autoFocus
+                    aria-label="Confirm delete comment"
+                    className="rounded-full bg-red-500/85 px-2.5 py-1 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors hover:bg-red-500 focus:bg-red-500 focus:outline-none focus:ring-1 focus:ring-red-300/70 disabled:opacity-60"
+                  >
+                    {pending ? "Deleting…" : "Confirm delete"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    disabled={pending}
+                    className="text-white/35 transition-colors hover:text-white focus:text-white focus:outline-none disabled:opacity-50"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={requestDelete}
+                    disabled={pending}
+                    className="text-red-300/55 transition-colors hover:text-red-200 focus:text-red-200 focus:outline-none disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -400,9 +481,16 @@ function CommentRow({
             </div>
           </div>
         ) : (
-          <p className="mt-1.5 whitespace-pre-wrap text-base leading-snug text-white/85">
-            {comment.body}
-          </p>
+          <>
+            <p className="mt-1.5 whitespace-pre-wrap text-base leading-snug text-white/85">
+              {comment.body}
+            </p>
+            {error && (
+              <p className="scene-mono mt-2 text-[0.6rem] uppercase tracking-[0.3em] text-red-300/85">
+                {error}
+              </p>
+            )}
+          </>
         )}
       </div>
     </motion.li>

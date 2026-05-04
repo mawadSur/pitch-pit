@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
-import { Header } from "@/components/Header";
 import { PageTransition } from "@/components/PageTransition";
 import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
@@ -53,7 +52,6 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <Header />
         <PageTransition>{children}</PageTransition>
         <SiteFooter />
         {/* Vercel Analytics — only ships data when deployed to Vercel.

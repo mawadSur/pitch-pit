@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { nextFridayMidnightET } from "@/lib/week-cycle";
 
 export function CountdownClock() {
@@ -20,13 +20,32 @@ export function CountdownClock() {
   const minutes = Math.floor((remaining / 60_000) % 60);
   const seconds = Math.floor((remaining / 1_000) % 60);
 
+  // Update SR text only when the total remaining minute changes — not every second.
+  const totalMinutes = Math.floor(remaining / 60_000);
+  const ready = target !== null && now !== null;
+  const srText = useMemo(() => {
+    if (!ready) return "";
+    if (totalMinutes <= 0) return "The pit is closed.";
+    const d = Math.floor(totalMinutes / (60 * 24));
+    const h = Math.floor((totalMinutes / 60) % 24);
+    const m = totalMinutes % 60;
+    const parts: string[] = [];
+    if (d > 0) parts.push(`${d} ${d === 1 ? "day" : "days"}`);
+    if (h > 0) parts.push(`${h} ${h === 1 ? "hour" : "hours"}`);
+    if (d === 0 && m > 0) parts.push(`${m} ${m === 1 ? "minute" : "minutes"}`);
+    if (parts.length === 0) parts.push("less than a minute");
+    return `The pit closes in ${parts.join(", ")}.`;
+  }, [totalMinutes, ready]);
+
   return (
     <div
       role="timer"
-      aria-live="off"
       aria-label="Time remaining until Friday at midnight Eastern Time"
       className="grid grid-cols-4 gap-3 sm:gap-4"
     >
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {srText}
+      </span>
       <Unit value={days} label="days" />
       <Unit value={hours} label="hours" />
       <Unit value={minutes} label="min" />
