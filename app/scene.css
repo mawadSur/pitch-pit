@@ -1,0 +1,499 @@
+/* ───────── minimalist 3D scene — homepage + idea review ───────── */
+
+.scene {
+  --scene-bg: #0a0a0a;
+  --scene-bg-2: #131313;
+  --scene-gold: #ffb800;
+  --scene-gold-bright: #ffd17a;
+  --scene-gold-dim: #8b6500;
+  --scene-amber: #ffa000;
+  --scene-text: rgba(255, 255, 255, 0.92);
+  --scene-text-dim: rgba(255, 255, 255, 0.55);
+  --scene-text-faint: rgba(255, 255, 255, 0.32);
+  --scene-glass: rgba(255, 255, 255, 0.04);
+  --scene-glass-border: rgba(255, 255, 255, 0.08);
+  --scene-gold-border: rgba(255, 184, 0, 0.4);
+
+  background: var(--scene-bg);
+  color: var(--scene-text);
+  font-family: var(--font-scene), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "kern", "ss01", "cv11";
+  letter-spacing: -0.01em;
+}
+
+.scene-mono {
+  font-family: var(--font-scene-mono), ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ───── ambient backgrounds ───── */
+.scene-bg-gradient {
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 35%, rgba(255, 184, 0, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 80%, rgba(255, 160, 0, 0.04) 0%, transparent 50%),
+    var(--scene-bg);
+}
+
+/* volumetric beam descending from top center */
+.scene-beam {
+  position: absolute;
+  top: -8%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64%;
+  max-width: 720px;
+  height: 90%;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 209, 122, 0.18) 0%,
+    rgba(255, 184, 0, 0.07) 35%,
+    rgba(255, 160, 0, 0.03) 60%,
+    transparent 100%
+  );
+  filter: blur(48px);
+  mix-blend-mode: screen;
+}
+
+.scene-beam-narrow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14%;
+  max-width: 220px;
+  height: 60%;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 209, 122, 0.28) 0%,
+    rgba(255, 184, 0, 0.1) 40%,
+    transparent 100%
+  );
+  filter: blur(32px);
+  mix-blend-mode: screen;
+}
+
+/* film grain — fixed overlay */
+.scene-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* gold dust particles */
+.scene-particle {
+  position: absolute;
+  bottom: -4px;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 209, 122, 1) 0%,
+    rgba(255, 184, 0, 0.7) 50%,
+    transparent 80%
+  );
+  box-shadow: 0 0 6px rgba(255, 209, 122, 0.85);
+  animation: scene-drift var(--dur, 14s) ease-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes scene-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--max-opacity, 0.7);
+  }
+  85% {
+    opacity: calc(var(--max-opacity, 0.7) * 0.4);
+  }
+  100% {
+    transform: translate3d(var(--drift, 0px), -110vh, 0);
+    opacity: 0;
+  }
+}
+
+/* glass input — pill */
+.scene-input-shell {
+  position: relative;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 184, 0, 0.5);
+  border-radius: 999px;
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 24px rgba(255, 184, 0, 0.08),
+    0 0 0 1px rgba(255, 184, 0, 0.18),
+    0 18px 48px -12px rgba(255, 184, 0, 0.35),
+    0 0 64px rgba(255, 184, 0, 0.18);
+  animation: scene-input-pulse 4.5s ease-in-out infinite;
+  transition: box-shadow 0.3s ease;
+}
+
+.scene-input-shell:focus-within {
+  border-color: rgba(255, 184, 0, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 36px rgba(255, 184, 0, 0.14),
+    0 0 0 1px rgba(255, 184, 0, 0.45),
+    0 24px 72px -10px rgba(255, 184, 0, 0.55),
+    0 0 96px rgba(255, 184, 0, 0.32);
+  animation: none;
+}
+
+@keyframes scene-input-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 0 24px rgba(255, 184, 0, 0.08),
+      0 0 0 1px rgba(255, 184, 0, 0.18),
+      0 18px 48px -12px rgba(255, 184, 0, 0.32),
+      0 0 64px rgba(255, 184, 0, 0.18);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 0 32px rgba(255, 184, 0, 0.12),
+      0 0 0 1px rgba(255, 184, 0, 0.32),
+      0 22px 60px -10px rgba(255, 184, 0, 0.5),
+      0 0 88px rgba(255, 184, 0, 0.28);
+  }
+}
+
+.scene-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--scene-text);
+  caret-color: var(--scene-gold);
+  resize: none;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  padding: 0;
+  width: 100%;
+}
+.scene-input::placeholder {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+/* submit button — paper plane */
+.scene-submit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(
+    180deg,
+    #ffe7a3 0%,
+    #ffd17a 30%,
+    #ffb800 70%,
+    #c98b00 100%
+  );
+  border: 1px solid rgba(40, 24, 0, 0.65);
+  color: #1a1100;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(80, 50, 0, 0.4),
+    0 0 24px rgba(255, 184, 0, 0.55),
+    0 0 48px rgba(255, 184, 0, 0.3);
+  transition: transform 0.18s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.scene-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(80, 50, 0, 0.4),
+    0 0 36px rgba(255, 184, 0, 0.85),
+    0 0 72px rgba(255, 184, 0, 0.45);
+}
+.scene-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+.scene-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* hourglass halo + sand stream */
+@keyframes scene-sand-fall {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(28px);
+    opacity: 0;
+  }
+}
+.sand-dot {
+  animation: scene-sand-fall 1.1s linear infinite;
+  filter: drop-shadow(0 0 1px rgba(255, 209, 122, 0.85));
+}
+
+@keyframes scene-halo-breathe {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.scene-halo-breathe {
+  animation: scene-halo-breathe 5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* corner sparkle (4-point) */
+@keyframes scene-sparkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15) rotate(45deg);
+    opacity: 1;
+  }
+}
+.scene-sparkle {
+  animation: scene-sparkle 4s ease-in-out infinite;
+}
+
+/* fake cursor for empty input — gold blinking bar */
+@keyframes scene-cursor-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+.scene-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--scene-gold);
+  box-shadow: 0 0 6px rgba(255, 184, 0, 0.85);
+  animation: scene-cursor-blink 1.05s steps(1) infinite;
+  vertical-align: -0.2em;
+}
+
+/* glass card (used in idea review) */
+.scene-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 24px 72px -24px rgba(0, 0, 0, 0.85);
+}
+
+.scene-card-gold {
+  background: rgba(255, 184, 0, 0.04);
+  border: 1px solid rgba(255, 184, 0, 0.25);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 209, 122, 0.1),
+    0 24px 72px -24px rgba(255, 184, 0, 0.35),
+    0 0 48px rgba(255, 184, 0, 0.12);
+}
+
+/* score number — large glowing gold */
+.scene-score-glow {
+  color: var(--scene-gold-bright);
+  text-shadow:
+    0 0 12px rgba(255, 184, 0, 0.6),
+    0 0 32px rgba(255, 184, 0, 0.4),
+    0 0 64px rgba(255, 184, 0, 0.25);
+  font-feature-settings: "tnum";
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-particle,
+  .sand-dot,
+  .scene-halo-breathe,
+  .scene-sparkle,
+  .scene-cursor,
+  .scene-input-shell {
+    animation: none !important;
+  }
+}
+
+/* ───── header ───── */
+.scene-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  transition:
+    background-color 0.35s ease,
+    backdrop-filter 0.35s ease,
+    border-color 0.35s ease;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 10, 0.55) 0%,
+    rgba(10, 10, 10, 0.25) 70%,
+    transparent 100%
+  );
+  border-bottom: 1px solid transparent;
+}
+
+.scene-header[data-scrolled="true"] {
+  background: rgba(10, 10, 10, 0.78);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom-color: rgba(255, 184, 0, 0.18);
+}
+
+/* ───── CTA buttons ───── */
+.cta-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1.7rem;
+  background: linear-gradient(
+    180deg,
+    #ffe7a3 0%,
+    #ffd17a 30%,
+    #ffb800 70%,
+    #c98b00 100%
+  );
+  color: #1a1100;
+  border: 1px solid rgba(40, 24, 0, 0.6);
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: -0.005em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(80, 50, 0, 0.25),
+    0 0 24px rgba(255, 184, 0, 0.4),
+    0 14px 36px -8px rgba(255, 184, 0, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.25s ease, filter 0.2s ease;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cta-btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(80, 50, 0, 0.25),
+    0 0 36px rgba(255, 184, 0, 0.7),
+    0 18px 52px -8px rgba(255, 184, 0, 0.55);
+}
+.cta-btn-primary:focus-visible {
+  outline: 2px solid var(--scene-gold-bright);
+  outline-offset: 4px;
+}
+
+.cta-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cta-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 184, 0, 0.45);
+  color: #ffffff;
+}
+.cta-btn-ghost:focus-visible {
+  outline: 2px solid var(--scene-gold);
+  outline-offset: 4px;
+}
+
+/* ───── countdown unit ───── */
+.countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.85rem 0.6rem 0.7rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 184, 0, 0.28);
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 24px rgba(255, 184, 0, 0.12),
+    0 12px 32px -12px rgba(0, 0, 0, 0.85);
+}
+
+/* ───── panel atmospheric overlay ───── */
+.panel-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 70% at center,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.55) 75%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
+  pointer-events: none;
+}
+.panel-vignette-light {
+  background: radial-gradient(
+    ellipse 80% 70% at center,
+    rgba(0, 0, 0, 0.18) 0%,
+    rgba(0, 0, 0, 0.42) 80%,
+    rgba(0, 0, 0, 0.62) 100%
+  );
+}
+
+/* ───── scroll cue ───── */
+@keyframes scroll-cue-bob {
+  0%, 100% {
+    transform: translate(-50%, 0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-50%, 6px);
+    opacity: 1;
+  }
+}
+.scroll-cue {
+  animation: scroll-cue-bob 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue {
+    animation: none !important;
+  }
+}
