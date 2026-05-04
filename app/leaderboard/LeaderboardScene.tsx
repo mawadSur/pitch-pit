@@ -16,10 +16,12 @@ export function LeaderboardScene({
   alltime,
   week,
   weekNumber,
+  query = "",
 }: {
   alltime: LeaderboardIdea[];
   week: LeaderboardIdea[];
   weekNumber: number | null;
+  query?: string;
 }) {
   const [tab, setTab] = useState<Tab>("alltime");
   const ideas = tab === "alltime" ? alltime : week;
@@ -108,6 +110,9 @@ export function LeaderboardScene({
             </div>
           </motion.header>
 
+          {/* SEARCH */}
+          <SearchBox initial={query} />
+
           {/* TABS */}
           <Tabs
             active={tab}
@@ -151,6 +156,103 @@ export function LeaderboardScene({
 
       </main>
     </>
+  );
+}
+
+/* ════════════════════════ SearchBox ═════════════════════════════════
+ * Server-driven search via URL ?q= param. We push the new URL on submit
+ * (or after a short debounce) — page.tsx re-fetches with the filter,
+ * server-rendering the matching ideas.
+ *
+ * Debounced typing avoids a server roundtrip on every keystroke. Submit
+ * (Enter) bypasses debounce for instant results.
+ * ────────────────────────────────────────────────────────────────────── */
+function SearchBox({ initial }: { initial: string }) {
+  const router = useRouter();
+  const [value, setValue] = useState(initial);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep local input in sync if the URL changes from elsewhere (back button).
+  useEffect(() => {
+    setValue(initial);
+  }, [initial]);
+
+  function pushQuery(q: string) {
+    const trimmed = q.trim();
+    if (trimmed.length === 0) {
+      router.push("/leaderboard");
+    } else {
+      router.push(`/leaderboard?q=${encodeURIComponent(trimmed)}`);
+    }
+  }
+
+  function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const next = e.target.value;
+    setValue(next);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => pushQuery(next), 350);
+  }
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    pushQuery(value);
+  }
+
+  function onClear() {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setValue("");
+    pushQuery("");
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      role="search"
+      aria-label="Search ideas"
+      className="mt-12 flex justify-center"
+    >
+      <div className="relative w-full max-w-xl">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/40"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5" />
+            <path
+              d="m12 12 3 3"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+        <input
+          type="search"
+          value={value}
+          onChange={onChange}
+          placeholder="Search ideas by title or pitch text…"
+          aria-label="Search ideas"
+          className="w-full rounded-full border border-white/12 bg-white/[0.03] py-3 pl-11 pr-12 text-base text-white placeholder:text-white/35 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
+        />
+        {value.length > 0 && (
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label="Clear search"
+            className="scene-mono absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-[0.6rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:bg-white/[0.04] hover:text-white"
+          >
+            clear
+          </button>
+        )}
+      </div>
+    </form>
   );
 }
 

@@ -29,7 +29,14 @@ export const metadata = {
   title: "Leaderboard — pitch-pit",
 };
 
-async function fetchBoards(): Promise<{
+// Escape PostgREST `ilike` special chars (`%` and `_`). Anything else can
+// pass through — Supabase parameterizes the query so SQL injection isn't
+// possible, but unescaped wildcards would let users craft slow queries.
+function escapeLike(input: string): string {
+  return input.replace(/[%_]/g, (c) => `\\${c}`);
+}
+
+async function fetchBoards(query: string | null): Promise<{
   alltime: LeaderboardIdea[];
   week: LeaderboardIdea[];
   weekNumber: number | null;
@@ -46,11 +53,24 @@ async function fetchBoards(): Promise<{
       .limit(1)
       .maybeSingle();
 
-    const allTimeQuery = supabase
+    const trimmedQuery = query?.trim() ?? "";
+    const searchPattern =
+      trimmedQuery.length > 0 ? `%${escapeLike(trimmedQuery)}%` : null;
+
+    let allTimeQuery = supabase
       .from("ideas")
       .select(LEADERBOARD_SELECT)
       .in("status", VISIBLE_STATUSES as unknown as string[])
-      .not("score", "is", null)
+      .not("score", "is", null);
+
+    if (searchPattern) {
+      // Match against title OR pitch text, case-insensitive.
+      allTimeQuery = allTimeQuery.or(
+        `title.ilike.${searchPattern},pitch.ilike.${searchPattern}`,
+      );
+    }
+
+    allTimeQuery = allTimeQuery
       // Sort by final_score (50% AI + 50% community), tiebreaker on AI score
       .order("final_score", { ascending: false, nullsFirst: false })
       .order("score", { ascending: false })
@@ -74,6 +94,12 @@ async function fetchBoards(): Promise<{
       weekQuery = weekQuery.gte("created_at", weekStart);
     }
 
+    if (searchPattern) {
+      weekQuery = weekQuery.or(
+        `title.ilike.${searchPattern},pitch.ilike.${searchPattern}`,
+      );
+    }
+
     const [allTimeRes, weekRes] = await Promise.all([
       allTimeQuery,
       weekQuery
@@ -93,8 +119,13 @@ async function fetchBoards(): Promise<{
   }
 }
 
-export default async function LeaderboardRoute() {
-  const { alltime, week, weekNumber } = await fetchBoards();
+export default async function LeaderboardRoute({
+  searchParams,
+}: {
+  searchParams: { q?: string };
+}) {
+  const query = searchParams?.q ?? null;
+  const { alltime, week, weekNumber } = await fetchBoards(query);
   return (
     <div
       className={`${inter.variable} ${jetbrains.variable}`}
@@ -104,6 +135,7 @@ export default async function LeaderboardRoute() {
         alltime={alltime}
         week={week}
         weekNumber={weekNumber}
+        query={query ?? ""}
       />
     </div>
   );

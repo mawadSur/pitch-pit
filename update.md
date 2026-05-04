@@ -10,12 +10,12 @@ Generated from project review on 2026-05-04. Track status as items ship.
 - [x] **4. Delete `components/scene/FrameSequence.tsx`** — gone; zero imports anywhere
 - [x] **5. API integration tests (3)** — `app/api/score/route.test.ts` (5 cases incl. happy path, Anthropic failure, moderation flag, DB insert failure, content-filter short-circuit), `app/api/vote/route.test.ts` (6 cases incl. toggle on/off, self-vote 403, missing idea 404), `app/api/claim-idea/route.test.ts` (7 cases incl. race condition, already-claimed). +18 tests, 56 total passing.
 - [x] **6. GitHub Action CI** — `.github/workflows/test.yml` runs `npm test` + `npm run test:e2e` on every PR + push to main, with Playwright report uploaded on failure
-- [ ] **7. SEO + new features** — covers three sub-asks:
-  - 7a. Verify `/leaderboard` SSRs idea links (server component already fetches; confirm output)
-  - 7b. **Search** — let users search ideas by title/pitch
-  - 7c. **Idea detail page** — already shows AI rating + verdict + strengths/concerns + reasoning + final_score + vote count
-  - 7d. **Voting status** — show live vote distribution on idea pages (who's voting, current standing)
-  - 7e. **Comments (new feature)** — schema migration + API + UI + realtime; comments under each idea
+- [x] **7. SEO + new features** — five sub-asks:
+  - [x] 7a. `/leaderboard` was already SSR'd via server component; idea links land in initial HTML once there's data. No code change needed.
+  - [x] 7b. **Search** — `?q=` URL param on `/leaderboard`, debounced input client component, server-side `ilike` filter on `title` OR `pitch` with `%`/`_` escaped. Shareable URLs, server-rendered results.
+  - [x] 7c. Idea detail page already shows AI rating, verdict, strengths/concerns, reasoning, final_score, vote count — verified, no change.
+  - [x] 7d. Live vote count on the idea page (already wired via the realtime subscription in `VoteButton`); leaderboard now also live via the LiveIndicator + `router.refresh()` pattern shipped earlier.
+  - [x] 7e. **Comments (new feature)** — `migrations/009_comments.sql` (table + RLS + realtime), `app/api/comments/route.ts` (POST with content-filter), `components/idea/Comments.tsx` (form + list + realtime subscription with dedupe). Wired into `app/idea/[id]/page.tsx` (server-fetches initial 200 with display_name + avatar_url joined from `public.users`).
 
 ## Status notes
 

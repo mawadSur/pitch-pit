@@ -8,7 +8,9 @@ import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Timeline } from "@/components/idea/Timeline";
 import { VoteButton } from "@/components/idea/VoteButton";
+import { Comments, type Comment } from "@/components/idea/Comments";
 import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 
 export type Idea = {
   id: string;
@@ -33,9 +35,13 @@ export type Idea = {
 export function Reveal({
   idea,
   currentUserId,
+  currentUser = null,
+  initialComments = [],
 }: {
   idea: Idea;
   currentUserId: string | null;
+  currentUser?: User | null;
+  initialComments?: Comment[];
 }) {
   const isAnonymousAndUserSignedIn =
     idea.user_id === null && currentUserId !== null;
@@ -232,6 +238,13 @@ export function Reveal({
               </span>
             </motion.div>
           )}
+
+          {/* comments */}
+          <Comments
+            ideaId={idea.id}
+            initial={initialComments}
+            initialUser={currentUser}
+          />
 
           {/* footer link */}
           <motion.div
