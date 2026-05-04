@@ -9,6 +9,7 @@ import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Timeline } from "@/components/idea/Timeline";
 import { VoteButton } from "@/components/idea/VoteButton";
 import { Comments, type Comment } from "@/components/idea/Comments";
+import { ShareMenu } from "@/components/idea/ShareMenu";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
@@ -126,10 +127,18 @@ export function Reveal({
             className="mt-10 flex flex-wrap items-center justify-center gap-3"
           >
             <VoteButton ideaId={idea.id} />
-            <ShareVerdict
-              ideaId={idea.id}
-              verdict={idea.verdict}
-              finalScore={idea.final_score ?? 0}
+            <ShareMenu
+              idea={{
+                id: idea.id,
+                title: idea.title,
+                verdict: idea.verdict,
+                finalScore: idea.final_score ?? 0,
+                aiScore: idea.score,
+                voteCount: idea.vote_count,
+                strengths: idea.strengths,
+                concerns: idea.concerns,
+              }}
+              variant="primary"
             />
           </motion.div>
 
@@ -275,64 +284,6 @@ export function Reveal({
         </div>
       </main>
     </MotionConfig>
-  );
-}
-
-function ShareVerdict({
-  ideaId,
-  verdict,
-  finalScore,
-}: {
-  ideaId: string;
-  verdict: string;
-  finalScore: number;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  // Build a shareable URL on the client so we pick up the deployed origin
-  // (works on localhost, preview deploys, and production without config).
-  const url =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/idea/${ideaId}`
-      : `/idea/${ideaId}`;
-
-  const tweetText = `My pitch scored ${finalScore}/100 on pitch-pit. Verdict: "${verdict}"`;
-  const tweetHref = `https://x.com/intent/post?text=${encodeURIComponent(
-    tweetText,
-  )}&url=${encodeURIComponent(url)}`;
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // clipboard API unavailable — fall through silently; the tweet button still works
-    }
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={copyLink}
-        aria-label="Copy link to this verdict"
-        className="scene-mono inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-4 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/70 transition-colors hover:border-[var(--scene-gold)]/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
-      >
-        {copied ? "Copied" : "Copy link"}
-        <span aria-hidden>{copied ? "✓" : "⎘"}</span>
-      </button>
-      <a
-        href={tweetHref}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Share verdict on X"
-        className="scene-mono inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-4 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/70 transition-colors hover:border-[var(--scene-gold)]/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
-      >
-        Share on X
-        <span aria-hidden>↗</span>
-      </a>
-    </div>
   );
 }
 
