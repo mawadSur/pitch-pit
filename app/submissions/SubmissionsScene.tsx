@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
+import { ShareMenu } from "@/components/idea/ShareMenu";
 import { timeAgo, truncate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -243,6 +244,20 @@ function SubmissionCard({
                 <span aria-hidden>↗</span>
               </a>
             )}
+            <ShareMenu
+              idea={{
+                id: submission.id,
+                title: submission.title,
+                verdict: submission.verdict,
+                finalScore: submission.final_score ?? Math.round(submission.score * 10),
+                aiScore: submission.score,
+                voteCount: submission.vote_count,
+                strengths: submission.strengths,
+                concerns: submission.concerns,
+              }}
+              variant="icon"
+              ariaLabel={`Share "${submission.title}"`}
+            />
           </div>
         </div>
 

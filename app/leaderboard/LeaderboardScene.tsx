@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
+import { ShareMenu } from "@/components/idea/ShareMenu";
 import { type LeaderboardIdea } from "@/lib/idea-types";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -435,6 +436,18 @@ function PodiumCard({
         >
           View →
         </Link>
+        <ShareMenu
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            verdict: idea.verdict,
+            finalScore: idea.final_score ?? Math.round(idea.score * 10),
+            aiScore: idea.score,
+            voteCount: idea.vote_count,
+          }}
+          variant="icon"
+          ariaLabel={`Share "${idea.title}"`}
+        />
       </div>
     </motion.article>
   );
@@ -443,21 +456,21 @@ function PodiumCard({
 function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
   return (
     <li>
-      <Link
-        href={`/idea/${idea.id}`}
-        className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.025] focus-visible:bg-white/[0.04] focus-visible:outline-none sm:gap-6 sm:px-7"
-      >
+      <div className="group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.025] focus-within:bg-white/[0.04] sm:gap-6 sm:px-7">
         <span className="scene-mono w-8 text-right text-sm tabular-nums text-white/40">
           {String(rank).padStart(2, "0")}
         </span>
-        <span className="min-w-0">
+        <Link
+          href={`/idea/${idea.id}`}
+          className="min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--scene-gold)]/55"
+        >
           <span className="block truncate text-base text-white sm:text-lg">
             {idea.title}
           </span>
           <span className="scene-mono mt-0.5 block text-[0.55rem] uppercase tracking-[0.3em] text-white/45">
             {idea.handle ?? "anonymous"}
           </span>
-        </span>
+        </Link>
         <span className="scene-mono hidden tabular-nums text-[0.6rem] uppercase tracking-[0.3em] text-white/40 sm:inline">
           {idea.vote_count} votes
         </span>
@@ -465,7 +478,19 @@ function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
           {idea.final_score ?? 0}
           <span className="ml-0.5 text-[0.55rem] text-white/35">/100</span>
         </span>
-      </Link>
+        <ShareMenu
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            verdict: idea.verdict,
+            finalScore: idea.final_score ?? Math.round(idea.score * 10),
+            aiScore: idea.score,
+            voteCount: idea.vote_count,
+          }}
+          variant="icon"
+          ariaLabel={`Share "${idea.title}"`}
+        />
+      </div>
     </li>
   );
 }

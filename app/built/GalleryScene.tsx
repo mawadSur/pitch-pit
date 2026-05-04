@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
+import { ShareMenu } from "@/components/idea/ShareMenu";
 import { cn } from "@/lib/utils";
 
 export type BuiltIdea = {
@@ -142,6 +143,18 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
           >
             Read the judgment →
           </Link>
+          <ShareMenu
+            idea={{
+              id: idea.id,
+              title: idea.title,
+              verdict: idea.verdict,
+              finalScore: Math.round(idea.score * 10),
+              aiScore: idea.score,
+              voteCount: undefined,
+            }}
+            variant="icon"
+            ariaLabel={`Share "${idea.title}"`}
+          />
         </div>
       </div>
     </motion.article>
