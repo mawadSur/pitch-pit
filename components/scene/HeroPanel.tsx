@@ -233,9 +233,13 @@ export function HeroPanel({
     const pinProgress =
       pinFraction > 0 ? Math.min(1, latest / pinFraction) : latest;
 
-    // Image visible only at the very entry to the section
-    const next = pinProgress > SWAP_THRESHOLD;
-    setScrolled((prev) => (prev === next ? prev : next));
+    // Only crossfade the static image when the canvas is going to take
+    // over. On mobile (canvas disabled), keep the image visible the whole
+    // way — otherwise we'd fade to a black background with nothing behind.
+    if (canvasActive) {
+      const next = pinProgress > SWAP_THRESHOLD;
+      setScrolled((prev) => (prev === next ? prev : next));
+    }
 
     // scrub frames if canvas is active (skipped on mobile)
     if (!canvasActive || !frameCount) return;
