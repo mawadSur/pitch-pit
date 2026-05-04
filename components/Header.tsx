@@ -34,7 +34,6 @@ export function Header() {
   if (
     pathname === "/" ||
     pathname.startsWith("/idea/") ||
-    pathname.startsWith("/submit") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/leaderboard") ||
     pathname.startsWith("/built") ||
@@ -104,7 +103,7 @@ export function Header() {
 
         {/* Desktop CTA */}
         <Link
-          href="/submit"
+          href="/submissions"
           className={cn(
             "group relative hidden items-center border-2 border-gold bg-ink-rust/40 px-5 py-2 font-display text-xs font-bold uppercase tracking-decree text-parchment shadow-forge transition-colors duration-200 lg:inline-flex",
             "hover:border-gold-bright hover:bg-blood-deep/30 hover:text-gold-bright motion-safe:hover:animate-torchlight",
@@ -251,7 +250,7 @@ function MobileMenuPanel({
           );
         })}
         <Link
-          href="/submit"
+          href="/submissions"
           onClick={onClose}
           className="mx-6 mb-4 mt-3 inline-flex items-center justify-center border-2 border-gold bg-blood-deep/20 px-5 py-3 font-display text-sm font-bold uppercase tracking-decree text-parchment shadow-forge hover:bg-blood-deep/40 hover:border-gold-bright hover:text-gold-bright"
         >

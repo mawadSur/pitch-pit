@@ -65,7 +65,7 @@ export function GalleryScene({ ideas }: { ideas: BuiltIdea[] }) {
           )}
 
           <div className="mt-20 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link href="/submit" className="cta-btn-primary text-sm">
+            <Link href="/submissions" className="cta-btn-primary text-sm">
               Pitch your idea <span aria-hidden>→</span>
             </Link>
             <Link href="/leaderboard" className="cta-btn-ghost text-sm">

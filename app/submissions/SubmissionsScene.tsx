@@ -112,7 +112,7 @@ export function SubmissionsScene({
           )}
 
           <div className="mt-16 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link href="/submit" className="cta-btn-primary text-sm">
+            <Link href="/submissions" className="cta-btn-primary text-sm">
               Pitch a new idea <span aria-hidden>→</span>
             </Link>
             <Link href="/leaderboard" className="cta-btn-ghost text-sm">
@@ -352,7 +352,7 @@ function Empty() {
           full feedback breakdown (strengths, concerns, reasoning), the live
           community vote count, and its build status if greenlit.
         </p>
-        <Link href="/submit" className="cta-btn-primary mt-7 text-sm">
+        <Link href="/submissions" className="cta-btn-primary mt-7 text-sm">
           Pitch your idea <span aria-hidden>→</span>
         </Link>
       </div>

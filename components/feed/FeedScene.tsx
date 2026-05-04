@@ -131,7 +131,7 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
           </MotionConfig>
 
           <div className="mt-16 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link href="/submit" className="cta-btn-primary text-sm">
+            <Link href="/submissions" className="cta-btn-primary text-sm">
               Pitch your idea <span aria-hidden>→</span>
             </Link>
             <Link href="/leaderboard" className="cta-btn-ghost text-sm">
@@ -222,7 +222,7 @@ function EmptyState({ filter }: { filter: Filter }) {
       <p className="text-lg italic text-white/72 sm:text-xl">
         {messages[filter]}
       </p>
-      <Link href="/submit" className="cta-btn-primary mt-6 text-sm">
+      <Link href="/submissions" className="cta-btn-primary mt-6 text-sm">
         Pitch your idea <span aria-hidden>→</span>
       </Link>
     </li>

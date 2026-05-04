@@ -410,7 +410,7 @@ function Panel3() {
         </div>
 
         <div className="mt-7 flex flex-wrap items-center gap-4">
-          <Link href="/submit" className="cta-btn-primary text-sm">
+          <Link href="/submissions" className="cta-btn-primary text-sm">
             Pitch your idea <span aria-hidden>→</span>
           </Link>
           <Link href="/built" className="cta-btn-ghost text-sm">

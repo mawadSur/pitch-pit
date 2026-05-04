@@ -41,11 +41,16 @@
 
 html,
 body {
-  background: var(--ink-charcoal);
-  color: var(--parchment);
-  font-family: var(--font-body), "Cormorant Garamond", serif;
-  font-size: var(--type-body);
-  line-height: 1.65;
+  background: #0a0a0a;
+  color: #fff;
+  /* Per-route fonts: each page.tsx loads its own font stack.
+     The system-ui fallback covers the brief moment before fonts arrive
+     and any Capitol-only routes that don't load Cormorant explicitly. */
+  font-family:
+    var(--font-scene), var(--font-body), system-ui, -apple-system, "Segoe UI",
+    Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

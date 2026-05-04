@@ -1,32 +1,16 @@
 import type { Metadata } from "next";
-import { Cinzel, Cormorant_Garamond, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { Header } from "@/components/Header";
 import { PageTransition } from "@/components/PageTransition";
 import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
 
-const cinzel = Cinzel({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["400", "600", "700", "800", "900"],
-  display: "swap",
-});
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  variable: "--font-body",
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  display: "swap",
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
+// Per-route font loading: each route's page.tsx loads only the fonts it
+// needs. Minimalist routes load Inter + JetBrains Mono. Capitol routes
+// (/feed) load Cinzel + Cormorant Garamond + JetBrains Mono. The root
+// layout stays font-agnostic so we don't ship 30KB of unused glyphs to
+// every page (the homepage in particular shipped Cinzel + Cormorant
+// before this change even though it never used them).
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitch-pit.app";
@@ -59,8 +43,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${cinzel.variable} ${cormorant.variable} ${jetbrains.variable}`}>
-      <body className="font-body text-parchment antialiased">
+    <html lang="en">
+      <body className="antialiased">
         {/* Skip-to-content for keyboard / screen-reader users.
             Hidden until focused, then jumps the scroll past every header/nav. */}
         <a
