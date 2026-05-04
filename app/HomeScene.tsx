@@ -39,7 +39,7 @@ export function HomeScene() {
         {/* Panel 2 — Judge. Same 200vh treatment so the frames-2 sequence
             (90 frames) plays out in the centered viewport while pinned. */}
         <HeroPanel
-          image="/scene/raking.png"
+          image="/scene/transition-poster.png"
           framesPath="/scene/frames-2"
           frameCount={FRAMES_2_COUNT}
           heightVh={200}
