@@ -10,6 +10,8 @@ import {
 } from "@/lib/score-schema";
 import { GAMEMAKER_SYSTEM_PROMPT, userPrompt } from "@/lib/score-prompt";
 import { extractJson } from "@/lib/extract-json";
+import { checkContent } from "@/lib/content-filter";
+import { checkUserQuota, WEEKLY_LIMIT } from "@/lib/user-quota";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +61,20 @@ export async function POST(req: NextRequest) {
 
   const { title, pitch, handle } = parsed.data;
 
+  // ─── content pre-filter (synchronous, free) ──────────────────
+  // Catches prompt-injection, slurs, all-caps spam, repeated-char runs,
+  // and obvious low-effort submissions BEFORE we burn an Anthropic call.
+  const filterVerdict = checkContent(`${title}\n${pitch}`);
+  if (filterVerdict.flagged) {
+    return NextResponse.json(
+      {
+        error: filterVerdict.reason ?? "Submission was rejected.",
+        category: filterVerdict.category,
+      },
+      { status: 400 },
+    );
+  }
+
   // ─── capture session (best-effort) ────────────────────────
   // Authenticated submissions get user_id set so they show up on /submissions.
   // Anonymous submissions still work (user_id stays null).
@@ -71,6 +87,39 @@ export async function POST(req: NextRequest) {
     userId = user?.id ?? null;
   } catch {
     /* not signed in or cookies unavailable — proceed anonymous */
+  }
+
+  // ─── per-user weekly quota (signed-in users only) ────────────
+  // Anonymous submissions fall back to the IP rate limit in middleware.ts.
+  // Authenticated users get a more generous IP rate but a stricter weekly
+  // count — caps spam from a single account, even across IPs.
+  if (userId) {
+    const quota = await checkUserQuota(userId);
+    if (!quota.ok) {
+      return NextResponse.json(
+        {
+          error: quota.reason,
+          category: "quota",
+          used: quota.used,
+          limit: quota.limit,
+          resetAt: quota.resetAt?.toISOString() ?? null,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(WEEKLY_LIMIT),
+            "X-RateLimit-Remaining": "0",
+            ...(quota.resetAt
+              ? {
+                  "X-RateLimit-Reset": String(
+                    Math.floor(quota.resetAt.getTime() / 1000),
+                  ),
+                }
+              : {}),
+          },
+        },
+      );
+    }
   }
 
   // ─── score (Anthropic) ────────────────────────────────────

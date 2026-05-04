@@ -53,26 +53,26 @@ export function MinimalistHeader() {
 
   return (
     <header className="scene-header" data-scrolled={scrolled}>
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3.5 sm:px-10">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 sm:px-10 sm:py-5">
         {/* brand */}
         <Link
           href="/"
           aria-label="pitch-pit · home"
           className="group flex items-center transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
         >
-          <Logo variant="lockup" size={22} />
+          <Logo variant="lockup" size={30} />
         </Link>
 
         {/* center nav (desktop) */}
         <nav
           aria-label="Primary"
-          className="hidden items-center gap-7 lg:flex"
+          className="hidden items-center gap-8 lg:flex"
         >
           {NAV.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className="text-sm text-white/55 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
+              className="text-base text-white/65 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
             >
               {l.label}
             </Link>
@@ -80,7 +80,7 @@ export function MinimalistHeader() {
         </nav>
 
         {/* right cluster — auth-aware (placeholder while resolving) */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 sm:gap-4">
           {!authResolved ? (
             <AuthClusterSkeleton />
           ) : user ? (
@@ -89,11 +89,11 @@ export function MinimalistHeader() {
             <>
               <Link
                 href="/login"
-                className="hidden text-sm text-white/65 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)] sm:inline-block"
+                className="hidden text-base text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)] sm:inline-block"
               >
                 Sign in
               </Link>
-              <Link href="/login" className="cta-btn-primary text-sm">
+              <Link href="/login" className="cta-btn-primary text-base">
                 Get started
                 <span aria-hidden>→</span>
               </Link>
@@ -118,8 +118,8 @@ function AuthClusterSkeleton() {
       // while still reserving the right-side space.
       style={{ opacity: 0 }}
     >
-      <span className="h-9 w-9 rounded-full bg-white/[0.04]" />
-      <span className="h-9 w-32 rounded-full bg-white/[0.04]" />
+      <span className="h-11 w-11 rounded-full bg-white/[0.04]" />
+      <span className="h-11 w-36 rounded-full bg-white/[0.04]" />
     </div>
   );
 }
@@ -164,10 +164,10 @@ function UserMenu({ user }: { user: User }) {
   return (
     <div ref={ref} className="relative">
       {/* Pitch-now CTA stays visible alongside the avatar */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 sm:gap-4">
         <Link
           href="/submit"
-          className="cta-btn-primary hidden text-sm sm:inline-flex"
+          className="cta-btn-primary hidden text-base sm:inline-flex"
         >
           Pitch idea
           <span aria-hidden>→</span>
@@ -178,7 +178,7 @@ function UserMenu({ user }: { user: User }) {
           aria-haspopup="menu"
           aria-expanded={open}
           aria-label={`Account menu — ${fullName}`}
-          className="group flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/[0.04] transition-colors hover:border-[var(--scene-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
+          className="group flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/[0.04] transition-colors hover:border-[var(--scene-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
         >
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -188,7 +188,7 @@ function UserMenu({ user }: { user: User }) {
               className="h-full w-full object-cover"
             />
           ) : (
-            <span className="text-sm font-medium text-[var(--scene-gold-bright)]">
+            <span className="text-base font-medium text-[var(--scene-gold-bright)]">
               {initial}
             </span>
           )}
