@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
 import { type LeaderboardIdea } from "@/lib/idea-types";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type Tab = "alltime" | "week";
@@ -22,6 +24,54 @@ export function LeaderboardScene({
   const [tab, setTab] = useState<Tab>("alltime");
   const ideas = tab === "alltime" ? alltime : week;
   const [first, second, third, ...rest] = ideas;
+  const router = useRouter();
+
+  // Track when a realtime event last touched the board so we can flash the
+  // LIVE indicator briefly. Refs avoid re-renders for stale-data tracking.
+  const [pulseAt, setPulseAt] = useState<number>(0);
+  const lastRefreshRef = useRef<number>(0);
+
+  // ─── Realtime subscription ────────────────────────────────────
+  // Listen on both `ideas` (final_score / vote_count / status changes)
+  // and `votes` (raw vote inserts/deletes). Coalesce bursts to one
+  // refresh per ~600ms so a flurry of votes doesn't overwhelm the
+  // server-component refetch.
+  useEffect(() => {
+    const supabase = createClient();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleRefresh = () => {
+      const now = Date.now();
+      // Coalesce: ignore further events within the cooldown window.
+      if (now - lastRefreshRef.current < 600) return;
+      if (timer) return;
+      timer = setTimeout(() => {
+        lastRefreshRef.current = Date.now();
+        setPulseAt(Date.now());
+        router.refresh();
+        timer = null;
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel("leaderboard-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ideas" },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "votes" },
+        scheduleRefresh,
+      )
+      .subscribe();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [router]);
 
   return (
     <>
@@ -40,7 +90,7 @@ export function LeaderboardScene({
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <p className="scene-mono text-[0.62rem] uppercase tracking-[0.45em] text-[var(--scene-gold)] sm:text-[0.7rem]">
+            <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.92rem]">
               ↘ Roll of honor
             </p>
             <h1 className="mt-5 text-balance text-[2.25rem] font-medium leading-[1.02] text-white sm:text-6xl lg:text-7xl">
@@ -53,6 +103,9 @@ export function LeaderboardScene({
             <p className="mx-auto mt-5 max-w-xl text-base text-white/72 sm:text-lg">
               They who stood before the gamemaster and were judged worthy.
             </p>
+            <div className="mt-6 flex justify-center">
+              <LiveIndicator pulseAt={pulseAt} />
+            </div>
           </motion.header>
 
           {/* TABS */}
@@ -87,7 +140,7 @@ export function LeaderboardScene({
 
           {/* footer link */}
           <div className="mt-20 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link href="/submit" className="cta-btn-primary text-sm">
+            <Link href="/submissions" className="cta-btn-primary text-sm">
               Pitch your idea <span aria-hidden>→</span>
             </Link>
             <Link href="/built" className="cta-btn-ghost text-sm">
@@ -98,6 +151,61 @@ export function LeaderboardScene({
 
       </main>
     </>
+  );
+}
+
+/* ════════════════════════ LiveIndicator ═════════════════════════════
+ * Always-on pulse that flashes brighter for 1.6s after a realtime event
+ * lands. Single source of truth: `pulseAt` timestamp from the parent.
+ * ────────────────────────────────────────────────────────────────────── */
+function LiveIndicator({ pulseAt }: { pulseAt: number }) {
+  const [recent, setRecent] = useState(false);
+  useEffect(() => {
+    if (!pulseAt) return;
+    setRecent(true);
+    const id = setTimeout(() => setRecent(false), 1600);
+    return () => clearTimeout(id);
+  }, [pulseAt]);
+
+  return (
+    <span
+      role="status"
+      aria-live="polite"
+      className={cn(
+        "scene-mono inline-flex items-center gap-2.5 rounded-full border px-3.5 py-1.5 text-[0.6rem] uppercase tracking-[0.35em] transition-colors",
+        recent
+          ? "border-[var(--scene-gold)]/55 bg-[var(--scene-gold)]/10 text-[var(--scene-gold-bright)]"
+          : "border-white/12 bg-white/[0.03] text-white/55",
+      )}
+    >
+      <span className="relative flex h-2 w-2">
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-0 rounded-full motion-safe:animate-ping",
+            recent ? "bg-[var(--scene-gold-bright)]" : "bg-[var(--scene-gold)]/55",
+          )}
+        />
+        <span
+          aria-hidden
+          className={cn(
+            "relative h-2 w-2 rounded-full",
+            recent ? "bg-[var(--scene-gold-bright)]" : "bg-[var(--scene-gold)]/85",
+          )}
+        />
+      </span>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={recent ? "updating" : "live"}
+          initial={{ opacity: 0, y: -2 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 2 }}
+          transition={{ duration: 0.18 }}
+        >
+          {recent ? "Updating" : "Live"}
+        </motion.span>
+      </AnimatePresence>
+    </span>
   );
 }
 
@@ -272,7 +380,7 @@ function Empty({ tab }: { tab: Tab }) {
         <p className="mt-3 text-sm text-white/45">
           Render an offering. Stand atop the games.
         </p>
-        <Link href="/submit" className="cta-btn-primary mt-7 text-sm">
+        <Link href="/submissions" className="cta-btn-primary mt-7 text-sm">
           Pitch your idea <span aria-hidden>→</span>
         </Link>
       </div>

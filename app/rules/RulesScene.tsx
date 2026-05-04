@@ -125,7 +125,7 @@ export function RulesScene() {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <p className="scene-mono text-[0.62rem] uppercase tracking-[0.45em] text-[var(--scene-gold)] sm:text-[0.7rem]">
+            <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.92rem]">
               ↘ Rules of the pit
             </p>
             <h1 className="mt-5 text-balance text-[2.5rem] font-medium leading-[1.02] text-white sm:text-6xl lg:text-7xl">

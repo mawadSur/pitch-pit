@@ -72,7 +72,7 @@ export function MinimalistHeader() {
             <Link
               key={l.href}
               href={l.href}
-              className="text-base text-white/65 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
+              className="text-base font-medium text-white/85 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
             >
               {l.label}
             </Link>
@@ -89,7 +89,7 @@ export function MinimalistHeader() {
             <>
               <Link
                 href="/login"
-                className="hidden text-base text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)] sm:inline-block"
+                className="hidden text-base font-medium text-white/85 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)] sm:inline-block"
               >
                 Sign in
               </Link>
@@ -166,7 +166,7 @@ function UserMenu({ user }: { user: User }) {
       {/* Pitch-now CTA stays visible alongside the avatar */}
       <div className="flex items-center gap-3 sm:gap-4">
         <Link
-          href="/submit"
+          href="/submissions"
           className="cta-btn-primary hidden text-base sm:inline-flex"
         >
           Pitch idea

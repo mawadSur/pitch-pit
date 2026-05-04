@@ -175,12 +175,13 @@ function Panel1() {
         transition={{ duration: 0.7 }}
         className="absolute inset-x-0 top-[7%] flex flex-col items-center px-6 text-center"
       >
-        <p className="scene-mono text-[0.62rem] uppercase tracking-[0.45em] text-white/55 sm:text-[0.7rem]">
+        <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-white/55 sm:text-[0.92rem]">
           ↘ The pit closes Friday at midnight EST
         </p>
         <h1 className="mt-5 max-w-3xl text-balance text-[2rem] font-medium leading-[1.04] text-white sm:text-5xl lg:text-6xl">
-          Submit your{" "}
-          <span className="italic text-[var(--scene-gold-bright)]">idea</span>.
+          Pitch your idea. The{" "}
+          <span className="italic text-[var(--scene-gold-bright)]">winner</span>{" "}
+          gets built.
         </h1>
       </motion.div>
 
@@ -310,7 +311,7 @@ function Panel2() {
         transition={{ duration: 0.7 }}
         className="absolute inset-x-0 top-[10%] flex flex-col items-center px-6 text-center"
       >
-        <p className="scene-mono text-[0.62rem] uppercase tracking-[0.45em] text-[var(--scene-gold)] sm:text-[0.7rem]">
+        <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.92rem]">
           ↘ How it&rsquo;s judged
         </p>
         <h2 className="mt-5 max-w-3xl text-balance text-[2rem] font-medium leading-[1.04] text-white sm:text-5xl lg:text-6xl">
@@ -380,7 +381,7 @@ function Panel3() {
         transition={{ duration: 0.7 }}
         className="absolute inset-x-0 top-[10%] flex flex-col items-center px-6 text-center"
       >
-        <p className="scene-mono text-[0.62rem] uppercase tracking-[0.45em] text-[var(--scene-gold)] sm:text-[0.7rem]">
+        <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.92rem]">
           ↘ The pact
         </p>
         <h2 className="mt-5 max-w-3xl text-balance text-[2rem] font-medium leading-[1.04] text-white sm:text-5xl lg:text-6xl">
@@ -391,7 +392,7 @@ function Panel3() {
         </h2>
         <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/72 sm:text-lg">
           Two submissions per person, per week. The top final score wins.
-          We build the MVP — broadcast under your name.
+          We build the MVP, broadcast under your name.
         </p>
       </motion.div>
 
@@ -435,7 +436,7 @@ function HowItWorks() {
     {
       n: 2,
       title: "Claude rates it",
-      body: "Sonnet 4.6 evaluates your pitch against the YC office-hours rubric — demand, wedge, founder edge, feasibility, defensibility, distribution. Score 1–10 with strengths, concerns, and reasoning.",
+      body: "Sonnet 4.7 evaluates your pitch against the YC office-hours rubric — demand, wedge, founder edge, feasibility, defensibility, distribution. Score 1–10 with strengths, concerns, and reasoning.",
     },
     {
       n: 3,
@@ -646,7 +647,7 @@ function FinalCTA() {
         transition={{ duration: 0.7 }}
         className="mx-auto max-w-2xl"
       >
-        <p className="scene-mono text-[0.62rem] uppercase tracking-[0.45em] text-[var(--scene-gold)] sm:text-[0.7rem]">
+        <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.92rem]">
           ↘ Your move
         </p>
         <h2 className="mt-5 text-balance text-3xl font-medium leading-[1.05] text-white sm:text-5xl lg:text-6xl">
@@ -676,7 +677,7 @@ function FinalCTA() {
 /* ─── shared helpers ──────────────────────────────────────────────── */
 function SectionKicker({ children }: { children: React.ReactNode }) {
   return (
-    <p className="scene-mono text-[0.65rem] uppercase tracking-[0.45em] text-[var(--scene-gold)] sm:text-[0.7rem]">
+    <p className="scene-mono text-[0.65rem] uppercase tracking-[0.45em] text-[var(--scene-gold)] sm:text-[0.92rem]">
       {children}
     </p>
   );

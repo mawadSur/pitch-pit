@@ -87,7 +87,7 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <p className="scene-mono text-[0.62rem] uppercase tracking-[0.45em] text-[var(--scene-gold)] sm:text-[0.7rem]">
+            <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.92rem]">
               <span className="mr-2 inline-block h-1.5 w-1.5 translate-y-[-2px] rounded-full bg-[var(--scene-gold-bright)] motion-safe:animate-pulse" />
               Live · The pit, right now
             </p>
