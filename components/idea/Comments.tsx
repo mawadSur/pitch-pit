@@ -199,29 +199,20 @@ export function Comments({
       <ol className="mt-8 space-y-4" aria-live="polite">
         <AnimatePresence initial={false}>
           {comments.map((c) => (
-            <motion.li
+            <CommentRow
               key={c.id}
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              transition={{ duration: 0.25 }}
-              className="scene-card flex gap-4 px-5 py-4 sm:px-6"
-            >
-              <Avatar name={c.display_name} url={c.avatar_url} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-3">
-                  <p className="text-sm font-medium text-white">
-                    {c.display_name ?? "guest"}
-                  </p>
-                  <p className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/40">
-                    {formatRelativeTime(c.created_at)}
-                  </p>
-                </div>
-                <p className="mt-1.5 whitespace-pre-wrap text-base leading-snug text-white/85">
-                  {c.body}
-                </p>
-              </div>
-            </motion.li>
+              comment={c}
+              isOwn={!!user && c.user_id === user.id}
+              onUpdated={(updated) =>
+                setComments((prev) =>
+                  prev.map((x) => (x.id === updated.id ? updated : x)),
+                )
+              }
+              onDeleted={(id) => {
+                seenIds.current.delete(id);
+                setComments((prev) => prev.filter((x) => x.id !== id));
+              }}
+            />
           ))}
         </AnimatePresence>
         {comments.length === 0 && (
@@ -233,6 +224,188 @@ export function Comments({
         )}
       </ol>
     </section>
+  );
+}
+
+function CommentRow({
+  comment,
+  isOwn,
+  onUpdated,
+  onDeleted,
+}: {
+  comment: Comment;
+  isOwn: boolean;
+  onUpdated: (updated: Comment) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(comment.body);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const wasEdited =
+    new Date(comment.updated_at).getTime() -
+      new Date(comment.created_at).getTime() >
+    1000; // > 1s diff = edited (avoid flagging the trigger-set updated_at on insert)
+
+  function startEdit() {
+    setDraft(comment.body);
+    setError(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setError(null);
+    setDraft(comment.body);
+  }
+
+  function save() {
+    const trimmed = draft.trim();
+    if (trimmed.length === 0) return;
+    if (trimmed === comment.body.trim()) {
+      setEditing(false);
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/comments/${comment.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body: trimmed }),
+        });
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(err.error ?? "Couldn't save edit.");
+        }
+        const { comment: updated } = (await res.json()) as { comment: Comment };
+        onUpdated({
+          ...updated,
+          display_name: comment.display_name,
+          avatar_url: comment.avatar_url,
+        });
+        setEditing(false);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong.");
+      }
+    });
+  }
+
+  function remove() {
+    // Native confirm — fast, system-style. Could be replaced with a
+    // styled modal later if the UX is judged too brusque.
+    if (!window.confirm("Delete this comment? This can't be undone.")) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/comments/${comment.id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(err.error ?? "Couldn't delete.");
+        }
+        onDeleted(comment.id);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong.");
+      }
+    });
+  }
+
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6 }}
+      transition={{ duration: 0.25 }}
+      className="scene-card group flex gap-4 px-5 py-4 sm:px-6"
+    >
+      <Avatar name={comment.display_name} url={comment.avatar_url} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="flex items-baseline gap-3">
+            <p className="text-sm font-medium text-white">
+              {comment.display_name ?? "guest"}
+            </p>
+            <p className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/40">
+              {formatRelativeTime(comment.created_at)}
+              {wasEdited && (
+                <>
+                  <span className="mx-1.5 text-white/25">·</span>
+                  <span className="text-white/45">edited</span>
+                </>
+              )}
+            </p>
+          </div>
+          {isOwn && !editing && (
+            <div className="scene-mono flex items-center gap-3 text-[0.55rem] uppercase tracking-[0.3em] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              <button
+                type="button"
+                onClick={startEdit}
+                disabled={pending}
+                className="text-white/45 transition-colors hover:text-white disabled:opacity-50"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={remove}
+                disabled={pending}
+                className="text-red-300/70 transition-colors hover:text-red-200 disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                if (error) setError(null);
+              }}
+              disabled={pending}
+              rows={3}
+              maxLength={1000}
+              aria-label="Edit your comment"
+              className="block w-full resize-y rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-base leading-snug text-white placeholder:text-white/30 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
+            />
+            <div className="flex flex-wrap items-center justify-end gap-2 scene-mono text-[0.6rem] uppercase tracking-[0.3em]">
+              {error && (
+                <span className="mr-auto text-red-300/85">{error}</span>
+              )}
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={pending}
+                className="rounded-full px-3 py-1.5 text-white/55 transition-colors hover:bg-white/[0.04] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={pending || draft.trim().length === 0}
+                className="rounded-full bg-[var(--scene-gold)] px-3.5 py-1.5 text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {pending ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-1.5 whitespace-pre-wrap text-base leading-snug text-white/85">
+            {comment.body}
+          </p>
+        )}
+      </div>
+    </motion.li>
   );
 }
 

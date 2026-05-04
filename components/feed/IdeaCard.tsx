@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { type FeedIdea } from "@/lib/idea-types";
 import { timeAgo, truncate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { ShareMenu } from "@/components/idea/ShareMenu";
 
 // Final-score tiers for the minimalist accent treatment.
 // (Score on /idea/[id] is the canonical 0-100; here we tint by tier.)
@@ -126,7 +127,7 @@ export function IdeaCard({
             &ldquo;{idea.verdict}&rdquo;
           </p>
 
-          <div className="mt-5">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <Link
               href={`/idea/${idea.id}`}
               className={cn(
@@ -140,6 +141,19 @@ export function IdeaCard({
               View judgment
               <span aria-hidden>→</span>
             </Link>
+            <span aria-hidden className="text-white/15">·</span>
+            <ShareMenu
+              idea={{
+                id: idea.id,
+                title: idea.title,
+                verdict: idea.verdict,
+                finalScore: idea.final_score ?? Math.round(idea.score * 10),
+                aiScore: idea.score,
+                voteCount: idea.vote_count,
+              }}
+              variant="icon"
+              ariaLabel={`Share "${idea.title}"`}
+            />
           </div>
         </div>
 
