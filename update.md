@@ -42,9 +42,9 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 
 ## 🔴 Priority 1 · Accessibility (CRITICAL)
 
-- [ ] **A11y-1. Comment edit/delete buttons are hover-only** — `components/idea/Comments.tsx:294-309`. The `opacity-0 group-hover:opacity-100` + `group-focus-within:opacity-100` pattern works on desktop but **on mobile/touch devices there's no hover state** — users with touch can't see the controls until they tab through. Fix: drop the hover-only treatment, render the buttons always (with subtle styling), or use `:has(:hover, :focus-within)` on the parent.
+- [x] **A11y-1. Comment edit/delete buttons are hover-only** — `components/idea/Comments.tsx:294-309`. The `opacity-0 group-hover:opacity-100` + `group-focus-within:opacity-100` pattern works on desktop but **on mobile/touch devices there's no hover state** — users with touch can't see the controls until they tab through. Fix: drop the hover-only treatment, render the buttons always (with subtle styling), or use `:has(:hover, :focus-within)` on the parent.
 - [ ] **A11y-2. Avatar `<img>` has no descriptive alt** — `components/idea/Comments.tsx:251` + `MinimalistHeader.tsx:185`. Both pass `alt=""` (decorative). For Comments, since the visual is acting as the user identifier, the avatar should have `alt={display_name}` or be marked `aria-hidden` and the name alone identifies. Currently semi-decorative + ESLint `no-img-element` warning still firing.
-- [ ] **A11y-3. CountdownClock not announced** — `components/scene/CountdownClock.tsx`. The countdown updates every second but has no `aria-live` region. Screen readers don't announce "the pit closes in X" — visually critical, audibly invisible. Wrap a screen-reader-only summary with `aria-live="polite"` that updates every minute (not second — that'd be noisy).
+- [x] **A11y-3. CountdownClock not announced** — `components/scene/CountdownClock.tsx`. The countdown updates every second but has no `aria-live` region. Screen readers don't announce "the pit closes in X" — visually critical, audibly invisible. Wrap a screen-reader-only summary with `aria-live="polite"` that updates every minute (not second — that'd be noisy).
 - [ ] **A11y-4. Form errors don't auto-focus the invalid field** — every form (submit textarea, login email, comments). Per WCAG `focus-management`, after submit error the first invalid field should receive focus. Currently the user has to scan visually to find what failed.
 - [ ] **A11y-5. Touch targets under 44×44** — Several spots:
   - Avatar trigger in `MinimalistHeader.tsx:181` is now 44×44 ✓
@@ -57,8 +57,8 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 
 ## 🔴 Priority 2 · Touch & Interaction (CRITICAL)
 
-- [ ] **TI-1. ShareMenu popover doesn't have a mobile-optimized layout** — `components/idea/ShareMenu.tsx`. On phones, a 288px-wide popover anchored to the right edge can clip off-screen. Convert to a bottom sheet on `<sm:` breakpoints (slide up from bottom, full-width).
-- [ ] **TI-2. Comment delete uses `window.confirm()`** — `components/idea/Comments.tsx`. Native confirm is jarring next to the cinematic aesthetic and unstyled. Replace with an inline confirm step ("Delete? [Confirm] [Cancel]") or a styled modal.
+- [x] **TI-1. ShareMenu popover doesn't have a mobile-optimized layout** — `components/idea/ShareMenu.tsx`. On phones, a 288px-wide popover anchored to the right edge can clip off-screen. Convert to a bottom sheet on `<sm:` breakpoints (slide up from bottom, full-width).
+- [x] **TI-2. Comment delete uses `window.confirm()`** — `components/idea/Comments.tsx`. Native confirm is jarring next to the cinematic aesthetic and unstyled. Replace with an inline confirm step ("Delete? [Confirm] [Cancel]") or a styled modal.
 - [ ] **TI-3. Native dialogs/scrim — comment delete + admin actions** lack a backdrop scrim. Once the inline-confirm replaces `window.confirm`, ensure the rest of the page is dimmed for focus.
 - [ ] **TI-4. Search input has no loading indicator** — `LeaderboardScene.tsx` SearchBox. After typing + 350ms debounce, the page server-refetches but the user sees no spinner. Add a subtle loading dot on the input border or a "searching…" caption while `useTransition` is pending.
 - [ ] **TI-5. Cinematic scroll-pin can fight iOS swipe-back** — `HeroPanel.tsx`. Sticky-pinned 200vh sections can feel sticky to swipe-back gestures at the edge. Add `overscroll-behavior-x: none` only on the main element to prevent.
@@ -66,7 +66,7 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 
 ## 🟠 Priority 3 · Performance (HIGH)
 
-- [ ] **Perf-1. First Load JS still 204 KB** — Sentry browser SDK + Replay integration is the bulk. Sentry Replay only captures sessions where errors occur, but the SDK itself ships on every route. Two options:
+- [x] **Perf-1. First Load JS still 204 KB** — Sentry browser SDK + Replay integration is the bulk. Sentry Replay only captures sessions where errors occur, but the SDK itself ships on every route. Two options:
   - **(easy)** Drop `replayIntegration` from `instrumentation-client.ts` — lose replay for normal sessions, keep error capture. Saves ~80 KB.
   - **(better)** Lazy-load Sentry init via `Sentry.lazyLoad()` after page interactive. Saves ~80 KB on first paint.
 - [ ] **Perf-2. Frame sequences total 6.1 MB** — `public/scene/frames-1` (2 MB) + `frames-2` (4.1 MB). 91 + 90 frames at 1024px. Consider:
@@ -83,7 +83,7 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 - [ ] **Style-2. Two themes still coexist in code** — Capitol palette tokens (`text-parchment`, `font-display`, `tracking-decree`) still in `tailwind.config.ts` + `globals.css` but no route renders them after the /admin reskin. Either:
   - Keep them (legacy) and note in CLAUDE.md why
   - Or remove them entirely so contributors don't accidentally reach for the wrong tokens
-- [ ] **Style-3. Capitol Header is dead code** — `components/Header.tsx` returns `null` on every minimalist route, and `/admin` and `/feed` are the only Capitol-themed routes that don't actually use it (they import `MinimalistHeader`). The Capitol header is shipped to the bundle but never rendered. Delete it.
+- [x] **Style-3. Capitol Header is dead code** — `components/Header.tsx` returns `null` on every minimalist route, and `/admin` and `/feed` are the only Capitol-themed routes that don't actually use it (they import `MinimalistHeader`). The Capitol header is shipped to the bundle but never rendered. Delete it.
 - [ ] **Style-4. Icon styles are mixed** — `ShareMenu.tsx` has filled brand glyphs (X/LinkedIn/Facebook are filled) next to outlined utility icons (Native, Email, Link). Per `filled-vs-outline-discipline`, pick one for the menu and apply consistently. Brand glyphs typically must stay filled for trademark reasons — so use filled for *all* menu item icons OR put the brand glyphs in a separate visual treatment.
 
 ## 🟠 Priority 5 · Layout & Responsive (HIGH)
@@ -115,8 +115,8 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 
 ## 🟠 Priority 9 · Navigation Patterns (HIGH)
 
-- [ ] **Nav-1. No active-state highlight on header nav** — `MinimalistHeader.tsx` nav items don't visually indicate "you are here". Per `nav-state-active`, the current page should have a different color/weight/underline.
-- [ ] **Nav-2. No mobile menu on MinimalistHeader** — center nav (My pitches, Leaderboard, Gallery, Rules) is `hidden lg:flex`. On phones, those are completely hidden. Either add a hamburger on `<lg:` or surface them in the right-cluster overflow.
+- [x] **Nav-1. No active-state highlight on header nav** — `MinimalistHeader.tsx` nav items don't visually indicate "you are here". Per `nav-state-active`, the current page should have a different color/weight/underline.
+- [x] **Nav-2. No mobile menu on MinimalistHeader** — center nav (My pitches, Leaderboard, Gallery, Rules) is `hidden lg:flex`. On phones, those are completely hidden. Either add a hamburger on `<lg:` or surface them in the right-cluster overflow.
 - [ ] **Nav-3. Search isn't reachable from anywhere except `/leaderboard`** — per `search-accessible`, search should be globally reachable (header search icon). Even "Cmd+K" style would be a nice progressive enhancement.
 - [ ] **Nav-4. Back button doesn't preserve scroll on /leaderboard** — clicking into an idea, then back, should restore scroll + tab + search query. Currently scroll is preserved but tab state resets.
 - [ ] **Nav-5. No breadcrumb on `/idea/[id]`** — user lands deep with no indication of where they came from. Show "← Back to leaderboard" or "← Back to feed" based on `document.referrer` (or always link to `/leaderboard`).
