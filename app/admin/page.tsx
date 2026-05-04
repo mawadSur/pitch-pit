@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminClient, type AdminIdea } from "@/components/admin/AdminClient";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
+import "../scene.css";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
