@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { HeroPanel } from "@/components/scene/HeroPanel";
 import { CountdownClock } from "@/components/scene/CountdownClock";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
+import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
 import { SUBMIT_LIMITS } from "@/lib/score-schema";
 
 const FRAMES_1_COUNT = 91;
@@ -93,6 +94,7 @@ function Panel1() {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   function deriveTitle(input: string): string {
     const trimmed = input.trim();
@@ -117,6 +119,17 @@ function Panel1() {
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     startTransition(async () => {
       try {
+        // Run Turnstile invisibly. No-op + empty string when site key is
+        // unset (dev/preview without a Cloudflare account).
+        let turnstileToken = "";
+        try {
+          turnstileToken = (await turnstileRef.current?.execute()) ?? "";
+        } catch {
+          throw new Error(
+            "Couldn't verify you're human. Refresh the page and try again.",
+          );
+        }
+
         const res = await fetch("/api/score", {
           method: "POST",
           headers: {
@@ -127,10 +140,13 @@ function Panel1() {
             title: deriveTitle(trimmed),
             pitch: trimmed,
             handle: "",
+            turnstile_token: turnstileToken,
           }),
         });
         if (!res.ok) {
           const err = (await res.json().catch(() => ({}))) as { error?: string };
+          // Reset the captcha so the next attempt mints a fresh token.
+          turnstileRef.current?.reset();
           throw new Error(err.error ?? "Submission failed.");
         }
         const { id } = (await res.json()) as { id: string };
@@ -237,6 +253,11 @@ function Panel1() {
             {pending ? <Spinner /> : <PaperPlane />}
           </button>
         </div>
+        {/* Invisible captcha — only renders when NEXT_PUBLIC_TURNSTILE_SITE_KEY
+            is set, no-op otherwise. Triggered via ref.current.execute() inside
+            submit(). Most legitimate users see nothing; suspicious sessions
+            get a Cloudflare interaction prompt. */}
+        <Turnstile handleRef={turnstileRef} />
       </motion.form>
 
       {/* BOTTOM — live counter + scroll cue (input is the singular primary CTA;

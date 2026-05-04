@@ -17,6 +17,10 @@ export const submitSchema = z.object({
     .max(50, "A founder's mark must not exceed 50 characters.")
     .optional()
     .or(z.literal("")),
+  // Cloudflare Turnstile token — empty string accepted client-side when
+  // the widget isn't configured. Server enforces presence only when the
+  // secret key is set (see lib/turnstile.ts).
+  turnstile_token: z.string().optional().default(""),
 });
 
 export type SubmitInput = z.infer<typeof submitSchema>;

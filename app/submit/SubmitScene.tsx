@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Hourglass } from "@/components/scene/Hourglass";
 import { Particles } from "@/components/scene/Particles";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
+import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
 import { SUBMIT_LIMITS } from "@/lib/score-schema";
 
 export function SubmitScene() {
@@ -13,6 +14,7 @@ export function SubmitScene() {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   function deriveTitle(input: string): string {
     const trimmed = input.trim();
@@ -40,6 +42,15 @@ export function SubmitScene() {
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     startTransition(async () => {
       try {
+        let turnstileToken = "";
+        try {
+          turnstileToken = (await turnstileRef.current?.execute()) ?? "";
+        } catch {
+          throw new Error(
+            "Couldn't verify you're human. Refresh the page and try again.",
+          );
+        }
+
         const res = await fetch("/api/score", {
           method: "POST",
           headers: {
@@ -50,10 +61,12 @@ export function SubmitScene() {
             title: deriveTitle(trimmed),
             pitch: trimmed,
             handle: "",
+            turnstile_token: turnstileToken,
           }),
         });
         if (!res.ok) {
           const err = (await res.json().catch(() => ({}))) as { error?: string };
+          turnstileRef.current?.reset();
           throw new Error(err.error ?? "Submission failed.");
         }
         const { id } = (await res.json()) as { id: string };
@@ -182,6 +195,9 @@ export function SubmitScene() {
               </p>
             </div>
           </form>
+
+          {/* Invisible captcha — only renders when site key is set. */}
+          <Turnstile handleRef={turnstileRef} />
         </div>
 
         <div className="pointer-events-none absolute bottom-6 right-6 sm:bottom-8 sm:right-8">

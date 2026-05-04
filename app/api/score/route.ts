@@ -12,6 +12,7 @@ import { GAMEMAKER_SYSTEM_PROMPT, userPrompt } from "@/lib/score-prompt";
 import { extractJson } from "@/lib/extract-json";
 import { checkContent } from "@/lib/content-filter";
 import { checkUserQuota, WEEKLY_LIMIT } from "@/lib/user-quota";
+import { verifyTurnstile, turnstileEnabled } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,7 +60,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, pitch, handle } = parsed.data;
+  const { title, pitch, handle, turnstile_token } = parsed.data;
+
+  // ─── captcha verify (Cloudflare Turnstile) ────────────────────
+  // No-op when TURNSTILE_SECRET_KEY is unset — first line in
+  // verifyTurnstile() short-circuits. In prod with the key set, every
+  // submission must include a valid token.
+  if (turnstileEnabled) {
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+      req.headers.get("x-real-ip") ??
+      undefined;
+    const captcha = await verifyTurnstile(turnstile_token, ip);
+    if (!captcha.ok) {
+      console.warn("[score] turnstile reject", captcha.errorCodes);
+      return NextResponse.json(
+        { error: captcha.reason ?? "Captcha verification failed." },
+        { status: 403 },
+      );
+    }
+  }
 
   // ─── content pre-filter (synchronous, free) ──────────────────
   // Catches prompt-injection, slurs, all-caps spam, repeated-char runs,
