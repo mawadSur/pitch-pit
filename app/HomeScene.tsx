@@ -10,6 +10,7 @@ import { CountdownClock } from "@/components/scene/CountdownClock";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
 import { SubmittingOverlay } from "./SubmittingOverlay";
+import { PitchCoach } from "./PitchCoach";
 import { SUBMIT_LIMITS } from "@/lib/score-schema";
 import { createClient as createSupabaseBrowser } from "@/lib/supabase/client";
 
@@ -381,6 +382,12 @@ function Panel1() {
             submit(). Most legitimate users see nothing; suspicious sessions
             get a Cloudflare interaction prompt. */}
         <Turnstile handleRef={turnstileRef} />
+
+        {/* Pitch coach — quality checks, AI follow-ups, and an opt-in
+            "polish my pitch" enhancer. Sits below the textarea inside
+            the form so layout stays cohesive. Visible once the user
+            starts typing. */}
+        <PitchCoach text={text} setText={setText} />
       </motion.form>
 
       {/* Full-screen overlay during submit. Bridges the ~600ms window
