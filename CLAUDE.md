@@ -27,6 +27,8 @@ The codebase has two aesthetics layered on the same backend. Don't conflate them
 
 **Capitol theatrical** (legacy operator surface): `/feed`, `/admin`. Cinzel + Cormorant Garamond fonts, gold-on-charcoal palette, ornamental dividers. Tokens defined globally in `app/globals.css` and `tailwind.config.ts`. `design-system/MASTER.md` documents this aesthetic but is **stale** — it describes the old Capitol homepage that has since been replaced.
 
+> **Capitol palette is legacy.** The tokens (`text-parchment`, `font-display`, `tracking-decree`, `shadow-forge`, `animate-torchlight`, etc.) defined in `tailwind.config.ts` and `app/globals.css` are kept only because `/admin` and `/feed` still consume them. Don't reach for these in new code — use the minimalist `.scene` tokens instead. The Capitol header was deleted in cleanup; only those two operator routes remain.
+
 `components/Header.tsx` (the Capitol header) returns `null` on every minimalist route via path check; minimalist routes render their own `<MinimalistHeader />` from `components/scene/`.
 
 ## Homepage scroll architecture (the unique part)

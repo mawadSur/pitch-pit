@@ -31,6 +31,10 @@ const nextConfig = {
     ];
   },
   images: {
+    // Prefer modern formats for next/image — Vercel will use sharp (already
+    // a dependency, ^0.34.5) to convert source images to AVIF/WebP at build
+    // time and serve the negotiated best fit per Accept header.
+    formats: ["image/avif", "image/webp"],
     // Trusted remote hosts for next/image. Add new origins here when we
     // need to render external images via the Image component.
     remotePatterns: [

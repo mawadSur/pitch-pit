@@ -11,6 +11,7 @@ import { VoteButton } from "@/components/idea/VoteButton";
 import { Comments, type Comment } from "@/components/idea/Comments";
 import { ShareMenu } from "@/components/idea/ShareMenu";
 import { useRouter } from "next/navigation";
+import { formatVoteCount } from "@/lib/format";
 import type { User } from "@supabase/supabase-js";
 
 export type Idea = {
@@ -135,7 +136,7 @@ export function Reveal({
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 1.2 }}
-            className="mt-12 scroll-mt-24 text-center"
+            className="mt-12 text-center"
           >
             <p className="scene-mono mb-4 text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
               · The Verdict ·
@@ -181,7 +182,7 @@ export function Reveal({
           )}
 
           {/* strengths / concerns */}
-          <div id="strengths" className="mt-14 grid scroll-mt-24 gap-5 sm:grid-cols-2">
+          <div id="strengths" className="mt-14 grid gap-5 sm:grid-cols-2">
             <Column
               title="Strengths"
               tone="gold"
@@ -202,7 +203,7 @@ export function Reveal({
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 1.85 }}
-            className="scene-card mx-auto mt-10 max-w-3xl scroll-mt-24 px-7 py-7 sm:px-9 sm:py-8"
+            className="scene-card mx-auto mt-10 max-w-3xl px-7 py-7 sm:px-9 sm:py-8"
           >
             <p className="scene-mono mb-4 text-[0.65rem] uppercase tracking-[0.35em] text-white/55">
               Reasoning
@@ -276,7 +277,7 @@ export function Reveal({
           )}
 
           {/* comments */}
-          <div id="comments" className="scroll-mt-24">
+          <div id="comments">
             <Comments
               ideaId={idea.id}
               initial={initialComments}
@@ -427,7 +428,7 @@ function ScoreReveal({
           <span className="text-white/85 tabular-nums">{aiScore}</span>
           <span className="text-white/55">/10</span>
           <span className="mx-2 text-white/25">·</span>
-          <span className="text-white/85 tabular-nums">{voteCount}</span>{" "}
+          <span className="text-white/85 tabular-nums">{formatVoteCount(voteCount)}</span>{" "}
           {voteCount === 1 ? "vote" : "votes"}
         </p>
       </motion.div>

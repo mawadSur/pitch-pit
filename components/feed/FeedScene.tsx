@@ -80,7 +80,7 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
         <Particles />
         <div aria-hidden className="scene-grain" />
 
-        <div className="relative z-10 mx-auto max-w-4xl px-6 pb-24 pt-32 sm:px-10 sm:pt-40">
+        <div className="relative z-10 mx-auto max-w-5xl px-6 pb-24 pt-32 sm:px-10 sm:pt-40">
           {/* HEADER */}
           <motion.header
             initial={{ opacity: 0, y: 14 }}
@@ -223,9 +223,9 @@ function ZeroState() {
     <div className="mt-16 flex flex-col items-center gap-6 text-center">
       <div className="scene-card max-w-md px-10 py-12">
         <p className="text-lg italic text-white/72">
-          No pitches yet — be the first to face the gamemaster.
+          Be the first to pitch — submit at /
         </p>
-        <p className="mt-3 text-sm text-white/45">
+        <p className="mt-3 text-sm text-white/55">
           The pit is empty. Stake your claim.
         </p>
         <Link href="/" className="cta-btn-primary mt-7 text-sm">

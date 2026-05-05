@@ -126,6 +126,28 @@ export function MinimalistHeader() {
 
         {/* right cluster — auth-aware (placeholder while resolving) */}
         <div className="flex items-center gap-3 sm:gap-4">
+          {/* Nav-3: global search reach. Sends the user to /leaderboard with
+              ?focus=search; the leaderboard autofocuses its SearchBox when
+              that query param is present. */}
+          <Link
+            href="/leaderboard?focus=search"
+            aria-label="Search ideas"
+            className="hidden h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white/85 transition-colors hover:border-[var(--scene-gold)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)] sm:flex"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <circle cx="8" cy="8" r="5.5" />
+              <path d="m12 12 3 3" />
+            </svg>
+          </Link>
           {!authResolved ? (
             <AuthClusterSkeleton />
           ) : user ? (

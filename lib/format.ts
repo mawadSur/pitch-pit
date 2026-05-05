@@ -1,3 +1,12 @@
+// P-6: vote-count formatter. Past 1,000 votes the bare number ("1234") is
+// hard to skim — render with thousands separators ("1,234"). The Intl
+// formatter is cheap and returns identical bytes server vs client (en-US
+// is locale-stable), so it's safe to use in SSR-rendered components.
+const VOTE_FORMATTER = new Intl.NumberFormat("en-US");
+export function formatVoteCount(count: number | null | undefined): string {
+  return VOTE_FORMATTER.format(count ?? 0);
+}
+
 export function timeAgo(iso: string, nowMs = Date.now()): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";

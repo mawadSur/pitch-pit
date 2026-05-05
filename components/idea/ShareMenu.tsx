@@ -24,6 +24,7 @@ type ShareTarget =
   | "facebook"
   | "reddit"
   | "email"
+  | "email-copy"
   | "native";
 
 const X_INTENT = "https://x.com/intent/post";
@@ -217,6 +218,25 @@ export function ShareMenu({
       setOpen(false);
       return;
     }
+
+    if (target === "email-copy") {
+      // P-3: mobile-friendly alternative to mailto. Mailto: hijacks the
+      // user into the system mail composer which on phones is jarring;
+      // copying the subject + body lets the user paste into whatever
+      // surface they actually want (Slack, Notes, Gmail web, etc.).
+      const text = `${buildEmailSubject(idea)}\n\n${buildEmailBody(idea, url)}`;
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied("email-copy");
+        window.setTimeout(() => setCopied(null), 1800);
+      } catch {
+        /* clipboard unavailable — fall back to mailto */
+        const mailto = `mailto:?subject=${encodeURIComponent(buildEmailSubject(idea))}&body=${encodeURIComponent(buildEmailBody(idea, url))}`;
+        window.location.href = mailto;
+        setOpen(false);
+      }
+      return;
+    }
   }
 
   // ─── shared menu items (rendered inside both desktop dropdown + mobile sheet) ──
@@ -243,6 +263,7 @@ export function ShareMenu({
         icon={<XIcon />}
         label="Share on X"
         hint="Pre-filled tweet"
+        brand
       />
       <MenuItem
         onClick={() => handle("linkedin")}
@@ -254,22 +275,37 @@ export function ShareMenu({
             : "Copies a formatted post"
         }
         accent={copied === "linkedin"}
+        brand
       />
       <MenuItem
         onClick={() => handle("facebook")}
         icon={<FacebookIcon />}
         label="Share on Facebook"
+        brand
       />
       <MenuItem
         onClick={() => handle("reddit")}
         icon={<RedditIcon />}
         label="Share on Reddit"
+        brand
       />
       <Divider />
       <MenuItem
         onClick={() => handle("email")}
         icon={<EmailIcon />}
-        label="Share via email"
+        label="Open in mail app"
+        hint="Pre-filled mailto"
+      />
+      <MenuItem
+        onClick={() => handle("email-copy")}
+        icon={<LinkIcon />}
+        label={copied === "email-copy" ? "Copied!" : "Copy email content"}
+        hint={
+          copied === "email-copy"
+            ? undefined
+            : "Subject + body to clipboard"
+        }
+        accent={copied === "email-copy"}
       />
     </>
   );
@@ -356,12 +392,20 @@ function MenuItem({
   label,
   hint,
   accent = false,
+  brand = false,
 }: {
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
   hint?: string;
   accent?: boolean;
+  /**
+   * Style-4: brand glyphs (X/LinkedIn/Facebook/Reddit) keep their filled
+   * trademark form, but get a subtle solid badge so the visual mix between
+   * filled brand marks and outlined utility icons reads as intentional.
+   * Utility icons (Native, Email, Link) keep the bordered transparent badge.
+   */
+  brand?: boolean;
 }) {
   return (
     <button
@@ -374,7 +418,9 @@ function MenuItem({
         className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border ${
           accent
             ? "border-[var(--scene-gold)]/55 text-[var(--scene-gold-bright)]"
-            : "border-white/12 text-white/70"
+            : brand
+              ? "border-white/[0.04] bg-white/[0.04] text-white/85"
+              : "border-white/12 text-white/70"
         }`}
       >
         {icon}

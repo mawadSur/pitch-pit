@@ -7,6 +7,19 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    // ─── Legacy Capitol theatrical theme ─────────────────────────────────
+    // The Capitol palette tokens below (parchment / gold / blood / ash,
+    // font-display, font-body, tracking-decree, tracking-proclaim, the
+    // forge / torch / carved shadows, the torchlight / ember-* /
+    // pedestal-shimmer animations) are used ONLY by the legacy operator
+    // surfaces /admin and /feed. The user-facing routes use the
+    // minimalist scene tokens defined in app/scene.css scoped under .scene.
+    //
+    // Don't introduce these tokens in new code — reach for the .scene
+    // tokens (var(--scene-gold), var(--scene-bg), scene-mono, etc.). The
+    // Capitol header was deleted in cleanup; these tokens are kept only
+    // to keep /admin + /feed rendering until they're reskinned.
+    // ────────────────────────────────────────────────────────────────────
     extend: {
       colors: {
         ink: {

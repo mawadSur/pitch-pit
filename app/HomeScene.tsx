@@ -263,7 +263,11 @@ function Panel1() {
   const length = text.trim().length;
 
   return (
-    <div className="relative h-full w-full">
+    // Layout-1: floor at 640px tall so the kicker / countdown / input
+    // never overlap on iPhone SE-class viewports (568px height with the
+    // address bar shown). Above that, the absolute % offsets fan out
+    // naturally to the section height.
+    <div className="relative h-full min-h-[640px] w-full">
       {/* TOP — kicker + headline (above the image's hourglass) */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}

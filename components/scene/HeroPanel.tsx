@@ -261,7 +261,7 @@ export function HeroPanel({
       ref={sectionRef}
       id={id}
       className="relative"
-      style={{ height: `${heightVh}vh` }}
+      style={{ height: `${heightVh}vh`, overscrollBehaviorX: "none" }}
     >
       <div
         ref={wrapRef}

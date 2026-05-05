@@ -317,7 +317,7 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
             type="button"
             onClick={onStart}
             disabled={pending}
-            className="scene-mono mb-5 rounded-full border border-[var(--scene-gold)]/55 px-4 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-[var(--scene-gold-bright)] transition-colors hover:bg-[var(--scene-gold)]/10 disabled:opacity-50"
+            className="scene-mono mb-5 rounded-full border border-[var(--scene-gold)]/55 px-4 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-[var(--scene-gold-bright)] transition-colors hover:bg-[var(--scene-gold)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)] disabled:opacity-50"
           >
             {pending ? "moving…" : "Mark as building"}
           </button>

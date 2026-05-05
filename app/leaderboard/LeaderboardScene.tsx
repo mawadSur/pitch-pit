@@ -9,6 +9,7 @@ import { Particles } from "@/components/scene/Particles";
 import { ShareMenu } from "@/components/idea/ShareMenu";
 import { type LeaderboardIdea } from "@/lib/idea-types";
 import { createClient } from "@/lib/supabase/client";
+import { formatVoteCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Tab = "alltime" | "week";
@@ -219,6 +220,19 @@ function SearchBox({ initial }: { initial: string }) {
   const searchParams = useSearchParams();
   const [value, setValue] = useState(initial);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  // Nav-3: when arriving from the global header search button
+  // (`/leaderboard?focus=search`), focus the input on mount and strip the
+  // marker so a refresh doesn't keep stealing focus.
+  useEffect(() => {
+    if (searchParams.get("focus") !== "search") return;
+    inputRef.current?.focus();
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("focus");
+    const qs = params.toString();
+    router.replace(qs ? `/leaderboard?${qs}` : "/leaderboard");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // `isPending` is true from `startTransition` until the server-rendered
   // navigation lands, so it covers the "request in flight" window after
   // the 350ms debounce fires. Combined with the local `pendingDebounce`
@@ -295,6 +309,7 @@ function SearchBox({ initial }: { initial: string }) {
           </svg>
         </span>
         <input
+          ref={inputRef}
           type="search"
           value={value}
           onChange={onChange}
@@ -507,7 +522,7 @@ function PodiumCard({
           </span>
         </span>
         <span className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
-          AI {idea.score} · {idea.vote_count} votes
+          AI {idea.score} · {formatVoteCount(idea.vote_count)} votes
         </span>
         <Link
           href={`/idea/${idea.id}`}
@@ -535,7 +550,7 @@ function PodiumCard({
 function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
   return (
     <li>
-      <div className="group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.025] focus-within:bg-white/[0.04] sm:gap-6 sm:px-7">
+      <div className="group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-5 py-4 transition-[colors,transform] hover:bg-white/[0.025] focus-within:bg-white/[0.04] active:scale-[0.99] sm:gap-6 sm:px-7">
         <span className="scene-mono w-8 text-right text-sm tabular-nums text-white/55">
           {String(rank).padStart(2, "0")}
         </span>
@@ -551,7 +566,7 @@ function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
           </span>
         </Link>
         <span className="scene-mono hidden tabular-nums text-[0.65rem] uppercase tracking-[0.3em] text-white/55 sm:inline">
-          {idea.vote_count} votes
+          {formatVoteCount(idea.vote_count)} votes
         </span>
         <span className="scene-mono w-14 text-right tabular-nums text-base font-semibold text-[var(--scene-gold-bright)] sm:w-16 sm:text-lg">
           {idea.final_score ?? 0}

@@ -42,6 +42,11 @@ export function Comments({
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Form-2: optimistic placeholder body shown while a POST is in flight,
+  // so the user sees their comment land at the top of the list immediately
+  // and not after the round-trip. Cleared on response (success: replaced
+  // by the real row; error: handled by the existing `error` channel).
+  const [postingDraft, setPostingDraft] = useState<string | null>(null);
   const seenIds = useRef<Set<string>>(new Set(initial.map((c) => c.id)));
   // Form-2: brief skeleton flash on mount when there's nothing to show yet,
   // gives perceived loading feedback even when the list is genuinely empty.
@@ -144,6 +149,7 @@ export function Comments({
       return;
     }
     setError(null);
+    setPostingDraft(trimmed);
     startTransition(async () => {
       try {
         const res = await fetch("/api/comments", {
@@ -164,6 +170,8 @@ export function Comments({
         setText("");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
+      } finally {
+        setPostingDraft(null);
       }
     });
   }
@@ -179,7 +187,7 @@ export function Comments({
           className="text-lg font-medium text-white sm:text-xl"
         >
           Comments
-          <span className="scene-mono ml-3 text-[0.7rem] uppercase tracking-[0.3em] text-white/45">
+          <span className="scene-mono ml-3 text-[0.7rem] uppercase tracking-[0.3em] tabular-nums text-white/45">
             {comments.length}
           </span>
         </h2>
@@ -240,6 +248,39 @@ export function Comments({
 
       {/* List */}
       <ol className="mt-8 space-y-4" aria-live="polite">
+        {/* Form-2: optimistic placeholder while a POST is in flight. Sits
+            at the top of the list, dimmed, with a "posting…" hint. Once the
+            POST resolves, the real row replaces it. */}
+        {postingDraft && (
+          <li
+            aria-hidden
+            className="scene-card flex gap-4 px-5 py-4 opacity-60 sm:px-6"
+          >
+            <Avatar
+              name={
+                (user?.user_metadata?.full_name as string | undefined) ??
+                user?.email ??
+                "you"
+              }
+              url={user?.user_metadata?.avatar_url as string | undefined}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-3">
+                <p className="text-sm font-medium text-white">
+                  {(user?.user_metadata?.full_name as string | undefined) ??
+                    user?.email ??
+                    "you"}
+                </p>
+                <p className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-[var(--scene-gold)]/85">
+                  Posting…
+                </p>
+              </div>
+              <p className="mt-1.5 max-w-prose whitespace-pre-wrap text-base leading-snug text-white/85">
+                {postingDraft}
+              </p>
+            </div>
+          </li>
+        )}
         <AnimatePresence initial={false}>
           {comments.map((c) => (
             <CommentRow
@@ -437,9 +478,9 @@ function CommentRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 6 }}
       transition={{ duration: 0.25 }}
-      className={`scene-card relative flex gap-4 px-5 py-4 sm:px-6 ${
+      className={`scene-card relative flex gap-4 px-5 py-4 transition-opacity sm:px-6 ${
         confirmingDelete ? "z-50 ring-2 ring-red-400/40" : ""
-      }`}
+      } ${pending && editing ? "opacity-60" : ""}`}
     >
       {/* TI-3: scrim behind the active inline confirm so the rest of the page
           dims and the row in question stands out. */}
@@ -591,7 +632,7 @@ function Avatar({
     return (
       <Image
         src={url}
-        alt=""
+        alt={name ?? "guest"}
         width={36}
         height={36}
         unoptimized
