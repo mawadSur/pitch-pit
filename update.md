@@ -142,3 +142,125 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 12. **A11y-3** — `aria-live` summary for the countdown.
 
 Smaller batches after the top-12: form autocomplete sweep, footer mobile stack, loading spinner on search, nav active states, breadcrumb on idea pages.
+
+---
+
+# Frontend design review — 2026-05-05
+
+A second pass with a designer's eye, after the audit batches and feature shipments. The site has a real aesthetic point-of-view ("dark void cinema · gold accents · scroll-driven cinematic"), and the homepage frame scrub is genuinely unforgettable. But several surfaces are still pulling toward AI-default territory — generic typography, identical glass cards everywhere, centered-and-stacked layouts. Below: where it's distinctive, where it isn't, and concrete moves to push it from "well-built dev tool" to "you remember this site."
+
+## 🔴 Typography is the biggest tell
+
+The site uses **Inter + JetBrains Mono** for everything. Both are excellent fonts. Both are also the two most overused fonts in 2026 fintech / dev-tool / AI-product design — the moment a visitor scans the page they pattern-match to "another startup with a dark theme."
+
+**Recommended swap:**
+- **Display + headlines (h1, verdict pull-quotes, score numerals)** → a characterful serif like **Fraunces** (variable, opsz axis, was made for editorial), **Tiempos Headline**, or **Domaine Display**. The verdict line on `/idea/[id]` (`"Sharp blade — but no hand to wield it yet"`) is begging to be set in a serif italic at 32px — it'd read like a real judgment, not a tooltip.
+- **Body + UI** → keep Inter (it's fine; the issue is when it does EVERYTHING)
+- **Mono** → swap JetBrains Mono for **Berkeley Mono**, **Departure Mono**, **IBM Plex Mono**, or **Geist Mono**. JetBrains is the most-licensed mono in indie dev sites; using it makes you look like a side-project portfolio.
+
+One distinctive serif + Inter + a less-played mono = an instantly more confident voice. Set the serif at the moments that matter (verdicts, scores, headline) and let Inter carry the rest.
+
+## 🔴 The "judgment" type moments aren't judgmental enough
+
+Right now, the verdict on `/idea/[id]` reads:
+
+```
+· The Verdict ·
+"Sharp blade — but no hand to wield it yet."
+— Gstack · lead reviewer
+```
+
+Set in italic Inter 24px. It's *fine*. It should be **massive**. A YC verdict in this product should feel like a courtroom transcript or a Times pull-quote — set in a high-contrast serif, 56px+, with weighted attribution underneath. The score number `87/100` should be even bigger — think **Bloomberg Terminal numerals**, 120px gold, tabular figures, with the `/100` at 1/3 the size. Right now scores read as data; they should read as verdicts.
+
+## 🟠 Glass cards are too repetitive
+
+Every surface in the app uses the same `bg-white/[0.03] border-white/10 backdrop-blur-md` glass card:
+- Pitch coach bubble
+- Judge cards on `/judge/[token]`
+- "Other judges" cards on `/idea/[id]`
+- Comments
+- Soft-gate CTA
+- Aggregate band
+- Leaderboard rows
+- Feed cards
+- Pitch specs sidebar
+
+Visiting any two surfaces back-to-back, a user can't tell at a glance which one they're on. **Surface variety is character**. A few moves:
+
+- **Judge cards** should feel like LETTERHEAD or WAX SEALS, not glass — gold border on top + bottom, judge name in a serif, the score stamped like a notary mark. Each judge gets a distinct accent color: Gstack=cool gold, Vee=oxblood-red, Robbins=verdigris-bronze.
+- **Leaderboard** should feel like a LEDGER — alternating row tints, ruled lines between rank/title/score columns, oversized rank numerals (1, 2, 3 at 96px gold, then decrease). Right now it's a list of glass cards, indistinguishable from the feed.
+- **Pitch coach bubble** can stay glass — it's contextual, ambient, fine.
+- **Aggregate band** on `/judge/[token]` is the most cinematic surface — lean into it harder. Letterboxing (black bars top + bottom). Score in a serif 200px. "BUILD QUEUE" badge as a foil-stamped circle with a spin-in animation.
+
+## 🟠 Centered-and-stacked everywhere → no spatial ideas
+
+Most pages are: header → centered title → centered content blocks → centered footer cluster. There's no asymmetry, no grid-breaking, no diagonal flow, no overlap. The cinematic homepage frame scrub IS the one composition idea — and it's load-bearing the entire aesthetic alone.
+
+**Concrete moves:**
+- **Leaderboard rank**: stop putting rank in a small badge. Put rank `01` at 200px gold, anchored left, with the title flowing to its right. The visual hierarchy IS the leaderboard.
+- **Idea page**: instead of vertical stack (title → score → verdict → strengths → concerns → reasoning → other judges → comments), try a 2-column on `lg:` — verdict + score occupy a sticky left rail, the analysis flows right. The judges' takes can be horizontal cards, not stacked.
+- **Homepage panels**: kicker/headline are top-centered. What if Panel 2's content was anchored bottom-LEFT instead, making panel-to-panel transitions also re-orient the eye? The cinematic frames already do this work; the overlay UI should follow.
+
+## 🟠 No status color beyond gold
+
+The accent is exclusively warm gold (`#FFB800`). It's strong but mono. Status states all collapse to the same gold (or fade to white/55). A second accent — **deep oxblood `#7B1F2B`** for "rejected / under-7" and **muted verdigris `#5B8A6E`** for "built" — would let the leaderboard's gold tier mean something *because* the alternative tiers don't share its color. Right now, a 9/10 idea and a 4/10 idea both wear gold accents on their cards.
+
+Use color semantically:
+- Gold = **scored sharp** (≥7) and **build queue**
+- Oxblood = **fallen / rejected** (≤3)
+- Verdigris = **built** (final state of the contest)
+- Off-white slate = **passable** (4–6)
+
+## 🟡 Header is generic dev-tool
+
+`MinimalistHeader` is logo + nav + sign-in cluster. Fine, but it doesn't telegraph what this site IS. Two moves:
+- Add a **persistent "PIT CLOSES IN 4D 2H 14M"** ticker pinned to the header, in monospace, with the gold pulse animation that lives in the homepage Hourglass. Now every page anywhere on the site reminds you the contest is running.
+- Replace the wordmark "pitch‒pit" with a **glyph mark** — an hourglass + downward arrow, geometric, single-color. The site is named after a pit; let the logo be a pit.
+
+## 🟡 The footer is a row of links
+
+`SiteFooter.tsx` is just © + four legal links. The footer is a chance to land the manifesto. Replace with a tagline moment:
+
+```
+TO THE VICTOR GO THE TOKENS.
+A weekly pit. Three judges. One winner.
+The pit closes Monday at midnight EST.
+```
+
+In a serif display face, large, taking up vertical space. The legal links can be a thin row underneath. Right now the footer wastes the ending — every page just trails off.
+
+## 🟡 Empty states are missing or default
+
+When `/feed` has zero submissions, when `/leaderboard` has no scored ideas yet, when `/built` has no MVPs — the page renders an empty list. These are EXACTLY the moments where you write copy that earns the brand. "First pitches landing soon. Be the first" on the leaderboard OG is a good template — port that voice to the in-page empty states.
+
+## 🟡 The Hourglass should appear elsewhere
+
+The Hourglass SVG with falling sand is the *one* unforgettable visual element on the homepage. It only ever appears once. It should be:
+- The **favicon** (currently it's a P monogram)
+- A **micro-watermark** in the top-right of `/idea/[id]` — small, animated when the page is in focus, frozen when blurred (subtle reminder of the timer)
+- **Embedded in the OG images** as a small kicker glyph next to "pitch-pit"
+
+Repetition of a single distinctive glyph IS branding. Don't waste this asset on one panel.
+
+## 🟡 Cursor / pointer is system default
+
+For a route as cinematic as the homepage, a **custom cursor** (a tiny gold circle with a slight glow trail, snapping to a crosshair when over the input pill) would land. Not on every route — just on `/`, where the cinematic ambition is highest.
+
+## 🟡 No grain on internal routes
+
+The film grain (`scene-grain`) overlay is on the homepage but absent everywhere else. Add it (subtly, opacity 0.03) to `/idea/[id]` and `/judge/[token]` so the cinematic feel persists once you're past the front door. Right now, leaving the homepage feels like leaving the brand.
+
+## ⚪ Smaller polish moments
+
+- **Score-counter sheen** — when the avg score on `/judge/[token]` first lands, run a single horizontal gold sheen across the number (like a foil-stamp catching light). 600ms once, then static. Tiny detail, big "freshly minted" feeling.
+- **Page transition** — currently routes hard-cut. A 200ms fade-from-black between routes (Next.js parallel routes / framer-motion AnimatePresence on layout) would maintain the cinematic continuity.
+- **Voted button microcopy** — currently "Cast a vote / Voted." Change to "Cast a token / Token cast." Aligns to the "to the victor go the tokens" line.
+- **Submit microcopy** — "Press Enter to submit". Change to "Press Enter to enter the pit." Specific. Memorable.
+- **Loading copy on /judge/[token]** — currently "Reading… Considering… Deliberating… Rendering judgment…" — already strong, leave alone. This is the one place the voice already lands.
+
+## 🎯 If you only do ONE thing
+
+**Swap the display font from Inter to a characterful serif** (Fraunces variable is free, drops in via `next/font/google`, supports italic + opsz axis for natural display sizing) and use it for: h1 page titles, the verdict pull-quote on `/idea/[id]`, the big score numerals on `/judge/[token]` and `/idea/[id]`, the OG card titles. Keep Inter for everything else.
+
+This single change converts the site's dominant typographic voice from "AI tool" to "judgment / verdict / weight." It compounds into every other surface for free.
+
