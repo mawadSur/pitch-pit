@@ -168,6 +168,11 @@ export function HeroPanel({
         rafIdRef.current = null;
       }
     };
+    // scheduleDraw is intentionally omitted from deps. It only reads from
+    // refs (no reactive state), so its reference identity changing on
+    // every render shouldn't re-run this effect — that would tear down
+    // and re-spin the frame loaders mid-scrub.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasActive, framesPath, frameCount]);
 
   // ── canvas sizing + resize handling ───────────────────────
@@ -197,6 +202,8 @@ export function HeroPanel({
       window.removeEventListener("resize", resize);
       ro.disconnect();
     };
+    // scheduleDraw intentionally omitted — refs-only, see note above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasActive]);
 
   function scheduleDraw() {
