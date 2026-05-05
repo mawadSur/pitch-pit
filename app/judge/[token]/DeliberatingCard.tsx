@@ -71,7 +71,7 @@ export function DeliberatingCard({
 
       <div className="mt-5">
         <h3 className="text-lg font-semibold text-white">{judge.name}</h3>
-        <p className="scene-mono mt-1 text-[0.6rem] uppercase tracking-[0.32em] text-white/55">
+        <p className="scene-mono mt-1 text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
           {judge.role}
         </p>
       </div>

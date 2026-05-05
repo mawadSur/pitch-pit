@@ -109,7 +109,7 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
       </div>
 
       <div className={cn("max-w-xl", reverse ? "lg:ml-auto" : "")}>
-        <p className="scene-mono text-[0.6rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
+        <p className="scene-mono text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
           № {ordinal} &nbsp;·&nbsp; Score {idea.score}
         </p>
         <h2 className="mt-4 text-3xl font-medium leading-tight text-white sm:text-4xl">
@@ -223,7 +223,7 @@ function MvpFrame({
         </div>
         <div className="flex items-end justify-between gap-4">
           <span className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            <span className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-white">
+            <span className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white">
               Enter
             </span>
           </span>

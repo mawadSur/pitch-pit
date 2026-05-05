@@ -75,14 +75,14 @@ export default async function AdminPage() {
         <div className="relative z-10 mx-auto max-w-6xl px-4 py-12 sm:px-8 lg:py-16">
           <header className="mb-10 flex items-baseline justify-between gap-4 border-b border-white/8 pb-5">
             <div>
-              <p className="scene-mono text-[0.6rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
+              <p className="scene-mono text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
                 Operator console
               </p>
               <h1 className="mt-2 text-2xl font-medium text-white sm:text-3xl">
                 Admin
               </h1>
             </div>
-            <span className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-white/45">
+            <span className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
               pending {sets.pending.length} · queue {sets.queued.length} · built{" "}
               {sets.completed.length}
             </span>

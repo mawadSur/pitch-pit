@@ -108,7 +108,7 @@ export function LoginScene() {
           <div className="scene-card mt-10 w-full px-7 py-7 sm:px-8">
             {sent ? (
               <div className="text-center">
-                <p className="scene-mono mb-3 text-[0.6rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
+                <p className="scene-mono mb-3 text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
                   ✓ Check your inbox
                 </p>
                 <p className="text-base text-white/85">
@@ -162,7 +162,7 @@ export function LoginScene() {
                 {/* Divider */}
                 <div className="flex items-center gap-3">
                   <span className="h-px flex-1 bg-white/10" />
-                  <span className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
+                  <span className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/55">
                     or
                   </span>
                   <span className="h-px flex-1 bg-white/10" />
@@ -171,7 +171,7 @@ export function LoginScene() {
                 {/* Magic-link form */}
                 <form onSubmit={sendMagicLink} className="space-y-4">
                   <label className="block">
-                    <span className="scene-mono mb-2 block text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
+                    <span className="scene-mono mb-2 block text-[0.65rem] uppercase tracking-[0.35em] text-white/55">
                       Email
                     </span>
                     <input
@@ -207,12 +207,12 @@ export function LoginScene() {
                     {pending ? "Sending…" : "Send magic link"}
                     <span aria-hidden>→</span>
                   </button>
-                  <p className="scene-mono text-center text-[0.6rem] uppercase tracking-[0.3em] text-white/45">
+                  <p className="scene-mono text-center text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
                     Usually arrives within 30 seconds. Check spam if not.
                   </p>
                 </form>
 
-                <p className="scene-mono text-center text-[0.6rem] uppercase tracking-[0.3em] text-white/55">
+                <p className="scene-mono text-center text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
                   Powered by Supabase Auth
                 </p>
               </div>

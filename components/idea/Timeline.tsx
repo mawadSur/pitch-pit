@@ -50,7 +50,7 @@ export function Timeline({
       aria-label="Build status timeline"
       className="scene-card mx-auto max-w-3xl px-6 py-7 sm:px-9"
     >
-      <p className="scene-mono mb-6 text-center text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
+      <p className="scene-mono mb-6 text-center text-[0.65rem] uppercase tracking-[0.35em] text-white/55">
         Path
       </p>
 
@@ -63,7 +63,7 @@ export function Timeline({
               <div className="flex items-center gap-3 sm:flex-col sm:gap-2 sm:text-center">
                 <span
                   className={cn(
-                    "scene-mono relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[0.6rem] font-medium transition-colors",
+                    "scene-mono relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[0.65rem] font-medium transition-colors",
                     reached
                       ? "border-[var(--scene-gold)] bg-[var(--scene-gold)]/8 text-[var(--scene-gold-bright)]"
                       : "border-white/15 text-white/30",
@@ -75,7 +75,7 @@ export function Timeline({
                 </span>
                 <p
                   className={cn(
-                    "scene-mono text-[0.6rem] uppercase tracking-[0.3em] transition-colors",
+                    "scene-mono text-[0.65rem] uppercase tracking-[0.3em] transition-colors",
                     reached ? "text-white/85" : "text-white/55",
                     active && "text-[var(--scene-gold-bright)]",
                   )}
@@ -101,7 +101,7 @@ export function Timeline({
       </ol>
 
       {isTerminal && (
-        <p className="scene-mono mt-6 text-center text-[0.6rem] uppercase tracking-[0.35em] text-red-300/80">
+        <p className="scene-mono mt-6 text-center text-[0.65rem] uppercase tracking-[0.35em] text-red-300/80">
           {status === "rejected"
             ? "Pitch withheld"
             : "Build did not survive"}

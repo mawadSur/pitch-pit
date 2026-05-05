@@ -76,7 +76,7 @@ export function IdeaCard({
 
           <p
             className={cn(
-              "scene-mono mb-4 text-[0.62rem] uppercase tracking-[0.3em]",
+              "scene-mono mb-4 text-[0.65rem] uppercase tracking-[0.3em]",
               tier === "fallen" ? "text-white/30" : "text-white/45",
             )}
           >
@@ -132,7 +132,7 @@ export function IdeaCard({
             <Link
               href={`/idea/${idea.id}`}
               className={cn(
-                "scene-mono inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.3em] transition-colors",
+                "scene-mono inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.3em] transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-black",
                 tier === "fallen"
                   ? "text-white/55 hover:text-white/75"
@@ -190,7 +190,7 @@ export function IdeaCard({
           >
             {finalDisplay}
           </span>
-          <span className="scene-mono mt-1 text-[0.5rem] uppercase tracking-[0.3em] text-white/55">
+          <span className="scene-mono mt-1 text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
             of 100
           </span>
           <span className="scene-mono mt-3 flex items-center gap-1.5 text-[0.55rem] uppercase tracking-[0.25em] text-white/45">

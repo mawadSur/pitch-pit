@@ -101,7 +101,7 @@ function Tabs({
             {t.label}
             <span
               className={cn(
-                "scene-mono ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[0.6rem] tracking-normal",
+                "scene-mono ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[0.65rem] tracking-normal",
                 isActive
                   ? "bg-[var(--scene-gold)]/15 text-[var(--scene-gold-bright)]"
                   : "bg-white/[0.04] text-white/45",
@@ -158,7 +158,7 @@ function PendingRow({ idea }: { idea: AdminIdea }) {
           <p className="truncate text-base font-medium text-white">
             {idea.title}
           </p>
-          <p className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-white/45">
+          <p className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
             {idea.handle ?? "anonymous"} · id {shortId(idea.id)} ·{" "}
             {new Date(idea.created_at)
               .toISOString()
@@ -169,7 +169,7 @@ function PendingRow({ idea }: { idea: AdminIdea }) {
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-[var(--scene-gold)]/80 transition-colors hover:text-[var(--scene-gold-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+          className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-[var(--scene-gold)]/80 transition-colors hover:text-[var(--scene-gold-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
           aria-expanded={expanded}
         >
           {expanded ? "collapse" : "expand"}
@@ -200,7 +200,7 @@ function PendingRow({ idea }: { idea: AdminIdea }) {
       )}
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/6 bg-white/[0.015] px-5 py-3.5">
-        <span className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-white/45">
+        <span className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
           {idea.build_recommended
             ? "Reviewer recommends build"
             : "Reviewer withholds recommendation"}
@@ -209,7 +209,7 @@ function PendingRow({ idea }: { idea: AdminIdea }) {
           <Link
             href={`/idea/${idea.id}`}
             target="_blank"
-            className="scene-mono rounded-full border border-white/12 px-3.5 py-2 text-[0.6rem] uppercase tracking-[0.3em] text-white/75 transition-colors hover:border-[var(--scene-gold)]/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+            className="scene-mono rounded-full border border-white/12 px-3.5 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/75 transition-colors hover:border-[var(--scene-gold)]/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
           >
             view public
           </Link>
@@ -217,7 +217,7 @@ function PendingRow({ idea }: { idea: AdminIdea }) {
             type="button"
             onClick={() => run(() => rejectIdea(idea.id))}
             disabled={pending}
-            className="scene-mono rounded-full border border-red-400/40 px-3.5 py-2 text-[0.6rem] uppercase tracking-[0.3em] text-red-300 transition-colors hover:bg-red-400/10 hover:text-red-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+            className="scene-mono rounded-full border border-red-400/40 px-3.5 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-red-300 transition-colors hover:bg-red-400/10 hover:text-red-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
           >
             reject
           </button>
@@ -235,7 +235,7 @@ function PendingRow({ idea }: { idea: AdminIdea }) {
       {err && (
         <p
           role="alert"
-          className="scene-mono border-t border-red-400/40 bg-red-500/10 px-5 py-2.5 text-[0.6rem] uppercase tracking-[0.25em] text-red-300"
+          className="scene-mono border-t border-red-400/40 bg-red-500/10 px-5 py-2.5 text-[0.65rem] uppercase tracking-[0.25em] text-red-300"
         >
           {err}
         </p>
@@ -297,7 +297,7 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
           <p className="truncate text-base font-medium text-white">
             {idea.title}
           </p>
-          <p className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-white/45">
+          <p className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
             score {idea.score} · {idea.handle ?? "anonymous"} · id{" "}
             {shortId(idea.id)}
           </p>
@@ -305,7 +305,7 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
         <Link
           href={`/idea/${idea.id}`}
           target="_blank"
-          className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-[var(--scene-gold)]/80 transition-colors hover:text-[var(--scene-gold-bright)]"
+          className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-[var(--scene-gold)]/80 transition-colors hover:text-[var(--scene-gold-bright)]"
         >
           view →
         </Link>
@@ -317,7 +317,7 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
             type="button"
             onClick={onStart}
             disabled={pending}
-            className="scene-mono mb-5 rounded-full border border-[var(--scene-gold)]/55 px-4 py-2 text-[0.6rem] uppercase tracking-[0.3em] text-[var(--scene-gold-bright)] transition-colors hover:bg-[var(--scene-gold)]/10 disabled:opacity-50"
+            className="scene-mono mb-5 rounded-full border border-[var(--scene-gold)]/55 px-4 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-[var(--scene-gold-bright)] transition-colors hover:bg-[var(--scene-gold)]/10 disabled:opacity-50"
           >
             {pending ? "moving…" : "Mark as building"}
           </button>
@@ -326,7 +326,7 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
         <form action={onMarkBuilt} className="grid gap-3">
           <SectionHeading>Inscribe the deployed MVP</SectionHeading>
           <label className="block">
-            <span className="scene-mono mb-1.5 block text-[0.6rem] uppercase tracking-[0.3em] text-white/55">
+            <span className="scene-mono mb-1.5 block text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
               mvp_url
             </span>
             <input
@@ -340,7 +340,7 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
             />
           </label>
           <label className="block">
-            <span className="scene-mono mb-1.5 block text-[0.6rem] uppercase tracking-[0.3em] text-white/55">
+            <span className="scene-mono mb-1.5 block text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
               screenshot_url (optional)
             </span>
             <input
@@ -364,7 +364,7 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
         {err && (
           <p
             role="alert"
-            className="scene-mono mt-3 text-[0.6rem] uppercase tracking-[0.25em] text-red-300"
+            className="scene-mono mt-3 text-[0.65rem] uppercase tracking-[0.25em] text-red-300"
           >
             {err}
           </p>
@@ -381,7 +381,7 @@ function CompletedTable({ rows }: { rows: AdminIdea[] }) {
     <div className="overflow-hidden rounded-lg border border-white/10">
       <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
-          <tr className="bg-white/[0.025] text-left scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-white/45">
+          <tr className="bg-white/[0.025] text-left scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
             <th className="border-b border-white/6 px-4 py-3">Score</th>
             <th className="border-b border-white/6 px-4 py-3">Title</th>
             <th className="border-b border-white/6 px-4 py-3">Handle</th>
@@ -443,7 +443,7 @@ function Empty({ label }: { label: string }) {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-[var(--scene-gold)]">
+    <h3 className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-[var(--scene-gold)]">
       {children}
     </h3>
   );
@@ -467,7 +467,7 @@ function DataList({
     <div className="mt-4">
       <p
         className={cn(
-          "scene-mono text-[0.6rem] uppercase tracking-[0.3em]",
+          "scene-mono text-[0.65rem] uppercase tracking-[0.3em]",
           labelColor,
         )}
       >

@@ -20,7 +20,7 @@ export default function Error({
     <main className="scene relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-6">
       <div aria-hidden className="scene-bg-gradient absolute inset-0" />
       <div className="relative z-10 max-w-md text-center">
-        <p className="scene-mono text-[0.6rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
+        <p className="scene-mono text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
           Something broke
         </p>
         <h1 className="mt-3 text-3xl font-medium text-white sm:text-4xl">
@@ -31,7 +31,7 @@ export default function Error({
           notified.
         </p>
         {error.digest && (
-          <p className="scene-mono mt-3 text-[0.6rem] uppercase tracking-[0.3em] text-white/55">
+          <p className="scene-mono mt-3 text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
             ref · {error.digest}
           </p>
         )}

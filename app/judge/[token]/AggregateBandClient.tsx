@@ -26,7 +26,7 @@ export function AggregateBandClient({
   if (avg === null || panel === null) {
     return (
       <div className="flex h-32 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.02]">
-        <p className="scene-mono text-[0.6rem] uppercase tracking-[0.32em] text-white/55">
+        <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
           consensus unavailable
         </p>
       </div>
@@ -56,20 +56,20 @@ export function AggregateBandClient({
         <ScoreCounter avg={avg} />
 
         <div className="flex flex-col gap-3 sm:items-start">
-          <p className="scene-mono text-[0.6rem] uppercase tracking-[0.32em] text-white/55">
+          <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
             consensus · final score
           </p>
 
           <div className="flex flex-wrap items-center gap-2">
             {buildRecommended && (
-              <span className="scene-mono inline-flex items-center rounded-full bg-[var(--scene-gold)]/15 px-3 py-1 text-[0.6rem] font-medium uppercase tracking-[0.32em] text-[var(--scene-gold)]">
+              <span className="scene-mono inline-flex items-center rounded-full bg-[var(--scene-gold)]/15 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-[var(--scene-gold)]">
                 build queue
               </span>
             )}
             {ideaId && (
               <Link
                 href={`/idea/${ideaId}`}
-                className="scene-mono inline-flex items-center rounded-full border border-white/15 px-3 py-1 text-[0.6rem] font-medium uppercase tracking-[0.32em] text-white/85 transition hover:border-white/30 hover:text-white"
+                className="scene-mono inline-flex items-center rounded-full border border-white/15 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-white/85 transition hover:border-white/30 hover:text-white"
               >
                 open idea page →
               </Link>
@@ -124,7 +124,7 @@ function ClaimButton({ ideaId }: { ideaId: string }) {
 
   if (done) {
     return (
-      <span className="scene-mono inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-[0.6rem] font-medium uppercase tracking-[0.32em] text-emerald-300">
+      <span className="scene-mono inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-emerald-300">
         <Check className="h-3 w-3" aria-hidden /> claimed
       </span>
     );
@@ -136,7 +136,7 @@ function ClaimButton({ ideaId }: { ideaId: string }) {
         type="button"
         onClick={claim}
         disabled={pending}
-        className="scene-mono inline-flex items-center gap-1.5 rounded-full bg-[var(--scene-gold)] px-3 py-1 text-[0.6rem] font-medium uppercase tracking-[0.32em] text-black transition hover:bg-[var(--scene-gold)]/90 disabled:opacity-60"
+        className="scene-mono inline-flex items-center gap-1.5 rounded-full bg-[var(--scene-gold)] px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-black transition hover:bg-[var(--scene-gold)]/90 disabled:opacity-60"
       >
         <Trophy className="h-3 w-3" aria-hidden />
         {pending ? "claiming…" : "claim this pitch"}

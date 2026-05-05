@@ -99,7 +99,7 @@ export function RulesScene() {
                   />
                   <span
                     className={cn(
-                      "scene-mono text-[0.6rem] uppercase tracking-[0.3em] transition-colors duration-200",
+                      "scene-mono text-[0.65rem] uppercase tracking-[0.3em] transition-colors duration-200",
                       isActive
                         ? "text-[var(--scene-gold-bright)]"
                         : "text-white/45 group-hover:text-white/80",
@@ -150,7 +150,7 @@ export function RulesScene() {
             transition={{ duration: 0.6 }}
             className="scene-card-gold mt-20 scroll-mt-24 px-7 py-7 text-center sm:px-10 sm:py-8"
           >
-            <p className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-[var(--scene-gold)]">
+            <p className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-[var(--scene-gold)]">
               Final score
             </p>
             <p className="mt-3 text-2xl font-medium leading-snug text-white sm:text-3xl">
@@ -193,7 +193,7 @@ export function RulesScene() {
           >
             <SectionHeading kicker="02" title="The community vote" sub="One vote per idea, per person." />
             <div className="scene-card mt-8 px-7 py-7 sm:px-9 sm:py-8">
-              <p className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
+              <p className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/55">
                 vote_score = idea_votes / top_idea_votes × 100
               </p>
               <ul className="mt-5 space-y-3 text-base text-white/82">
@@ -284,7 +284,7 @@ function SectionHeading({
 }) {
   return (
     <header className="text-center">
-      <p className="scene-mono text-[0.6rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
+      <p className="scene-mono text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
         {kicker}
       </p>
       <h2 className="mt-3 text-3xl font-medium tracking-tight text-white sm:text-4xl lg:text-5xl">

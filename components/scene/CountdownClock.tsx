@@ -76,7 +76,7 @@ function Unit({
       >
         {String(value).padStart(2, "0")}
       </span>
-      <span className="scene-mono mt-2 text-[0.55rem] uppercase tracking-[0.4em] text-white/45 sm:text-[0.6rem]">
+      <span className="scene-mono mt-2 text-[0.55rem] uppercase tracking-[0.4em] text-white/45 sm:text-[0.65rem]">
         {label}
       </span>
     </div>

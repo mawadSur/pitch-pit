@@ -324,7 +324,7 @@ function SearchBox({ initial }: { initial: string }) {
             onClick={onClear}
             aria-label="Clear search"
             className={cn(
-              "scene-mono absolute top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-[0.6rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:bg-white/[0.04] hover:text-white",
+              "scene-mono absolute top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:bg-white/[0.04] hover:text-white",
               showSpinner ? "right-10" : "right-3",
             )}
           >
@@ -354,7 +354,7 @@ function LiveIndicator({ pulseAt }: { pulseAt: number }) {
       role="status"
       aria-live="polite"
       className={cn(
-        "scene-mono inline-flex items-center gap-2.5 rounded-full border px-3.5 py-1.5 text-[0.6rem] uppercase tracking-[0.35em] transition-colors",
+        "scene-mono inline-flex items-center gap-2.5 rounded-full border px-3.5 py-1.5 text-[0.65rem] uppercase tracking-[0.35em] transition-colors",
         recent
           ? "border-[var(--scene-gold)]/55 bg-[var(--scene-gold)]/10 text-[var(--scene-gold-bright)]"
           : "border-white/12 bg-white/[0.03] text-white/55",
@@ -485,7 +485,7 @@ function PodiumCard({
         {idea.title}
       </h3>
       {idea.handle && (
-        <p className="scene-mono mt-2 text-[0.6rem] uppercase tracking-[0.3em] text-white/50">
+        <p className="scene-mono mt-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/50">
           {idea.handle}
         </p>
       )}
@@ -511,7 +511,7 @@ function PodiumCard({
         </span>
         <Link
           href={`/idea/${idea.id}`}
-          className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:text-white"
+          className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:text-white"
         >
           View →
         </Link>
@@ -550,7 +550,7 @@ function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
             {idea.handle ?? "anonymous"}
           </span>
         </Link>
-        <span className="scene-mono hidden tabular-nums text-[0.6rem] uppercase tracking-[0.3em] text-white/55 sm:inline">
+        <span className="scene-mono hidden tabular-nums text-[0.65rem] uppercase tracking-[0.3em] text-white/55 sm:inline">
           {idea.vote_count} votes
         </span>
         <span className="scene-mono w-14 text-right tabular-nums text-base font-semibold text-[var(--scene-gold-bright)] sm:w-16 sm:text-lg">

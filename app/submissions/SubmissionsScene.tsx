@@ -185,7 +185,7 @@ function SubmissionCard({
             <StatusBadge tone={status.tone} label={status.label} />
           </header>
 
-          <p className="scene-mono mb-4 text-[0.6rem] uppercase tracking-[0.3em] text-white/45">
+          <p className="scene-mono mb-4 text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
             <span className="tabular-nums">{timeAgo(submission.created_at)}</span>
             {submission.build_recommended && (
               <>
@@ -231,7 +231,7 @@ function SubmissionCard({
           <div className="flex flex-wrap items-center gap-4">
             <Link
               href={`/idea/${submission.id}`}
-              className="scene-mono inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.3em] text-white/65 transition-colors hover:text-[var(--scene-gold-bright)]"
+              className="scene-mono inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/65 transition-colors hover:text-[var(--scene-gold-bright)]"
             >
               Full judgment
               <span aria-hidden>→</span>
@@ -241,7 +241,7 @@ function SubmissionCard({
                 href={submission.mvp_url}
                 target="_blank"
                 rel="noreferrer"
-                className="scene-mono inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.3em] text-[var(--scene-gold-bright)] transition-colors hover:text-white"
+                className="scene-mono inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.3em] text-[var(--scene-gold-bright)] transition-colors hover:text-white"
               >
                 Open the build
                 <span aria-hidden>↗</span>
@@ -274,7 +274,7 @@ function SubmissionCard({
           <span className="scene-mono mt-1 text-3xl font-semibold leading-none tabular-nums text-white sm:text-4xl">
             {finalDisplay}
           </span>
-          <span className="scene-mono mt-1 text-[0.5rem] uppercase tracking-[0.3em] text-white/55">
+          <span className="scene-mono mt-1 text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
             of 100
           </span>
           <span className="scene-mono mt-3 flex items-center gap-1.5 text-[0.55rem] uppercase tracking-[0.25em] text-white/45">

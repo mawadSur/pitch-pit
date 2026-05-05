@@ -278,7 +278,7 @@ export function ShareMenu({
   const triggerClass =
     variant === "primary"
       ? "scene-mono inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-4 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/70 transition-colors hover:border-[var(--scene-gold)]/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
-      : "inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.03] text-white/70 transition-colors hover:border-[var(--scene-gold)]/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]";
+      : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/[0.03] text-white/70 transition-colors hover:border-[var(--scene-gold)]/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]";
 
   return (
     <div ref={ref} className="relative inline-block">

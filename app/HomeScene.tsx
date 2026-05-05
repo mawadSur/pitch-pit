@@ -270,6 +270,8 @@ function Panel1() {
               }}
               onKeyDown={onKey}
               disabled={pending}
+              autoCorrect="off"
+              spellCheck="true"
               rows={1}
               maxLength={SUBMIT_LIMITS.pitchMax}
               aria-label="Pitch your idea"
@@ -319,7 +321,7 @@ function Panel1() {
         className="absolute inset-x-0 bottom-[8%] flex flex-col items-center gap-5 px-6 text-center"
       >
         <p
-          className={`scene-mono text-[0.62rem] uppercase tracking-[0.35em] sm:text-[0.65rem] ${
+          className={`scene-mono text-[0.65rem] uppercase tracking-[0.35em] sm:text-[0.65rem] ${
             error
               ? "text-red-300/85"
               : length > 0 && length < SUBMIT_LIMITS.pitchMin
@@ -589,7 +591,7 @@ function WeeklyStakes() {
               transition={{ duration: 0.45, delay: 0.05 * i }}
               className="scene-card flex flex-col px-6 py-6"
             >
-              <p className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-[var(--scene-gold)]">
+              <p className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-[var(--scene-gold)]">
                 {s.label}
               </p>
               <p className="scene-mono mt-3 text-3xl font-semibold tabular-nums text-white sm:text-4xl">
@@ -776,7 +778,7 @@ function Stat({
       >
         {value}
       </p>
-      <p className="scene-mono mt-2 text-[0.5rem] uppercase tracking-[0.3em] text-white/55">
+      <p className="scene-mono mt-2 text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
         {label}
       </p>
     </div>

@@ -19,7 +19,7 @@ export default function AboutPage() {
       >
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div className="relative z-10 mx-auto max-w-3xl px-6 py-24 sm:py-28">
-          <p className="scene-mono text-[0.6rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
+          <p className="scene-mono text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
             About pitch-pit
           </p>
           <h1 className="mt-3 text-balance text-4xl font-medium leading-tight text-white sm:text-5xl">

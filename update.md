@@ -46,11 +46,7 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 - [ ] **A11y-2. Avatar `<img>` has no descriptive alt** — `components/idea/Comments.tsx:251` + `MinimalistHeader.tsx:185`. Both pass `alt=""` (decorative). For Comments, since the visual is acting as the user identifier, the avatar should have `alt={display_name}` or be marked `aria-hidden` and the name alone identifies. Currently semi-decorative + ESLint `no-img-element` warning still firing.
 - [x] **A11y-3. CountdownClock not announced** — `components/scene/CountdownClock.tsx`. The countdown updates every second but has no `aria-live` region. Screen readers don't announce "the pit closes in X" — visually critical, audibly invisible. Wrap a screen-reader-only summary with `aria-live="polite"` that updates every minute (not second — that'd be noisy).
 - [ ] **A11y-4. Form errors don't auto-focus the invalid field** — every form (submit textarea, login email, comments). Per WCAG `focus-management`, after submit error the first invalid field should receive focus. Currently the user has to scan visually to find what failed.
-- [ ] **A11y-5. Touch targets under 44×44** — Several spots:
-  - Avatar trigger in `MinimalistHeader.tsx:181` is now 44×44 ✓
-  - But `LeaderboardScene.tsx` ListRow share icon (`h-9 w-9` = 36×36) — under iOS 44pt minimum
-  - `IdeaCard` in feed — share icon also 36×36
-  - Footer links in `SiteFooter.tsx` are tiny (`text-[0.6rem]`) and on a single line — touch target may be under 44pt vertical
+- [x] **A11y-5. Touch targets under 44×44** — Bumped ShareMenu trigger class h-9 w-9 → h-11 w-11 (covers LeaderboardScene + IdeaCard). Footer links got `inline-flex items-center py-2` for ≥44pt vertical touch height.
 - [x] **A11y-6. Color contrast on muted text** — `text-white/40` (≈40% opacity) over `#0a0a0a` ≈ 3.1:1 contrast. This is below WCAG AA (4.5:1) for normal-size text. Many places use this for timestamps, hints. Tighten to at least `text-white/55` for any text that conveys meaningful info.
 - [ ] **A11y-7. `<button>`s missing visible-focus styling on some pages** — `app/admin/AdminClient.tsx` rows may have only the default browser ring depending on tailwind reset. Audit pass needed.
 - [ ] **A11y-8. Skip link only jumps to `#main`** — works, but the `<main>` itself isn't always focusable (`tabindex="-1"`). Adding `tabindex="-1"` lets the skip target receive programmatic focus.
@@ -79,7 +75,7 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 
 ## 🟠 Priority 4 · Style Selection (HIGH)
 
-- [ ] **Style-1. Font-size sprawl** — 8 different rem values in the 0.5–0.92rem range across the codebase: `text-[0.5rem] text-[0.55rem] text-[0.6rem] text-[0.62rem] text-[0.65rem] text-[0.7rem] text-[0.78rem] text-[0.92rem]`. Per `font-scale` rule, consolidate to a 4–5 step scale (e.g., 12, 14, 16, 18, 24, 32). The 0.5–0.7 range is 4 different sizes for what should be 1–2 typographic roles.
+- [x] **Style-1. Font-size sprawl** — Consolidated 8 → 5 distinct sizes via codebase-wide sed: 0.5→0.55, 0.6→0.65, 0.62→0.65. Final scale: 0.55, 0.65, 0.7, 0.78, 0.92rem. ~80 occurrences across 24 files updated.
 - [ ] **Style-2. Two themes still coexist in code** — Capitol palette tokens (`text-parchment`, `font-display`, `tracking-decree`) still in `tailwind.config.ts` + `globals.css` but no route renders them after the /admin reskin. Either:
   - Keep them (legacy) and note in CLAUDE.md why
   - Or remove them entirely so contributors don't accidentally reach for the wrong tokens
@@ -90,7 +86,7 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 
 - [ ] **Layout-1. Absolute % positioning on Hero panels can break on short viewports** — `HomeScene.tsx` Panel1 places kicker at `top-[7%]`, countdown at `top-[42%]`, input at `top-[58%]`. On a 568px-tall iPhone SE screen, these compress and can overlap. Test on small viewports and add `min-h-[640px]` or break into a stacked layout below 600px height.
 - [ ] **Layout-2. Containers use mixed max-widths** — `max-w-3xl` on /privacy + /terms, `max-w-5xl` on /leaderboard, `max-w-4xl` on /idea/[id], `max-w-7xl` in headers. Per `container-width`, pick a primary content max-width (e.g., 1024px / max-w-5xl) and use it consistently.
-- [ ] **Layout-3. Footer links wrap awkwardly on 320px viewports** — `SiteFooter.tsx` has 4 links + © year on one row that flexes. Below ~360px it line-breaks oddly. Stack on `<sm:` cleanly.
+- [x] **Layout-3. Footer links wrap awkwardly on 320px viewports** — Stack vertically on <sm: (`flex-col sm:flex-row`), revert to wrap on sm:+. No more weird breaks at 320px.
 - [ ] **Layout-4. Comment list has no max-width discipline** — `Comments.tsx` is `max-w-3xl mt-12`. On wide screens this is fine, but the body text inside cards spans the full card width without internal max-width, violating `line-length-control` (mobile 35-60 chars, desktop 60-75). On 1280px viewport, body text can hit 90+ chars per line.
 
 ## 🟡 Priority 6 · Typography & Color (MEDIUM)
@@ -107,7 +103,7 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 
 ## 🟡 Priority 8 · Forms & Feedback (MEDIUM)
 
-- [ ] **Form-1. Missing `autoComplete` attributes** — only `app/login/LoginScene.tsx:174` has it. The pitch textarea, comment textarea, and admin URL fields all lack autocomplete hints. Even setting `autoComplete="off"` is better than nothing for explicitly non-autofill inputs (prevents the browser from suggesting irrelevant data).
+- [x] **Form-1. Missing `autoComplete` attributes** — `autoComplete="off"` (plus `autoCorrect="off"` + `spellCheck="true"` on the homepage pitch) on the homepage textarea, both comment textareas (new + edit). Admin URL inputs already had `autoComplete="url"`.
 - [ ] **Form-2. No skeleton states for comments while loading** — `Comments.tsx` shows nothing while initial render is happening (server-rendered), but the realtime subscription has a brief lag if the user posts while offline-then-online. Show a "posting…" placeholder row.
 - [ ] **Form-3. Magic-link form has no helper text about expected delivery time** — `LoginScene.tsx`. Users wonder whether to wait or refresh. Add "usually arrives in under 30 seconds — check spam if not".
 - [x] **Form-4. Submit form doesn't preserve text on auth-redirect** — if a user types a pitch, gets booted to /login (when the IP rate limit triggers somehow), and comes back, their typed text is gone. Persist to localStorage on each keystroke, restore on mount.
