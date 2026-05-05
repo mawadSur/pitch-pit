@@ -31,6 +31,9 @@ export const maxDuration = 60;
 
 export const metadata = {
   title: "The judges deliberate — pitch-pit",
+  // Transient deliberation surface — pre-commit pitch content is visible
+  // here before the user claims it. Keep search engines out.
+  robots: { index: false, follow: false },
 };
 
 export default async function JudgeRoute({

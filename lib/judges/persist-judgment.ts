@@ -79,16 +79,63 @@ export async function persistJudgment(
     throw new Error("Failed to persist judgment.");
   }
 
-  // Best-effort: link the draft → idea so refreshes are idempotent.
-  const { error: linkErr } = await supabase
+  // Atomic-claim: only one concurrent caller can transition the draft from
+  // null → our new idea id. The `is("resolved_idea_id", null)` predicate
+  // makes this a compare-and-swap; whichever transaction commits first wins.
+  // The loser sees 0 rows updated, deletes its orphan idea, and reuses the
+  // winner's id. Safe to delete the orphan because no votes/comments can
+  // possibly reference an idea created microseconds ago.
+  const { data: claimed, error: claimErr } = await supabase
     .from("draft_pitches")
     .update({ resolved_idea_id: row.id })
-    .eq("id", draft.id);
-  if (linkErr) {
-    console.warn("[judgment] draft→idea link failed", linkErr);
+    .eq("id", draft.id)
+    .is("resolved_idea_id", null)
+    .select("id")
+    .maybeSingle();
+
+  if (claimErr) {
+    // Real DB error on the claim — surface it. Don't try to clean up the
+    // idea we just inserted; we don't know whether the claim won or lost.
+    console.error("[judgment] draft→idea claim failed", claimErr);
+    Sentry.captureException(claimErr, {
+      tags: { route: "judgment", phase: "supabase-claim" },
+    });
+    throw new Error("Failed to persist judgment.");
   }
 
-  return { ideaId: row.id };
+  if (claimed) {
+    // We won the race.
+    return { ideaId: row.id };
+  }
+
+  // We lost the race: another concurrent render already populated
+  // resolved_idea_id. Drop our orphan idea and return the winning id.
+  const { error: deleteErr } = await supabase
+    .from("ideas")
+    .delete()
+    .eq("id", row.id);
+  if (deleteErr) {
+    console.warn("[judgment] orphan idea cleanup failed", deleteErr);
+    Sentry.captureException(deleteErr, {
+      tags: { route: "judgment", phase: "supabase-orphan-cleanup" },
+    });
+  }
+
+  const { data: winner, error: winnerErr } = await supabase
+    .from("draft_pitches")
+    .select("resolved_idea_id")
+    .eq("id", draft.id)
+    .maybeSingle();
+  if (winnerErr || !winner?.resolved_idea_id) {
+    console.error("[judgment] lost claim race but no winning idea found", winnerErr);
+    Sentry.captureException(
+      winnerErr ?? new Error("Lost claim race but draft has no resolved_idea_id"),
+      { tags: { route: "judgment", phase: "supabase-claim-reread" } },
+    );
+    throw new Error("Failed to persist judgment.");
+  }
+
+  return { ideaId: winner.resolved_idea_id };
 }
 
 export type DraftLookup =

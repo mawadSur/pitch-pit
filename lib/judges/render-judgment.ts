@@ -24,18 +24,26 @@ export async function renderJudgment(
   const judge = getJudge(judgeId);
   const client = new Anthropic();
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1024,
-    system: [
-      {
-        type: "text",
-        text: judge.systemPrompt,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: userPrompt(title, pitch) }],
-  });
+  // Per-call timeout — bound each judge to 25s so a single stalled call
+  // can't consume the whole 60s page maxDuration and starve the other
+  // two judges mid-stream. AbortError here surfaces as a thrown error
+  // to the per-judge Suspense boundary; JudgeCard catches it and renders
+  // an errored card while AggregateBand falls back to the partial panel.
+  const response = await client.messages.create(
+    {
+      model: "claude-sonnet-4-6",
+      max_tokens: 1024,
+      system: [
+        {
+          type: "text",
+          text: judge.systemPrompt,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content: userPrompt(title, pitch) }],
+    },
+    { signal: AbortSignal.timeout(25_000) },
+  );
 
   logCost(judgeId, response.usage);
 

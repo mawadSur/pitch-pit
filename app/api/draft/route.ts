@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, pitch, handle, turnstile_token } = parsed.data;
+  const { title, pitch, handle, turnstile_token, request_id } = parsed.data;
 
   // ─── captcha ──────────────────────────────────────────────
   if (turnstileEnabled) {
@@ -113,17 +113,49 @@ export async function POST(req: NextRequest) {
   }
 
   // ─── persist draft ────────────────────────────────────────
-  // 32 hex chars = 16 random bytes. Opaque, unguessable, single-use-ish
-  // (the same token can be re-loaded by anyone who has the link, which
-  // is fine — they're loading their own pitch on the way to evaluation).
-  const accessToken = randomBytes(16).toString("hex");
-
   const supabase = createAdminClient();
 
   // Opportunistic GC: prune drafts older than 24h. Cheap; DB-side.
   void supabase.rpc("prune_expired_drafts").then((res) => {
     if (res.error) console.warn("[draft] prune failed", res.error);
   });
+
+  // ─── idempotency lookup ───────────────────────────────────
+  // If the client sent a request_id, see if a draft with the same
+  // (owner-scoped) request_id already exists from a recent attempt.
+  // We intentionally don't add a UNIQUE constraint at the DB level —
+  // that would hard-fail concurrent retries; we want a soft return.
+  // Window: 5 minutes (long enough for the slowest network blip +
+  // retry, short enough that a buggy client recycling a uuid won't
+  // collide forever). UUID v4 collision odds are practically zero.
+  if (request_id) {
+    const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    let q = supabase
+      .from("draft_pitches")
+      .select("id, access_token")
+      .eq("request_id", request_id)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    // Scope by ownership: signed-in users dedupe on user_id; anonymous
+    // submissions dedupe on null user_id (uuid uniqueness alone makes
+    // cross-user collision practically impossible, but matching the
+    // owner keeps the lookup tight under the partial index).
+    q = userId ? q.eq("user_id", userId) : q.is("user_id", null);
+    const { data: existing, error: lookupErr } = await q.maybeSingle();
+    if (lookupErr) {
+      // Don't fail the request on a lookup glitch — fall through and
+      // mint a new draft. Worst case we lose dedupe on this request.
+      console.warn("[draft] idempotency lookup failed", lookupErr);
+    } else if (existing) {
+      return NextResponse.json({ token: existing.access_token });
+    }
+  }
+
+  // 32 hex chars = 16 random bytes. Opaque, unguessable, single-use-ish
+  // (the same token can be re-loaded by anyone who has the link, which
+  // is fine — they're loading their own pitch on the way to evaluation).
+  const accessToken = randomBytes(16).toString("hex");
 
   const { data: row, error: dbErr } = await supabase
     .from("draft_pitches")
@@ -133,6 +165,7 @@ export async function POST(req: NextRequest) {
       title,
       pitch,
       handle: handle && handle.length > 0 ? handle : null,
+      request_id: request_id ?? null,
     })
     .select("id, access_token")
     .single();

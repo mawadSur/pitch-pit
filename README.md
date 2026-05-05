@@ -147,7 +147,7 @@ Optional (production hardening — gracefully no-op when unset):
 
 | Var | Effect |
 |---|---|
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` | Captcha on `/api/score` and `/api/comments` |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` | Captcha on `/api/score` and `/api/comments`. For local dev, either add `localhost`/`127.0.0.1` to the site's allowed hostnames in the Turnstile dashboard, or use Cloudflare's always-pass dummy keys (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) — [docs](https://developers.cloudflare.com/turnstile/troubleshooting/testing/). |
 | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | Distributed rate-limit (in-memory fallback otherwise) |
 | `NEXT_PUBLIC_SENTRY_DSN` + `SENTRY_DSN` | Sentry error capture |
 | `SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT` | Sentry source-map upload (CI / Vercel only) |

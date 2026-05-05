@@ -148,6 +148,16 @@ function Panel1() {
       return;
     }
     setError(null);
+    // Mint ONE idempotency key per submit attempt. The same uuid travels
+    // with this fetch even if React's startTransition or a network blip
+    // re-fires the inner async — the server will return the existing
+    // draft instead of minting a duplicate. A fresh attempt (user edits
+    // and re-submits, or hits submit again after an error) generates a
+    // new uuid below, so they're not stuck on a stale request.
+    const requestId =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : undefined;
     startTransition(async () => {
       try {
         // Run Turnstile invisibly. No-op + empty string when site key is
@@ -172,6 +182,7 @@ function Panel1() {
             pitch: trimmed,
             handle: "",
             turnstile_token: turnstileToken,
+            ...(requestId ? { request_id: requestId } : {}),
           }),
         });
         if (!res.ok) {

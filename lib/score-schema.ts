@@ -21,6 +21,11 @@ export const submitSchema = z.object({
   // the widget isn't configured. Server enforces presence only when the
   // secret key is set (see lib/turnstile.ts).
   turnstile_token: z.string().optional().default(""),
+  // Idempotency key — client-supplied UUID v4. Same uuid + same user (or
+  // same anon IP) within 5 minutes returns the existing draft instead of
+  // minting a new one. Optional for backwards compat: requests without
+  // request_id skip the dedupe path entirely.
+  request_id: z.string().uuid().optional(),
 });
 
 export type SubmitInput = z.infer<typeof submitSchema>;
