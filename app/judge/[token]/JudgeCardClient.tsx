@@ -2,8 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { useEffect, useState } from "react";
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  animate,
+  useReducedMotion,
+} from "framer-motion";
+import { useEffect } from "react";
 import { Lock, AlertTriangle } from "lucide-react";
 import type { JudgeMeta } from "@/lib/judges";
 import type { ScoreResult } from "@/lib/score-schema";
@@ -66,7 +72,7 @@ export function JudgeCardClient({
       </div>
 
       {errored && (
-        <div className="mt-6 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-[13px] text-white/70">
+        <div className="mt-6 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm text-white/70">
           <AlertTriangle className="h-4 w-4 text-[var(--scene-gold)]" aria-hidden />
           <span>Could not reach this judge. Refresh to try again.</span>
         </div>
@@ -74,7 +80,7 @@ export function JudgeCardClient({
 
       {result && (
         <>
-          <p className="mt-6 text-[15px] italic leading-snug text-white/85 line-clamp-3">
+          <p className="mt-6 text-base italic leading-snug text-white/85 line-clamp-3">
             “{result.verdict}”
           </p>
 
@@ -89,7 +95,7 @@ export function JudgeCardClient({
             >
               <Section label="Strengths" items={result.strengths} accent />
               <Section label="Concerns" items={result.concerns} />
-              <p className="mt-5 text-[13px] leading-relaxed text-white/70">
+              <p className="mt-5 text-sm leading-relaxed text-white/70">
                 {result.reasoning}
               </p>
             </div>
@@ -112,7 +118,7 @@ export function JudgeCardClient({
           {!isSignedIn && (
             <Link
               href={loginHref}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--scene-gold)]/40 bg-[var(--scene-gold)]/[0.08] px-4 py-2 text-[13px] font-medium text-[var(--scene-gold)] transition hover:bg-[var(--scene-gold)]/[0.16]"
+              className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--scene-gold)]/40 bg-[var(--scene-gold)]/[0.08] px-4 text-sm font-medium text-[var(--scene-gold)] transition-all hover:bg-[var(--scene-gold)]/[0.16] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
             >
               <Lock className="h-3.5 w-3.5" aria-hidden />
               Sign in to read the full take
@@ -125,31 +131,36 @@ export function JudgeCardClient({
 }
 
 function ScoreNumber({ score }: { score: number }) {
-  const mv = useMotionValue(0);
-  const display = useTransform(mv, (v) => Math.round(v));
-  const [, force] = useState(0);
+  const reduce = useReducedMotion();
+  // Snap to final value when reduced-motion is requested. `useMotionValue`
+  // + `animate()` bypasses the page-level `MotionConfig` so we gate it
+  // explicitly here.
+  const mv = useMotionValue(reduce ? score : 0);
+  const display = useTransform(mv, (v) =>
+    String(Math.round(v)).padStart(2, "0"),
+  );
 
   useEffect(() => {
+    if (reduce) {
+      mv.set(score);
+      return;
+    }
     const controls = animate(mv, score, {
       duration: 0.8,
       ease: [0.16, 1, 0.3, 1],
     });
-    const unsub = display.on("change", () => force((x) => x + 1));
-    return () => {
-      controls.stop();
-      unsub();
-    };
-  }, [mv, display, score]);
+    return () => controls.stop();
+  }, [mv, score, reduce]);
 
   return (
     <div className="flex items-baseline">
-      <span
+      <motion.span
         className="scene-mono text-[3.25rem] font-semibold leading-none tabular-nums text-[var(--scene-gold)]"
         style={{ textShadow: "0 0 18px rgba(255, 184, 0, 0.25)" }}
       >
-        {String(display.get()).padStart(2, "0")}
-      </span>
-      <span className="ml-1 text-2xl text-white/40">/10</span>
+        {display}
+      </motion.span>
+      <span className="ml-1 text-2xl tabular-nums text-white/55">/10</span>
     </div>
   );
 }
@@ -184,10 +195,13 @@ function Section({
       >
         {label}
       </p>
-      <ul className="mt-2 space-y-1.5 text-[13px] leading-snug text-white/85">
+      <ul className="mt-2 space-y-1.5 text-sm leading-snug text-white/85">
         {items.map((item, i) => (
           <li key={i} className="pl-3 -indent-3">
-            <span className={accent ? "text-[var(--scene-gold)]/70" : "text-white/35"}>
+            <span
+              aria-hidden
+              className={accent ? "text-[var(--scene-gold)]/70" : "text-white/55"}
+            >
               ·{" "}
             </span>
             {item}

@@ -26,7 +26,11 @@ export default function JudgeLoading() {
       style={{ background: "var(--scene-bg)" }}
     >
       <MotionWrapper>
-        <main className="relative mx-auto max-w-6xl px-4 pt-28 pb-24 sm:px-6 lg:px-8">
+        <main
+          id="main"
+          tabIndex={-1}
+          className="relative mx-auto max-w-6xl px-4 pt-28 pb-24 sm:px-6 lg:px-8 focus:outline-none"
+        >
           <header className="mb-8">
             <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
               ↘ Calling the judges

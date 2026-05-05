@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { Inter } from "next/font/google";
 import { notFound, redirect } from "next/navigation";
 import { jetbrains } from "@/lib/fonts/jetbrains-mono";
@@ -85,7 +86,11 @@ export default async function JudgeRoute({
       <MinimalistHeader />
 
       <MotionWrapper>
-        <main className="relative mx-auto max-w-6xl px-4 pt-28 pb-24 sm:px-6 lg:px-8">
+        <main
+          id="main"
+          tabIndex={-1}
+          className="relative mx-auto max-w-6xl px-4 pt-28 pb-24 sm:px-6 lg:px-8 focus:outline-none"
+        >
           <header className="mb-8">
             <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
               ↘ Deliberation in progress
@@ -93,6 +98,12 @@ export default async function JudgeRoute({
             <h1 className="mt-3 text-balance text-3xl font-medium leading-tight text-white sm:text-4xl">
               Three judges. One pitch.
             </h1>
+            <Link
+              href="/"
+              className="scene-mono mt-4 inline-flex items-center py-2 text-[0.65rem] uppercase tracking-[0.32em] text-white/55 transition-colors hover:text-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+            >
+              ← New pitch
+            </Link>
           </header>
 
           {/* aggregate verdict band — top-of-fold */}

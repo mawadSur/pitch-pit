@@ -19,7 +19,7 @@ export function PitchSpecs({
         {/* gold left bar */}
         <div className="absolute left-0 top-6 bottom-6 w-[2px] bg-[var(--scene-gold)]/60" />
 
-        <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/50">
+        <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
           The pitch
         </p>
         <h2 className="mt-3 text-lg font-medium leading-snug text-white line-clamp-3">
@@ -36,11 +36,11 @@ export function PitchSpecs({
         </dl>
 
         <details className="mt-6 group">
-          <summary className="scene-mono cursor-pointer list-none text-[0.65rem] uppercase tracking-[0.32em] text-white/50 hover:text-white/70">
+          <summary className="scene-mono inline-flex cursor-pointer list-none items-center py-2 text-[0.65rem] uppercase tracking-[0.32em] text-white/55 transition-colors hover:text-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]">
             <span className="group-open:hidden">▸ Read full pitch</span>
             <span className="hidden group-open:inline">▾ Hide pitch</span>
           </summary>
-          <p className="mt-3 whitespace-pre-wrap text-[13px] leading-relaxed text-white/80">
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-white/80">
             {pitch}
           </p>
         </details>
@@ -64,7 +64,7 @@ function Row({
         last ? "" : "border-b border-white/[0.06]"
       }`}
     >
-      <dt className="scene-mono text-[0.65rem] uppercase tracking-[0.16em] text-white/50">
+      <dt className="scene-mono text-[0.65rem] uppercase tracking-[0.16em] text-white/55">
         {label}
       </dt>
       <dd className="text-sm font-medium tabular-nums text-white/90">{value}</dd>

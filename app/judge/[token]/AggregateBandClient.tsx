@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  animate,
+  useReducedMotion,
+} from "framer-motion";
 import { useEffect, useState, useTransition } from "react";
 import { Trophy, Check } from "lucide-react";
 import type { JudgeId } from "@/lib/judges";
@@ -62,14 +68,14 @@ export function AggregateBandClient({
 
           <div className="flex flex-wrap items-center gap-2">
             {buildRecommended && (
-              <span className="scene-mono inline-flex items-center rounded-full bg-[var(--scene-gold)]/15 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-[var(--scene-gold)]">
+              <span className="scene-mono inline-flex h-11 items-center rounded-full bg-[var(--scene-gold)]/15 px-3 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-[var(--scene-gold)]">
                 build queue
               </span>
             )}
             {ideaId && (
               <Link
                 href={`/idea/${ideaId}`}
-                className="scene-mono inline-flex items-center rounded-full border border-white/15 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-white/85 transition hover:border-white/30 hover:text-white"
+                className="scene-mono inline-flex h-11 items-center rounded-full border border-white/15 px-4 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-white/85 transition-all hover:border-[var(--scene-gold)]/55 hover:text-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
               >
                 open idea page →
               </Link>
@@ -80,7 +86,11 @@ export function AggregateBandClient({
           <ul className="scene-mono mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] uppercase tracking-[0.16em] text-white/55">
             {judgesMeta.map((j, i) => (
               <li key={j.id} className="flex items-center gap-1.5">
-                {i > 0 && <span className="text-white/20">·</span>}
+                {i > 0 && (
+                  <span aria-hidden className="text-white/30">
+                    ·
+                  </span>
+                )}
                 <span>{j.name}</span>
                 <span className="text-white/85 tabular-nums">
                   {panel[j.id]?.score ?? "—"}
@@ -122,56 +132,70 @@ function ClaimButton({ ideaId }: { ideaId: string }) {
     });
   }
 
+  // Parent <motion.div role="status" aria-live="polite"> covers
+  // announcement; no inner aria-live to avoid double-announce.
   if (done) {
     return (
-      <span className="scene-mono inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-emerald-300">
-        <Check className="h-3 w-3" aria-hidden /> claimed
+      <span className="scene-mono inline-flex h-11 items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-emerald-300">
+        <Check className="h-3 w-3" aria-hidden /> pitch claimed
       </span>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <button
         type="button"
         onClick={claim}
         disabled={pending}
-        className="scene-mono inline-flex items-center gap-1.5 rounded-full bg-[var(--scene-gold)] px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-black transition hover:bg-[var(--scene-gold)]/90 disabled:opacity-60"
+        className="scene-mono inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--scene-gold)] px-4 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-black transition-all hover:bg-[var(--scene-gold)]/90 active:scale-[0.98] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
       >
         <Trophy className="h-3 w-3" aria-hidden />
         {pending ? "claiming…" : "claim this pitch"}
       </button>
-      {error && <span className="text-[0.65rem] text-red-300">{error}</span>}
+      {error && (
+        <span
+          role="alert"
+          className="scene-mono text-[0.65rem] uppercase tracking-[0.16em] text-red-300"
+        >
+          {error}
+        </span>
+      )}
     </div>
   );
 }
 
 function ScoreCounter({ avg }: { avg: number }) {
-  const mv = useMotionValue(0);
-  const display = useTransform(mv, (v) => Math.round(v));
-  const [, force] = useState(0);
+  const reduce = useReducedMotion();
+  // Snap straight to the final value when reduced-motion is requested.
+  // `useMotionValue` + `animate()` bypasses the page-level `MotionConfig`,
+  // so we gate the count-up explicitly here.
+  const mv = useMotionValue(reduce ? avg : 0);
+  const display = useTransform(mv, (v) =>
+    String(Math.round(v)).padStart(2, "0"),
+  );
 
   useEffect(() => {
+    if (reduce) {
+      mv.set(avg);
+      return;
+    }
     const controls = animate(mv, avg, {
       duration: 1.0,
       ease: [0.16, 1, 0.3, 1],
     });
-    const unsub = display.on("change", () => force((x) => x + 1));
-    return () => {
-      controls.stop();
-      unsub();
-    };
-  }, [mv, display, avg]);
+    return () => controls.stop();
+  }, [mv, avg, reduce]);
 
   return (
     <div className="flex items-baseline">
-      <span
+      <motion.span
         className="scene-mono text-[5rem] font-semibold leading-none tabular-nums text-[var(--scene-gold)] sm:text-[6rem]"
         style={{ textShadow: "0 0 32px rgba(255, 184, 0, 0.35)" }}
       >
-        {String(display.get()).padStart(2, "0")}
-      </span>
-      <span className="ml-2 text-3xl text-white/40">/10</span>
+        {display}
+      </motion.span>
+      <span className="ml-2 text-3xl tabular-nums text-white/55">/10</span>
     </div>
   );
 }

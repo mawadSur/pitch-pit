@@ -22,12 +22,12 @@ export function SoftGateCTA({ token }: { token: string }) {
       <h2 className="mt-5 text-xl font-medium text-white sm:text-2xl">
         The judges said more.
       </h2>
-      <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-white/65">
+      <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-white/65">
         Sign in to read the full deliberation, claim this pitch as yours,
         join the leaderboard, and unlock build recommendations.
       </p>
 
-      <ul className="scene-mono mx-auto mt-6 flex max-w-md flex-col items-start gap-2.5 text-[13px] text-white/75">
+      <ul className="scene-mono mx-auto mt-6 flex max-w-md flex-col items-start gap-2.5 text-sm text-white/75">
         <Bullet icon={<Lock className="h-3.5 w-3.5" />}>
           Full strengths, concerns, and reasoning from each judge
         </Bullet>
@@ -42,13 +42,13 @@ export function SoftGateCTA({ token }: { token: string }) {
       <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
         <Link
           href={loginHref}
-          className="inline-flex h-11 items-center justify-center rounded-full bg-[var(--scene-gold)] px-6 text-[14px] font-medium text-black transition hover:bg-[var(--scene-gold)]/90"
+          className="inline-flex h-11 items-center justify-center rounded-full bg-[var(--scene-gold)] px-6 text-sm font-medium text-black transition-all hover:bg-[var(--scene-gold)]/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
         >
           Sign in to unlock
         </Link>
         <Link
           href="/leaderboard"
-          className="text-[13px] text-white/55 underline-offset-4 hover:text-white/85 hover:underline"
+          className="inline-flex items-center py-2 text-sm text-white/55 underline-offset-4 transition-colors hover:text-white/85 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
         >
           or keep browsing →
         </Link>
