@@ -9,6 +9,7 @@ import { HeroPanel } from "@/components/scene/HeroPanel";
 import { CountdownClock } from "@/components/scene/CountdownClock";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
+import { SubmittingOverlay } from "./SubmittingOverlay";
 import { SUBMIT_LIMITS } from "@/lib/score-schema";
 
 const FRAMES_1_COUNT = 91;
@@ -316,6 +317,11 @@ function Panel1() {
             get a Cloudflare interaction prompt. */}
         <Turnstile handleRef={turnstileRef} />
       </motion.form>
+
+      {/* Full-screen overlay during submit. Bridges the ~600ms window
+          between click and the /judge/[token] navigation; that route's
+          loading.tsx then takes over without a visible seam. */}
+      <SubmittingOverlay visible={pending} />
 
       {/* BOTTOM — live counter + scroll cue (input is the singular primary CTA;
           secondary nav lives in the header now, not above-the-fold) */}
