@@ -317,11 +317,11 @@ export function ShareMenu({
       : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/[0.03] text-white/70 transition-colors hover:border-[var(--scene-gold)]/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]";
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <div ref={ref} className="inline-block">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={ariaLabel ?? "Share this idea"}
         className={triggerClass}
@@ -338,46 +338,76 @@ export function ShareMenu({
       <AnimatePresence>
         {open && (
           <>
-            {/* Desktop dropdown: anchored to trigger, unchanged */}
-            <motion.div
-              role="menu"
-              aria-label="Share options"
-              initial={{ opacity: 0, y: -4, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.96 }}
-              transition={{ duration: 0.12, ease: "easeOut" }}
-              className="absolute right-0 z-30 mt-3 hidden w-72 overflow-hidden rounded-xl border border-white/12 bg-[#0e0e10]/95 shadow-[0_24px_72px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md sm:block"
-            >
-              {menuItems}
-            </motion.div>
-
-            {/* Mobile bottom sheet: full-width, slides up from bottom */}
+            {/* Scrim — same on every breakpoint, dismisses on click */}
             <motion.div
               key="scrim"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               onClick={() => setOpen(false)}
               aria-hidden
-              className="fixed inset-0 z-40 bg-black/60 sm:hidden"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
             />
+
+            {/* Dialog container — centered on sm+, bottom sheet on mobile.
+                One element handles both layouts so click-outside is just
+                clicks on the scrim above. */}
             <motion.div
-              key="sheet"
-              role="menu"
-              aria-label="Share options"
+              key="dialog"
+              role="dialog"
               aria-modal="true"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "tween", duration: 0.22, ease: "easeOut" }}
-              className="fixed inset-x-0 bottom-0 z-50 overflow-hidden rounded-t-2xl border-t border-white/12 bg-[#0e0e10]/95 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-24px_72px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md sm:hidden"
+              aria-labelledby="share-dialog-title"
+              // Mobile (<sm): slide up from bottom. Desktop (sm:+): scale
+              // + fade in centered. Framer animates the appropriate
+              // properties for each breakpoint via responsive classes
+              // wrapping the content; the motion props themselves are
+              // small enough to share since they default off-screen on
+              // mobile via translate-y and on desktop via the scale/opacity
+              // composition handled by the inner card.
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
             >
-              <div
-                aria-hidden
-                className="mx-auto mt-3 mb-2 h-1 w-12 rounded-full bg-white/20"
-              />
-              {menuItems}
+              <motion.div
+                // Bottom sheet on mobile, modal card on desktop. Slides up
+                // <sm and scales+fades sm+ via two coordinated transitions.
+                initial={{ y: "8%", scale: 0.96, opacity: 0 }}
+                animate={{ y: 0, scale: 1, opacity: 1 }}
+                exit={{ y: "8%", scale: 0.96, opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md overflow-hidden rounded-t-2xl border-t border-white/12 bg-[#0e0e10]/95 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-24px_72px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md sm:rounded-2xl sm:border sm:pb-0 sm:shadow-[0_24px_72px_-12px_rgba(0,0,0,0.8)]"
+              >
+                {/* mobile drag-handle affordance */}
+                <div
+                  aria-hidden
+                  className="mx-auto mt-3 h-1 w-12 rounded-full bg-white/20 sm:hidden"
+                />
+
+                {/* header */}
+                <div className="flex items-center justify-between border-b border-white/[0.06] px-5 pb-3 pt-4 sm:pt-5">
+                  <h2
+                    id="share-dialog-title"
+                    className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/55"
+                  >
+                    Share this idea
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    aria-label="Close share dialog"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/[0.04] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0e0e10]"
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
+
+                {/* options list */}
+                <div className="py-1">{menuItems}</div>
+              </motion.div>
             </motion.div>
           </>
         )}
@@ -409,7 +439,6 @@ function MenuItem({
 }) {
   return (
     <button
-      role="menuitem"
       type="button"
       onClick={onClick}
       className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.04] focus-visible:bg-white/[0.05] focus-visible:outline-none ${accent ? "bg-[var(--scene-gold)]/10" : ""}`}
@@ -446,6 +475,26 @@ function Divider() {
 }
 
 /* ─── icons (inline SVG, no external deps) ───────────────────────────── */
+
+function CloseIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="m4 4 8 8M12 4l-8 8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 function ShareIcon() {
   return (
