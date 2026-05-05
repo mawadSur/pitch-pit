@@ -8,7 +8,7 @@
 
 ## What it is
 
-Founders submit a 60–1500 character pitch. Claude Sonnet 4.6 rates it 1–10 across six dimensions (demand, wedge, founder edge, feasibility, defensibility, distribution) and produces a structured verdict. The community votes for a week. Final score = 50% AI + 50% community, normalized 0–100. The pit closes Friday at midnight EDT, and the top idea each week gets built and shipped under the founder's name.
+Founders submit a 60–1500 character pitch. Claude Sonnet 4.6 rates it 1–10 across six dimensions (demand, wedge, founder edge, feasibility, defensibility, distribution) and produces a structured verdict. The community votes for a week. Final score = 50% AI + 50% community, normalized 0–100. The pit closes Monday at midnight EDT, and the top idea each week gets built and shipped under the founder's name.
 
 Live at **[pitchpit.app](https://pitchpit.app)** ([Vercel preview](https://pitch-pit.vercel.app)).
 

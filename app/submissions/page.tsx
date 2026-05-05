@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
+import { jetbrains } from "@/lib/fonts/jetbrains-mono";
 import { createClient } from "@/lib/supabase/server";
 import { SubmissionsScene, type Submission } from "./SubmissionsScene";
 import "../scene.css";
@@ -8,13 +9,6 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-scene",
-  display: "swap",
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-scene-mono",
   display: "swap",
 });
 

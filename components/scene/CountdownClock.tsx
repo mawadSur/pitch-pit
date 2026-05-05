@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { nextFridayMidnightET } from "@/lib/week-cycle";
+import { nextMondayMidnightET } from "@/lib/week-cycle";
 
 export function CountdownClock() {
   const [target, setTarget] = useState<number | null>(null);
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
-    setTarget(nextFridayMidnightET());
+    setTarget(nextMondayMidnightET());
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -40,7 +40,7 @@ export function CountdownClock() {
   return (
     <div
       role="timer"
-      aria-label="Time remaining until Friday at midnight Eastern Time"
+      aria-label="Time remaining until Monday at midnight Eastern Time"
       className="grid grid-cols-4 gap-3 sm:gap-4"
     >
       <span className="sr-only" aria-live="polite" aria-atomic="true">

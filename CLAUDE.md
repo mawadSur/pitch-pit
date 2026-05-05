@@ -17,7 +17,7 @@ There are no tests. The build is the verification step — `npm run build` will 
 
 pitch-pit is a weekly idea contest. Users submit a startup pitch, an AI scoring agent rates it (0–10 rubric), the community votes, and the top combined score wins a free MVP build.
 
-Tagline: "to the victor go the tokens." The pit closes Friday at midnight EST.
+Tagline: "to the victor go the tokens." The pit closes Monday at midnight EST.
 
 ## Two visual themes coexist
 

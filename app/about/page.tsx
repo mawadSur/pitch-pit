@@ -52,7 +52,7 @@ export default function AboutPage() {
               <Step
                 n={4}
                 title="Win the week"
-                body="The pit closes Friday at midnight EDT. The week's top score gets built as a free MVP."
+                body="The pit closes Monday at midnight EDT. The week's top score gets built as a free MVP."
               />
             </ol>
           </Section>

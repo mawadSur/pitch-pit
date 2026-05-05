@@ -148,12 +148,6 @@ function Panel1() {
       return;
     }
     setError(null);
-    // One key per submission attempt — protects against double-charge if the
-    // user retries on a network failure.
-    const idempotencyKey =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     startTransition(async () => {
       try {
         // Run Turnstile invisibly. No-op + empty string when site key is
@@ -167,12 +161,12 @@ function Panel1() {
           );
         }
 
-        const res = await fetch("/api/score", {
+        // Stage the pitch as a draft (server validates + content-filters +
+        // captures session). The three judges run inside /judge/[token]
+        // as Suspense-streamed async server components.
+        const res = await fetch("/api/draft", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Idempotency-Key": idempotencyKey,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: deriveTitle(trimmed),
             pitch: trimmed,
@@ -182,19 +176,16 @@ function Panel1() {
         });
         if (!res.ok) {
           const err = (await res.json().catch(() => ({}))) as { error?: string };
-          // Reset the captcha so the next attempt mints a fresh token.
           turnstileRef.current?.reset();
           throw new Error(err.error ?? "Submission failed.");
         }
-        const { id } = (await res.json()) as { id: string };
-        // Submission persisted server-side — drop the local draft so a
-        // subsequent visit starts on a clean textarea.
+        const { token } = (await res.json()) as { token: string };
         try {
           window.localStorage.removeItem(PITCH_DRAFT_KEY);
         } catch {
           // ignore
         }
-        router.push(`/idea/${id}`);
+        router.push(`/judge/${token}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
         pitchRef.current?.focus();
@@ -221,7 +212,7 @@ function Panel1() {
         className="absolute inset-x-0 top-[7%] flex flex-col items-center px-6 text-center"
       >
         <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-white/55 sm:text-[0.92rem]">
-          ↘ The pit closes Friday at midnight EST
+          ↘ The pit closes Monday at midnight EST
         </p>
         <h1 className="mt-5 max-w-3xl text-balance text-[2rem] font-medium leading-[1.04] text-white sm:text-5xl lg:text-6xl">
           Pitch your idea. The{" "}
@@ -493,7 +484,7 @@ function HowItWorks() {
     {
       n: 4,
       title: "Win the week",
-      body: "The pit closes Friday at midnight EDT. The week's top final score gets built — for free, no equity, no strings — and we ship the live MVP under your name.",
+      body: "The pit closes Monday at midnight EDT. The week's top final score gets built — for free, no equity, no strings — and we ship the live MVP under your name.",
     },
   ];
 
@@ -705,7 +696,7 @@ function FinalCTA() {
         </h2>
         <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/65 sm:text-lg">
           60 characters minimum. Two submissions per week. No equity, no fees.
-          Friday at midnight, one winner walks out with a build.
+          Monday at midnight, one winner walks out with a build.
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">

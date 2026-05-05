@@ -30,7 +30,7 @@ const RULES = [
   "Each person gets a maximum of 2 lifetime idea submissions.",
   "Submissions must be original or describe your unique angle clearly.",
   "Ideas are grouped into weekly competitions.",
-  "Each weekly pit opens Monday 12:00 AM and closes Friday at midnight EST.",
+  "Each weekly pit opens Tuesday 12:00 AM and closes the following Monday at midnight EST.",
   "AI scoring runs at submission time. Admins may refresh scores.",
   "Public voting stays open until the weekly deadline.",
   "One vote per user, per idea. You cannot vote for your own.",
