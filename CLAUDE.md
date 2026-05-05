@@ -41,17 +41,24 @@ The crossfade between image and canvas is pure CSS opacity — no DOM mutation, 
 
 **heightVh prop**: panels with frames use `heightVh={200}` (h-[200vh] section). Sticky pin lasts the first 100vh; `pinFraction = (heightVh - 100) / heightVh = 0.5` remaps `scrollYProgress` so the frame scrub completes within the pinned portion. After pin ends, the canvas parks on the last frame while the section scrolls away.
 
-Image bgs are intentionally set to **the first frame of the next video sequence** (`/scene/frames-1/001.jpg`, `/scene/frames-2/001.jpg`) so the panel→canvas handoff is byte-identical at the boundary.
+Image bgs are intentionally set to **the first frame of the next video sequence** (`/scene/frames-1/001.avif`, `/scene/frames-2/001.avif`) so the panel→canvas handoff is byte-identical at the boundary.
 
 ## Frame sequences
 
-`public/scene/frames-1/{001..091}.jpg` and `public/scene/frames-2/{001..090}.jpg` are extracted from the source mp4s via ffmpeg:
+`public/scene/frames-1/{001..091}.avif` and `public/scene/frames-2/{001..090}.avif` are extracted from the source mp4s via ffmpeg, then converted to AVIF for ~50% smaller file size:
 
 ```bash
+# 1. Extract JPEGs from the source video
 ffmpeg -i public/scene/transition-1.mp4 -vf "fps=18,scale=1024:-2" -q:v 4 public/scene/frames-1/%03d.jpg -y
+
+# 2. Convert to AVIF (sharp-based, idempotent)
+node scripts/convert-frames-to-avif.mjs
+
+# 3. Remove the source JPEGs after confirming the canvas works
+rm public/scene/frames-1/*.jpg
 ```
 
-If you regenerate, keep the same naming (`%03d.jpg` zero-padded) and update `FRAMES_*_COUNT` constants in `HomeScene.tsx`.
+If you regenerate, keep the same naming (`%03d.avif` zero-padded) and update `FRAMES_*_COUNT` constants in `HomeScene.tsx`.
 
 ## Database (Supabase)
 
@@ -104,4 +111,4 @@ Both redirect to `/auth/callback` (`app/auth/callback/route.ts`) which calls `ex
 - **`<Image>` shadowing**: when using `next/image` in a file that also constructs `new Image()` (e.g., for canvas frame preloading), import as `NextImage` to avoid shadowing the global `Image` constructor. See `components/scene/HeroPanel.tsx`.
 - **Scoped CSS**: minimalist styles live in `app/scene.css` under `.scene-*` class prefixes. Don't pollute `app/globals.css` (which holds the legacy Capitol palette).
 - **Route-level conditional Header**: when adding a new route that uses the minimalist theme, add it to the path check at the top of `components/Header.tsx` so the Capitol header doesn't leak in.
-- **Static-image panels** that match a video's first frame: bg should reference `/scene/frames-N/001.jpg`, **not** the source `firstimage.png` etc., so the boundary into the canvas section is invisible.
+- **Static-image panels** that match a video's first frame: bg should reference `/scene/frames-N/001.avif`, **not** the source `firstimage.png` etc., so the boundary into the canvas section is invisible.

@@ -55,11 +55,9 @@ function adminBasicAuth(req: NextRequest): NextResponse | null {
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
-  // Submission entry points: rate-limit POSTs by IP. GETs / OPTIONS pass
-  // through. Both /api/draft (new three-judge entry) and /api/score
-  // (legacy) share the same per-IP counter — a person is limited to 5
-  // submissions per 10 min total, regardless of which route they hit.
-  if (path === "/api/draft" || path === "/api/score") {
+  // Submission entry point: rate-limit POSTs by IP. GETs / OPTIONS pass
+  // through. 5 submissions / 10 min per IP.
+  if (path === "/api/draft") {
     if (req.method === "POST") {
       const limited = await rateLimitSubmission(req);
       if (limited) return limited;
@@ -78,5 +76,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/api/score", "/api/draft"],
+  matcher: ["/admin", "/admin/:path*", "/api/draft"],
 };

@@ -11,6 +11,7 @@ import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
 import { SubmittingOverlay } from "./SubmittingOverlay";
 import { SUBMIT_LIMITS } from "@/lib/score-schema";
+import { createClient as createSupabaseBrowser } from "@/lib/supabase/client";
 
 const FRAMES_1_COUNT = 91;
 const FRAMES_2_COUNT = 90;
@@ -59,7 +60,7 @@ export function HomeScene() {
             image is the first frame of the sequence so the panel→canvas
             handoff is byte-identical at the boundary. */}
         <HeroPanel
-          image="/scene/frames-3/001.jpg"
+          image="/scene/frames-3/001.avif"
           framesPath="/scene/frames-3"
           frameCount={FRAMES_3_COUNT}
           heightVh={200}
@@ -113,14 +114,34 @@ function Panel1() {
 
   // Seed from localStorage on mount. Initial state stays "" so server-rendered
   // markup matches client first paint — we only hydrate the draft after.
+  // ALSO handles the post-login resume path: if the user came back from
+  // /login with ?resume=1 and the saved draft is submission-ready, fire
+  // submit() with the restored text directly so they don't have to click
+  // again. Strips ?resume=1 from the URL so a refresh doesn't re-submit.
   useEffect(() => {
+    let saved = "";
     try {
-      const saved = window.localStorage.getItem(PITCH_DRAFT_KEY);
-      if (saved && saved.length > 0) setText(saved);
+      saved = window.localStorage.getItem(PITCH_DRAFT_KEY) ?? "";
     } catch {
-      // localStorage may be unavailable (private mode, disabled storage, SSR
-      // edge cases). Silently ignore — draft persistence is best-effort.
+      // localStorage may be unavailable (private mode, disabled storage,
+      // SSR edge cases). Draft persistence is best-effort.
     }
+    if (saved.length > 0) setText(saved);
+
+    // Resume detection. We only auto-submit if the URL says ?resume=1 AND
+    // the saved draft passes the same client-side length gate the user
+    // would face on a fresh submit.
+    const params = new URLSearchParams(window.location.search);
+    if (
+      params.get("resume") === "1" &&
+      saved.trim().length >= SUBMIT_LIMITS.pitchMin
+    ) {
+      window.history.replaceState({}, "", window.location.pathname);
+      // Pass the text directly — React state hasn't reflected setText yet.
+      void submit(saved);
+    }
+    // submit() is intentionally not in deps; we want this once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Mirror every change to localStorage. Strings ≤1500 chars; sync write is
@@ -141,14 +162,36 @@ function Panel1() {
     return trimmed.slice(0, 60).trim() || trimmed.slice(0, SUBMIT_LIMITS.titleMax);
   }
 
-  async function submit() {
-    const trimmed = text.trim();
+  async function submit(textOverride?: string) {
+    // textOverride is used by the post-login resume path (mount effect
+    // below) where the draft has been restored from localStorage but
+    // React state hasn't propagated yet. Anywhere else, undefined ↦
+    // current state.
+    const source = textOverride ?? text;
+    const trimmed = source.trim();
     if (trimmed.length < SUBMIT_LIMITS.pitchMin) {
       setError(`Be more specific — at least ${SUBMIT_LIMITS.pitchMin} characters.`);
       pitchRef.current?.focus();
       return;
     }
     setError(null);
+
+    // ─── auth wall ─────────────────────────────────────────────
+    // Submissions require a signed-in user. Sidesteps Turnstile entirely
+    // (login is itself a bot-check) and lets every pitch be credited to
+    // an account so the leaderboard, claim flow, and weekly quota all
+    // work without an "anonymous" branch. The draft is already mirrored
+    // to localStorage on every keystroke, so bouncing through /login
+    // costs the user nothing — they return with ?resume=1, the mount
+    // effect below restores the text and fires submit() automatically.
+    const supabase = createSupabaseBrowser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      router.push(`/login?next=${encodeURIComponent("/?resume=1")}`);
+      return;
+    }
     // Mint ONE idempotency key per submit attempt. The same uuid travels
     // with this fetch even if React's startTransition or a network blip
     // re-fires the inner async — the server will return the existing

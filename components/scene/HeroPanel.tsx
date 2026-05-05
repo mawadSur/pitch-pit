@@ -17,7 +17,7 @@ type Tone = "dark" | "light";
  *
  * As soon as the user scrolls a hair from the section's entry point, the
  * static image crossfades out and the canvas takes over, scrubbing through
- * `framesPath/{001..N}.jpg` from frame 0 to frame N-1 across the panel's
+ * `framesPath/{001..N}.avif` from frame 0 to frame N-1 across the panel's
  * full pin duration.
  *
  * Implementation notes:
@@ -128,7 +128,7 @@ export function HeroPanel({
     const loadOne = (i: number) => {
       const img = new Image();
       img.decoding = "async";
-      img.src = `${framesPath}/${PAD(i + 1)}.jpg`;
+      img.src = `${framesPath}/${PAD(i + 1)}.avif`;
       const idx = i;
       const ready = () => commit(idx, img);
       img
