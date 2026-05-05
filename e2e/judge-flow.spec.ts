@@ -75,41 +75,54 @@ test.describe("judge flow", () => {
     expect(res.status()).toBe(400);
   });
 
-  test("homepage submit POSTs /api/draft and redirects to /judge/[token]", async ({
-    page,
-  }) => {
+  test("anonymous submit redirects to /login (auth wall)", async ({ page }) => {
+    // Submissions now require auth — the auth wall in HomeScene checks
+    // supabase.auth.getUser() and bounces unauthenticated users to /login
+    // with a `next` param pointing back to / with ?resume=1, so the
+    // restored draft auto-submits after the user signs in. This test
+    // exercises that bounce; the signed-in happy path needs a real
+    // Supabase session and lives outside this smoke suite.
     await stubTurnstile(page);
 
-    // Mock /api/draft so the test doesn't need Supabase/Anthropic wired.
-    let postedBody: { pitch?: string; title?: string } | null = null;
+    // Even though the auth wall short-circuits before /api/draft is
+    // called, mock it anyway so a regression that bypasses the wall
+    // would land in /judge/[token] (visible failure) rather than
+    // 500-ing the prod schema. If this route gets hit, the test fails.
+    let draftCalled = false;
     await page.route("**/api/draft", async (route) => {
-      postedBody = route.request().postDataJSON() as {
-        pitch?: string;
-        title?: string;
-      };
+      draftCalled = true;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ token: "mock-token-abc" }),
+        body: JSON.stringify({ token: "should-not-reach-here" }),
       });
     });
 
     await page.goto("/");
     const textarea = page.locator("textarea").first();
     await expect(textarea).toBeVisible();
-    await textarea.fill(
-      "A long-enough sample pitch describing a legitimate startup idea so the schema's 60-character minimum passes cleanly without any noise.",
+    const pitch =
+      "A long-enough sample pitch describing a legitimate startup idea so the schema's 60-character minimum passes cleanly without any noise.";
+    await textarea.fill(pitch);
+
+    // Submit via Enter on the textarea (the form's documented UX path).
+    // Clicking the submit button is racier in headless because the button
+    // disable flips on `length === 0` from React state — Enter goes
+    // through the keydown handler in HomeScene which calls submit()
+    // directly.
+    await textarea.press("Enter");
+
+    // Auth wall bounces to /login with the resume-aware next param.
+    await page.waitForURL(/\/login\?next=/, { timeout: 10_000 });
+    expect(page.url()).toMatch(/\/login\?next=.*resume%3D1/);
+    expect(draftCalled).toBe(false);
+
+    // Draft preserved in localStorage so the post-login resume effect
+    // can restore + auto-submit when the user comes back. This is the
+    // mechanism that closes the loop — verify it's intact.
+    const stored = await page.evaluate(() =>
+      window.localStorage.getItem("pitch-pit:home-pitch-draft"),
     );
-
-    const submitBtn = page
-      .getByRole("button", { name: /submit|judging/i })
-      .first();
-    await submitBtn.click();
-
-    await page.waitForURL(/\/judge\/mock-token-abc/, { timeout: 10_000 });
-    expect(page.url()).toContain("/judge/mock-token-abc");
-    expect(postedBody).not.toBeNull();
-    expect(postedBody!.pitch?.length ?? 0).toBeGreaterThanOrEqual(60);
-    expect(postedBody!.title).toBeTruthy();
+    expect(stored).toBe(pitch);
   });
 });
