@@ -9,7 +9,9 @@ function clientIp(req: NextRequest): string {
   return req.headers.get("x-real-ip") ?? "unknown";
 }
 
-async function rateLimitScore(req: NextRequest): Promise<NextResponse | null> {
+async function rateLimitSubmission(
+  req: NextRequest,
+): Promise<NextResponse | null> {
   const ip = clientIp(req);
   const verdict = await limitScoreSubmission(ip);
 
@@ -53,10 +55,13 @@ function adminBasicAuth(req: NextRequest): NextResponse | null {
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
-  // /api/score: rate-limit POSTs by IP. GETs / OPTIONS pass through.
-  if (path === "/api/score") {
+  // Submission entry points: rate-limit POSTs by IP. GETs / OPTIONS pass
+  // through. Both /api/draft (new three-judge entry) and /api/score
+  // (legacy) share the same per-IP counter — a person is limited to 5
+  // submissions per 10 min total, regardless of which route they hit.
+  if (path === "/api/draft" || path === "/api/score") {
     if (req.method === "POST") {
-      const limited = await rateLimitScore(req);
+      const limited = await rateLimitSubmission(req);
       if (limited) return limited;
     }
     return NextResponse.next();
@@ -73,5 +78,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/api/score"],
+  matcher: ["/admin", "/admin/:path*", "/api/score", "/api/draft"],
 };

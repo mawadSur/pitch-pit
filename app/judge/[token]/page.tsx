@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { jetbrains } from "@/lib/fonts/jetbrains-mono";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { createClient as createCookieClient } from "@/lib/supabase/server";
@@ -38,8 +38,16 @@ export default async function JudgeRoute({
 }: {
   params: { token: string };
 }) {
-  const draft = await loadDraftByToken(params.token);
-  if (!draft) notFound();
+  const lookup = await loadDraftByToken(params.token);
+  if (lookup.status === "missing") notFound();
+  if (lookup.status === "expired") {
+    // Draft TTL elapsed (24h). If it had already resolved into an ideas
+    // row, the user can still see their judgment at /idea/[id]. Otherwise
+    // the deliberation never completed and the link is dead — 404.
+    if (lookup.resolvedIdeaId) redirect(`/idea/${lookup.resolvedIdeaId}`);
+    notFound();
+  }
+  const { draft } = lookup;
 
   // Detect signed-in state up front so the soft-gate can render server-side.
   let userId: string | null = null;

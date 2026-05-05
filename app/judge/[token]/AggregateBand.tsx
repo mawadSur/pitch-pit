@@ -17,6 +17,11 @@ type Draft = {
 // Awaits all three judge promises in parallel, persists the ideas row,
 // renders the final aggregate verdict band. While pending, the page's
 // Suspense fallback shows AggregateBand.Pending below.
+//
+// Resilience: if 2/3 judges resolve, we still persist with the partial
+// panel (avg over the available scores). Only if 0 or 1 succeed do we
+// surface "consensus unavailable" — a refresh re-tries only the failed
+// judge thanks to the per-draft cache in cached-render.ts.
 async function AggregateBand({
   draft,
   promises,
@@ -26,31 +31,27 @@ async function AggregateBand({
   promises: Record<JudgeId, Promise<ScoreResult>>;
   currentUserId: string | null;
 }) {
-  // Wait for all three. If any fail we still try to render with what we
-  // have — the JudgeCard for the failed judge already showed its error.
   const settled = await Promise.allSettled([
     promises.gstack,
     promises.vee,
     promises.robbins,
   ]);
 
-  const [gstackR, veeR, robbinsR] = settled;
-  const allOk =
-    gstackR.status === "fulfilled" &&
-    veeR.status === "fulfilled" &&
-    robbinsR.status === "fulfilled";
+  const panel: JudgePanel = {};
+  const ids: JudgeId[] = ["gstack", "vee", "robbins"];
+  ids.forEach((id, i) => {
+    const r = settled[i];
+    if (r.status === "fulfilled") panel[id] = r.value;
+  });
 
-  if (!allOk) {
+  const presentCount = Object.keys(panel).length;
+  if (presentCount < 2) {
     return <AggregateBandClient avg={null} panel={null} />;
   }
 
-  const panel: JudgePanel = {
-    gstack: gstackR.value,
-    vee: veeR.value,
-    robbins: robbinsR.value,
-  };
-
-  // Persist the ideas row idempotently (re-renders share the resolved id).
+  // Persist with whatever resolved. persistJudgment is idempotent on
+  // draft.resolved_idea_id so a successful 2/3 run won't be overwritten
+  // by a later 3/3 retry.
   let ideaId: string | null = null;
   try {
     const persisted = await persistJudgment(draft, panel);
@@ -59,12 +60,9 @@ async function AggregateBand({
     console.error("[aggregate] persist failed", e);
   }
 
-  const avg = Math.round(
-    (panel.gstack.score + panel.vee.score + panel.robbins.score) / 3,
-  );
+  const scores = Object.values(panel).map((r) => r.score);
+  const avg = Math.round(scores.reduce((s, n) => s + n, 0) / scores.length);
 
-  // Claim eligibility: signed-in viewer + draft was anonymous (so the
-  // resolved ideas row inherited user_id=null and is "orphaned").
   const canClaim = !!currentUserId && draft.user_id === null && !!ideaId;
 
   return (
