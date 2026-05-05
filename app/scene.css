@@ -461,20 +461,24 @@
 .panel-vignette {
   position: absolute;
   inset: 0;
+  /* Halved overlay opacities. Cinematic source frames are inherently
+     dark (mean brightness ~12%); compounding a 78%-black vignette on
+     top crushed the canvas to near-pure-black. Lighter values keep the
+     focal-edge falloff but stop nuking the underlying content. */
   background: radial-gradient(
     ellipse 80% 70% at center,
-    rgba(0, 0, 0, 0.3) 0%,
-    rgba(0, 0, 0, 0.55) 75%,
-    rgba(0, 0, 0, 0.78) 100%
+    rgba(0, 0, 0, 0.14) 0%,
+    rgba(0, 0, 0, 0.28) 75%,
+    rgba(0, 0, 0, 0.42) 100%
   );
   pointer-events: none;
 }
 .panel-vignette-light {
   background: radial-gradient(
     ellipse 80% 70% at center,
-    rgba(0, 0, 0, 0.18) 0%,
-    rgba(0, 0, 0, 0.42) 80%,
-    rgba(0, 0, 0, 0.62) 100%
+    rgba(0, 0, 0, 0.08) 0%,
+    rgba(0, 0, 0, 0.22) 80%,
+    rgba(0, 0, 0, 0.34) 100%
   );
 }
 
