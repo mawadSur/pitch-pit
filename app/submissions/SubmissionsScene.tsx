@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
 import { ShareMenu } from "@/components/idea/ShareMenu";
@@ -44,8 +44,9 @@ export function SubmissionsScene({
   userLabel: string;
 }) {
   return (
-    <>
-      <MinimalistHeader />
+    <MotionConfig reducedMotion="user">
+      <>
+        <MinimalistHeader />
       <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam-narrow" />
@@ -123,7 +124,8 @@ export function SubmissionsScene({
         </div>
 
       </main>
-    </>
+      </>
+    </MotionConfig>
   );
 }
 
@@ -269,7 +271,7 @@ function SubmissionCard({
           <span className="scene-mono mt-1 text-3xl font-semibold leading-none tabular-nums text-white sm:text-4xl">
             {finalDisplay}
           </span>
-          <span className="scene-mono mt-1 text-[0.5rem] uppercase tracking-[0.3em] text-white/35">
+          <span className="scene-mono mt-1 text-[0.5rem] uppercase tracking-[0.3em] text-white/55">
             of 100
           </span>
           <span className="scene-mono mt-3 flex items-center gap-1.5 text-[0.55rem] uppercase tracking-[0.25em] text-white/45">
@@ -307,7 +309,7 @@ function FeedbackList({
       >
         {label}
         {total > items.length && (
-          <span className="ml-2 text-white/35">+{total - items.length} more</span>
+          <span className="ml-2 text-white/55">+{total - items.length} more</span>
         )}
       </p>
       <ul className="space-y-2">

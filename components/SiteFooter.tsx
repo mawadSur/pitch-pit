@@ -27,25 +27,25 @@ export function SiteFooter() {
         >
           <Link
             href="/about"
-            className="text-white/35 transition-colors hover:text-white/85"
+            className="text-white/55 transition-colors hover:text-white/85"
           >
             About
           </Link>
           <Link
             href="/rules"
-            className="text-white/35 transition-colors hover:text-white/85"
+            className="text-white/55 transition-colors hover:text-white/85"
           >
             Rules
           </Link>
           <Link
             href="/privacy"
-            className="text-white/35 transition-colors hover:text-white/85"
+            className="text-white/55 transition-colors hover:text-white/85"
           >
             Privacy
           </Link>
           <Link
             href="/terms"
-            className="text-white/35 transition-colors hover:text-white/85"
+            className="text-white/55 transition-colors hover:text-white/85"
           >
             Terms
           </Link>

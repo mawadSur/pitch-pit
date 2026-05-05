@@ -50,7 +50,7 @@ export function Timeline({
       aria-label="Build status timeline"
       className="scene-card mx-auto max-w-3xl px-6 py-7 sm:px-9"
     >
-      <p className="scene-mono mb-6 text-center text-[0.6rem] uppercase tracking-[0.35em] text-white/40">
+      <p className="scene-mono mb-6 text-center text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
         Path
       </p>
 
@@ -76,7 +76,7 @@ export function Timeline({
                 <p
                   className={cn(
                     "scene-mono text-[0.6rem] uppercase tracking-[0.3em] transition-colors",
-                    reached ? "text-white/85" : "text-white/35",
+                    reached ? "text-white/85" : "text-white/55",
                     active && "text-[var(--scene-gold-bright)]",
                   )}
                 >

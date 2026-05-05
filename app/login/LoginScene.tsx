@@ -157,7 +157,7 @@ export function LoginScene() {
                 {/* Divider */}
                 <div className="flex items-center gap-3">
                   <span className="h-px flex-1 bg-white/10" />
-                  <span className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-white/35">
+                  <span className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
                     or
                   </span>
                   <span className="h-px flex-1 bg-white/10" />
@@ -203,7 +203,7 @@ export function LoginScene() {
                   </button>
                 </form>
 
-                <p className="scene-mono text-center text-[0.6rem] uppercase tracking-[0.3em] text-white/35">
+                <p className="scene-mono text-center text-[0.6rem] uppercase tracking-[0.3em] text-white/55">
                   Powered by Supabase Auth
                 </p>
               </div>

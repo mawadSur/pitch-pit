@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
@@ -70,8 +70,9 @@ export function RulesScene() {
   }, []);
 
   return (
-    <>
-      <MinimalistHeader />
+    <MotionConfig reducedMotion="user">
+      <>
+        <MinimalistHeader />
       <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         {/* Sticky TOC sidebar (desktop only) */}
         <nav
@@ -267,7 +268,8 @@ export function RulesScene() {
           <CornerSparkle size={26} />
         </div>
       </main>
-    </>
+      </>
+    </MotionConfig>
   );
 }
 
@@ -316,7 +318,7 @@ function RubricRow({
         <p className="text-base font-medium text-white sm:text-lg">{label}</p>
         <p className="scene-mono text-[0.7rem] tabular-nums text-white/55">
           <span className="text-[var(--scene-gold-bright)]">{points}</span>
-          <span className="text-white/40"> / 100</span>
+          <span className="text-white/55"> / 100</span>
         </p>
       </div>
       <p className="mt-1.5 text-sm leading-snug text-white/65">{body}</p>

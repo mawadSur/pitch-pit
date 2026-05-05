@@ -71,8 +71,9 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
   const counts = useMemo(() => countsByFilter(ideas), [ideas]);
 
   return (
-    <>
-      <MinimalistHeader />
+    <MotionConfig reducedMotion="user">
+      <>
+        <MinimalistHeader />
       <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam-narrow" />
@@ -141,7 +142,8 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
         </div>
 
       </main>
-    </>
+      </>
+    </MotionConfig>
   );
 }
 

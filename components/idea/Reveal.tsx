@@ -71,11 +71,11 @@ export function Reveal({
           >
             <Link
               href="/"
-              className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/40 transition-colors hover:text-white/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/55 transition-colors hover:text-white/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             >
               ← New pitch
             </Link>
-            <span className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-white/35">
+            <span className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
               Submitted · {dateLabel}
             </span>
           </motion.div>
@@ -177,7 +177,7 @@ export function Reveal({
             transition={{ duration: 0.6, delay: 1.85 }}
             className="scene-card mx-auto mt-10 max-w-3xl px-7 py-7 sm:px-9 sm:py-8"
           >
-            <p className="scene-mono mb-4 text-[0.6rem] uppercase tracking-[0.35em] text-white/40">
+            <p className="scene-mono mb-4 text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
               Reasoning
             </p>
             <p className="text-base leading-relaxed text-white/80 sm:text-lg">
@@ -192,7 +192,7 @@ export function Reveal({
             transition={{ duration: 0.6, delay: 2.0 }}
             className="mx-auto mt-10 max-w-3xl"
           >
-            <p className="scene-mono mb-4 text-[0.6rem] uppercase tracking-[0.35em] text-white/35">
+            <p className="scene-mono mb-4 text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
               Original pitch
             </p>
             <blockquote className="border-l border-[var(--scene-gold)]/45 pl-5 text-base leading-relaxed text-white/75 sm:text-lg">
@@ -264,14 +264,14 @@ export function Reveal({
           >
             <Link
               href="/"
-              className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/40 hover:text-white/85"
+              className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/55 hover:text-white/85"
             >
               Pitch another
             </Link>
             <span aria-hidden className="text-white/20">·</span>
             <Link
               href="/leaderboard"
-              className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/40 hover:text-white/85"
+              className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/55 hover:text-white/85"
             >
               Leaderboard
             </Link>
@@ -384,19 +384,19 @@ function ScoreReveal({
             filter: "blur(20px)",
           }}
         />
-        <p className="scene-mono mb-4 text-[0.6rem] uppercase tracking-[0.4em] text-white/40">
+        <p className="scene-mono mb-4 text-[0.6rem] uppercase tracking-[0.4em] text-white/55">
           Final score
         </p>
         <p className="scene-score-glow scene-mono relative text-[7rem] font-bold leading-none tabular-nums sm:text-[9rem]">
           {finalScore}
         </p>
-        <p className="scene-mono relative mt-3 text-[0.6rem] uppercase tracking-[0.4em] text-white/40">
+        <p className="scene-mono relative mt-3 text-[0.6rem] uppercase tracking-[0.4em] text-white/55">
           of one hundred
         </p>
         <p className="scene-mono relative mt-4 text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
           AI{" "}
           <span className="text-white/85 tabular-nums">{aiScore}</span>
-          <span className="text-white/35">/10</span>
+          <span className="text-white/55">/10</span>
           <span className="mx-2 text-white/25">·</span>
           <span className="text-white/85 tabular-nums">{voteCount}</span>{" "}
           {voteCount === 1 ? "vote" : "votes"}

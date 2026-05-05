@@ -169,7 +169,7 @@ export function Comments({
               />
             </label>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-white/35">
+              <p className="scene-mono text-[0.6rem] uppercase tracking-[0.3em] text-white/55">
                 {error ? (
                   <span className="text-red-300/85">{error}</span>
                 ) : (
@@ -387,7 +387,7 @@ function CommentRow({
             <p className="text-sm font-medium text-white">
               {comment.display_name ?? "guest"}
             </p>
-            <p className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/40">
+            <p className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
               {formatRelativeTime(comment.created_at)}
               {wasEdited && (
                 <>
@@ -426,7 +426,7 @@ function CommentRow({
                     type="button"
                     onClick={startEdit}
                     disabled={pending}
-                    className="text-white/35 transition-colors hover:text-white focus:text-white focus:outline-none disabled:opacity-50"
+                    className="text-white/55 transition-colors hover:text-white focus:text-white focus:outline-none disabled:opacity-50"
                   >
                     Edit
                   </button>

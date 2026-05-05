@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
 import { ShareMenu } from "@/components/idea/ShareMenu";
@@ -21,8 +21,9 @@ export type BuiltIdea = {
 
 export function GalleryScene({ ideas }: { ideas: BuiltIdea[] }) {
   return (
-    <>
-      <MinimalistHeader />
+    <MotionConfig reducedMotion="user">
+      <>
+        <MinimalistHeader />
       <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam-narrow" />
@@ -76,7 +77,8 @@ export function GalleryScene({ ideas }: { ideas: BuiltIdea[] }) {
         </div>
 
       </main>
-    </>
+      </>
+    </MotionConfig>
   );
 }
 
@@ -245,7 +247,7 @@ function EmptyGallery() {
       <p className="mx-auto mt-5 max-w-xl text-base italic text-white/65 sm:text-lg">
         No tribute has been built. The pedestal awaits the worthy.
       </p>
-      <p className="scene-mono mx-auto mt-3 max-w-xl text-[0.65rem] uppercase tracking-[0.3em] text-white/35">
+      <p className="scene-mono mx-auto mt-3 max-w-xl text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
         Earn a high score · be greenlit · watch your idea take form
       </p>
     </div>

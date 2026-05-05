@@ -134,7 +134,7 @@ export function IdeaCard({
                 "scene-mono inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.3em] transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-black",
                 tier === "fallen"
-                  ? "text-white/40 hover:text-white/75"
+                  ? "text-white/55 hover:text-white/75"
                   : "text-white/60 hover:text-[var(--scene-gold-bright)]",
               )}
             >
@@ -181,13 +181,13 @@ export function IdeaCard({
                 : tier === "silver"
                   ? "text-white"
                   : tier === "fallen"
-                    ? "text-white/40"
+                    ? "text-white/55"
                     : "text-white",
             )}
           >
             {finalDisplay}
           </span>
-          <span className="scene-mono mt-1 text-[0.5rem] uppercase tracking-[0.3em] text-white/35">
+          <span className="scene-mono mt-1 text-[0.5rem] uppercase tracking-[0.3em] text-white/55">
             of 100
           </span>
           <span className="scene-mono mt-3 flex items-center gap-1.5 text-[0.55rem] uppercase tracking-[0.25em] text-white/45">

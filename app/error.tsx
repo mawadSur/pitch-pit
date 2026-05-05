@@ -31,7 +31,7 @@ export default function Error({
           notified.
         </p>
         {error.digest && (
-          <p className="scene-mono mt-3 text-[0.6rem] uppercase tracking-[0.3em] text-white/35">
+          <p className="scene-mono mt-3 text-[0.6rem] uppercase tracking-[0.3em] text-white/55">
             ref · {error.digest}
           </p>
         )}

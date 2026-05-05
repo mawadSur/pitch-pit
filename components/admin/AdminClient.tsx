@@ -404,7 +404,7 @@ function CompletedTable({ rows }: { rows: AdminIdea[] }) {
                     {hostname(r.mvp_url)} ↗
                   </a>
                 ) : (
-                  <span className="text-white/35">—</span>
+                  <span className="text-white/55">—</span>
                 )}
               </td>
               <td className="border-b border-white/4 px-4 py-3 scene-mono text-[0.7rem] text-white/55">

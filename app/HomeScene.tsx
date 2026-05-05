@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { HeroPanel } from "@/components/scene/HeroPanel";
 import { CountdownClock } from "@/components/scene/CountdownClock";
@@ -16,8 +16,9 @@ const FRAMES_2_COUNT = 90;
 
 export function HomeScene() {
   return (
-    <>
-      <MinimalistHeader />
+    <MotionConfig reducedMotion="user">
+      <>
+        <MinimalistHeader />
 
       <main id="main" className="scene relative bg-black">
         {/* Panel 1 — Capture. h-[200vh] gives the canvas a full 100vh of
@@ -75,7 +76,8 @@ export function HomeScene() {
           <CornerSparkle size={26} />
         </div>
       </main>
-    </>
+      </>
+    </MotionConfig>
   );
 }
 
@@ -89,12 +91,36 @@ export function HomeScene() {
  *   ~58% real input    ← overlays the image's input shape
  *   ~78% subtitle / CTAs
  * ────────────────────────────────────────────────────────────────── */
+const PITCH_DRAFT_KEY = "pitch-pit:home-pitch-draft";
+
 function Panel1() {
   const router = useRouter();
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const turnstileRef = useRef<TurnstileHandle | null>(null);
+
+  // Seed from localStorage on mount. Initial state stays "" so server-rendered
+  // markup matches client first paint — we only hydrate the draft after.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PITCH_DRAFT_KEY);
+      if (saved && saved.length > 0) setText(saved);
+    } catch {
+      // localStorage may be unavailable (private mode, disabled storage, SSR
+      // edge cases). Silently ignore — draft persistence is best-effort.
+    }
+  }, []);
+
+  // Mirror every change to localStorage. Strings ≤1500 chars; sync write is
+  // cheap enough that a debounce buys nothing.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PITCH_DRAFT_KEY, text);
+    } catch {
+      // ignore — see note above
+    }
+  }, [text]);
 
   function deriveTitle(input: string): string {
     const trimmed = input.trim();
@@ -150,6 +176,13 @@ function Panel1() {
           throw new Error(err.error ?? "Submission failed.");
         }
         const { id } = (await res.json()) as { id: string };
+        // Submission persisted server-side — drop the local draft so a
+        // subsequent visit starts on a clean textarea.
+        try {
+          window.localStorage.removeItem(PITCH_DRAFT_KEY);
+        } catch {
+          // ignore
+        }
         router.push(`/idea/${id}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -231,7 +264,7 @@ function Panel1() {
             {length === 0 && !pending && (
               <span
                 aria-hidden
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-white/35"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-white/55"
               >
                 Pitch your idea…
               </span>
@@ -553,7 +586,7 @@ function WeeklyStakes() {
           ))}
         </div>
 
-        <p className="scene-mono mt-10 text-xs uppercase tracking-[0.3em] text-white/40">
+        <p className="scene-mono mt-10 text-xs uppercase tracking-[0.3em] text-white/55">
           Full rubric and edge cases on the{" "}
           <Link href="/rules" className="text-white/70 underline-offset-4 hover:text-white hover:underline">
             rules page →
@@ -738,7 +771,7 @@ function ScrollCue() {
   return (
     <span
       aria-hidden
-      className="scroll-cue scene-mono inline-flex items-center gap-2 text-[0.55rem] uppercase tracking-[0.4em] text-white/35"
+      className="scroll-cue scene-mono inline-flex items-center gap-2 text-[0.55rem] uppercase tracking-[0.4em] text-white/55"
     >
       Scroll <span className="text-base">↓</span>
     </span>

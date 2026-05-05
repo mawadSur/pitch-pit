@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
 import { ShareMenu } from "@/components/idea/ShareMenu";
@@ -77,8 +77,9 @@ export function LeaderboardScene({
   }, [router]);
 
   return (
-    <>
-      <MinimalistHeader />
+    <MotionConfig reducedMotion="user">
+      <>
+        <MinimalistHeader />
       <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam-narrow" />
@@ -156,7 +157,8 @@ export function LeaderboardScene({
         </div>
 
       </main>
-    </>
+      </>
+    </MotionConfig>
   );
 }
 
@@ -216,7 +218,7 @@ function SearchBox({ initial }: { initial: string }) {
       <div className="relative w-full max-w-xl">
         <span
           aria-hidden
-          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/40"
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/55"
         >
           <svg
             width="18"
@@ -240,7 +242,7 @@ function SearchBox({ initial }: { initial: string }) {
           onChange={onChange}
           placeholder="Search ideas by title or pitch text…"
           aria-label="Search ideas"
-          className="w-full rounded-full border border-white/12 bg-white/[0.03] py-3 pl-11 pr-12 text-base text-white placeholder:text-white/35 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
+          className="w-full rounded-full border border-white/12 bg-white/[0.03] py-3 pl-11 pr-12 text-base text-white placeholder:text-white/55 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
         />
         {value.length > 0 && (
           <button
@@ -423,11 +425,11 @@ function PodiumCard({
           >
             {idea.final_score ?? 0}
           </span>
-          <span className="scene-mono ml-1 text-[0.55rem] uppercase tracking-[0.3em] text-white/40">
+          <span className="scene-mono ml-1 text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
             / 100
           </span>
         </span>
-        <span className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/40">
+        <span className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
           AI {idea.score} · {idea.vote_count} votes
         </span>
         <Link
@@ -457,7 +459,7 @@ function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
   return (
     <li>
       <div className="group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.025] focus-within:bg-white/[0.04] sm:gap-6 sm:px-7">
-        <span className="scene-mono w-8 text-right text-sm tabular-nums text-white/40">
+        <span className="scene-mono w-8 text-right text-sm tabular-nums text-white/55">
           {String(rank).padStart(2, "0")}
         </span>
         <Link
@@ -471,12 +473,12 @@ function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
             {idea.handle ?? "anonymous"}
           </span>
         </Link>
-        <span className="scene-mono hidden tabular-nums text-[0.6rem] uppercase tracking-[0.3em] text-white/40 sm:inline">
+        <span className="scene-mono hidden tabular-nums text-[0.6rem] uppercase tracking-[0.3em] text-white/55 sm:inline">
           {idea.vote_count} votes
         </span>
         <span className="scene-mono w-14 text-right tabular-nums text-base font-semibold text-[var(--scene-gold-bright)] sm:w-16 sm:text-lg">
           {idea.final_score ?? 0}
-          <span className="ml-0.5 text-[0.55rem] text-white/35">/100</span>
+          <span className="ml-0.5 text-[0.55rem] text-white/55">/100</span>
         </span>
         <ShareMenu
           idea={{
