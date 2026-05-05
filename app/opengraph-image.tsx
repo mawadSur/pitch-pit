@@ -90,7 +90,7 @@ export default function OpengraphImage() {
             fontFamily: "monospace",
           }}
         >
-          enter the arena · pitch-pit.app
+          enter the arena · pitchpit.app
         </div>
       </div>
     ),

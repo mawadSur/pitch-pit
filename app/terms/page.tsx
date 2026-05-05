@@ -66,10 +66,10 @@ export default function TermsPage() {
               We can remove submissions that violate these terms or moderation
               policy at our discretion. If you think we got it wrong, email{" "}
               <a
-                href="mailto:hello@pitch-pit.app"
+                href="mailto:hello@pitchpit.app"
                 className="text-[var(--scene-gold-bright)] underline-offset-4 hover:underline"
               >
-                hello@pitch-pit.app
+                hello@pitchpit.app
               </a>
               .
             </p>

@@ -10,7 +10,7 @@
 
 Founders submit a 60–1500 character pitch. Claude Sonnet 4.6 rates it 1–10 across six dimensions (demand, wedge, founder edge, feasibility, defensibility, distribution) and produces a structured verdict. The community votes for a week. Final score = 50% AI + 50% community, normalized 0–100. The pit closes Friday at midnight EDT, and the top idea each week gets built and shipped under the founder's name.
 
-Live at **[pitch-pit.app](https://pitch-pit.app)** ([Vercel preview](https://pitch-pit.vercel.app)).
+Live at **[pitchpit.app](https://pitchpit.app)** ([Vercel preview](https://pitch-pit.vercel.app)).
 
 ## Stack
 
@@ -175,4 +175,4 @@ Migrations: `supabase db push` against your remote Supabase project. Migrations 
 
 ## License
 
-Source available under the terms in [LICENSE](LICENSE) (if present). All submitted pitches remain the property of their authors — the platform takes a non-exclusive license to display them publicly. See [/terms](https://pitch-pit.app/terms).
+Source available under the terms in [LICENSE](LICENSE) (if present). All submitted pitches remain the property of their authors — the platform takes a non-exclusive license to display them publicly. See [/terms](https://pitchpit.app/terms).

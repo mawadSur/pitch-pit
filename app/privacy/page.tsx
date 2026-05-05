@@ -75,10 +75,10 @@ export default function PrivacyPage() {
               You can request deletion of your account and all linked data at
               any time by emailing{" "}
               <a
-                href="mailto:hello@pitch-pit.app"
+                href="mailto:hello@pitchpit.app"
                 className="text-[var(--scene-gold-bright)] underline-offset-4 hover:underline"
               >
-                hello@pitch-pit.app
+                hello@pitchpit.app
               </a>
               . Public idea pages stay up unless you ask us to remove them.
             </p>

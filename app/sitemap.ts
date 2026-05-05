@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitch-pit.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
 
 // Static, public-facing routes. Admin / api / login excluded.
 const STATIC_ROUTES = [

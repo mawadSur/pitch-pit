@@ -8,7 +8,7 @@ import type { Comment } from "@/components/idea/Comments";
 export const dynamic = "force-dynamic";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitch-pit.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
 
 const SELECT =
   "id,user_id,title,pitch,handle,score,final_score,vote_count,verdict,strengths,concerns,reasoning,build_recommended,status,mvp_url,screenshot_url,created_at";

@@ -94,10 +94,10 @@ export default function AboutPage() {
               pitch-pit is a side project run by one engineer with too many
               ideas in their own notes app. Reach me at{" "}
               <a
-                href="mailto:hello@pitch-pit.app"
+                href="mailto:hello@pitchpit.app"
                 className="text-[var(--scene-gold-bright)] underline-offset-4 hover:underline"
               >
-                hello@pitch-pit.app
+                hello@pitchpit.app
               </a>
               .
             </p>

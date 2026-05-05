@@ -12,7 +12,7 @@ import "./globals.css";
 // before this change even though it never used them).
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitch-pit.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
