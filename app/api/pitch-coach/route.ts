@@ -3,6 +3,7 @@ import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
 import { createClient as createCookieClient } from "@/lib/supabase/server";
 import { renderFollowups, renderEnhanced } from "@/lib/coach/render";
+import { limitCoachCalls } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +42,34 @@ export async function POST(req: NextRequest) {
         redirect_to: `/login?next=${encodeURIComponent("/?resume=1")}`,
       },
       { status: 401 },
+    );
+  }
+
+  // ─── per-user rate limit ─────────────────────────────────
+  // 20 calls / 10 min / user. Each call is a Sonnet round-trip, and
+  // a single user iterating on a draft normally needs 5–10 (followup
+  // refresh + polish + maybe a re-polish). 20 covers heavy use without
+  // letting one account spam tokens.
+  const verdict = await limitCoachCalls(userId);
+  if (!verdict.success) {
+    const retryAfter = Math.max(
+      1,
+      Math.ceil((verdict.reset - Date.now()) / 1000),
+    );
+    return NextResponse.json(
+      {
+        error: `Coach is taking a breather. Try again in ${Math.ceil(retryAfter / 60)} minutes.`,
+        category: "rate-limit",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfter),
+          "X-RateLimit-Limit": String(verdict.limit),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.floor(verdict.reset / 1000)),
+        },
+      },
     );
   }
 

@@ -16,6 +16,14 @@ let cookieState: CookieMock = {};
 const renderFollowupsMock = vi.fn<(pitch: string) => Promise<string[]>>();
 const renderEnhancedMock = vi.fn<(pitch: string) => Promise<string>>();
 const captureExceptionMock = vi.fn();
+const limitCoachCallsMock = vi.fn<
+  (userId: string) => Promise<{
+    success: boolean;
+    remaining: number;
+    reset: number;
+    limit: number;
+  }>
+>();
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: () => ({
@@ -34,6 +42,10 @@ vi.mock("@/lib/coach/render", () => ({
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: (...args: unknown[]) => captureExceptionMock(...args),
+}));
+
+vi.mock("@/lib/ratelimit", () => ({
+  limitCoachCalls: (userId: string) => limitCoachCallsMock(userId),
 }));
 
 // Import AFTER mocks are declared.
@@ -65,6 +77,15 @@ describe("POST /api/pitch-coach", () => {
     renderFollowupsMock.mockReset();
     renderEnhancedMock.mockReset();
     captureExceptionMock.mockReset();
+    limitCoachCallsMock.mockReset();
+    // Default: limiter passes. Tests that exercise the rate-limited
+    // path override this in their own setup.
+    limitCoachCallsMock.mockResolvedValue({
+      success: true,
+      remaining: 19,
+      reset: Date.now() + 600_000,
+      limit: 20,
+    });
   });
 
   it("returns 401 when not signed in", async () => {
@@ -189,5 +210,38 @@ describe("POST /api/pitch-coach", () => {
     expect(res.status).toBe(200);
     expect(renderFollowupsMock).toHaveBeenCalledTimes(1);
     expect(renderFollowupsMock).toHaveBeenCalledWith(VALID_PITCH);
+  });
+
+  it("returns 429 with Retry-After when the per-user rate limit fires", async () => {
+    cookieState.user = { id: "user-a" };
+    const reset = Date.now() + 5 * 60 * 1000;
+    limitCoachCallsMock.mockResolvedValueOnce({
+      success: false,
+      remaining: 0,
+      reset,
+      limit: 20,
+    });
+    const res = await POST(
+      makeReq({ pitch: VALID_PITCH, action: "followups" }) as never,
+    );
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBeTruthy();
+    expect(res.headers.get("X-RateLimit-Limit")).toBe("20");
+    expect(res.headers.get("X-RateLimit-Remaining")).toBe("0");
+    const body = await res.json();
+    expect(body.category).toBe("rate-limit");
+    expect(body.error).toMatch(/breather|try again/i);
+    // The limiter check happens BEFORE body validation and before the
+    // Anthropic dispatch, so the render fns should not have been called.
+    expect(renderFollowupsMock).not.toHaveBeenCalled();
+    expect(renderEnhancedMock).not.toHaveBeenCalled();
+  });
+
+  it("rate limit is keyed by userId, not pitch — same user gets one bucket", async () => {
+    cookieState.user = { id: "user-a" };
+    renderFollowupsMock.mockResolvedValue([]);
+    await POST(makeReq({ pitch: VALID_PITCH, action: "followups" }) as never);
+    expect(limitCoachCallsMock).toHaveBeenCalledTimes(1);
+    expect(limitCoachCallsMock).toHaveBeenCalledWith("user-a");
   });
 });
