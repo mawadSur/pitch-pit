@@ -8,6 +8,7 @@ import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
 import { ShareMenu } from "@/components/idea/ShareMenu";
 import { type LeaderboardIdea } from "@/lib/idea-types";
+import { JUDGES } from "@/lib/judges";
 import { createClient } from "@/lib/supabase/client";
 import { formatVoteCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -565,9 +566,12 @@ function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
             {idea.handle ?? "anonymous"}
           </span>
         </Link>
-        <span className="scene-mono hidden tabular-nums text-[0.65rem] uppercase tracking-[0.3em] text-white/55 sm:inline">
-          {formatVoteCount(idea.vote_count)} votes
-        </span>
+        <div className="hidden flex-col items-end gap-1 sm:flex">
+          <span className="scene-mono tabular-nums text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
+            {formatVoteCount(idea.vote_count)} votes
+          </span>
+          <JudgeBreakdown scores={idea.judge_scores} />
+        </div>
         <span className="scene-mono w-14 text-right tabular-nums text-base font-semibold text-[var(--scene-gold-bright)] sm:w-16 sm:text-lg">
           {idea.final_score ?? 0}
           <span className="ml-0.5 text-[0.55rem] text-white/55">/100</span>
@@ -586,6 +590,54 @@ function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
         />
       </div>
     </li>
+  );
+}
+
+/* ════════════════════════ JudgeBreakdown ═══════════════════════════
+ * Tiny per-judge score row: `G 8 · V 7 · R 9` style. Initials come from
+ * the judge id (first char uppercased) so they map deterministically:
+ * G/V/R for Gstack/Vee/Robbins. JUDGES order is the canonical sort.
+ *
+ * Renders only when at least 2 judges have a result — defensive against
+ * older ideas (judge_scores: null) and partial errors (one judge missed).
+ * ────────────────────────────────────────────────────────────────────── */
+function JudgeBreakdown({
+  scores,
+}: {
+  scores: LeaderboardIdea["judge_scores"];
+}) {
+  if (!scores) return null;
+  type Entry = { id: string; initial: string; score: number };
+  const entries: Entry[] = [];
+  for (const judge of JUDGES) {
+    const result = scores[judge.id];
+    if (!result) continue;
+    entries.push({
+      id: judge.id,
+      initial: judge.id[0].toUpperCase(),
+      score: result.score,
+    });
+  }
+  if (entries.length < 2) return null;
+  return (
+    <dl className="hidden sm:flex">
+      <dt className="sr-only">Per-judge scores</dt>
+      <dd className="scene-mono flex items-center gap-1.5 text-[0.55rem] uppercase tracking-[0.16em] tabular-nums text-white/55">
+        {entries.map((entry, i) => (
+          <span key={entry.id} className="flex items-center gap-1.5">
+            {i > 0 && (
+              <span aria-hidden className="text-[var(--scene-gold)]/55">
+                ·
+              </span>
+            )}
+            <span>
+              {entry.initial}{" "}
+              <span className="text-[var(--scene-gold)]">{entry.score}</span>
+            </span>
+          </span>
+        ))}
+      </dd>
+    </dl>
   );
 }
 
