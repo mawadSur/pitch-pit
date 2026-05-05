@@ -28,7 +28,10 @@ declare global {
           sitekey: string;
           size?: "normal" | "compact" | "invisible" | "flexible";
           callback?: (token: string) => void;
-          "error-callback"?: () => void;
+          // Cloudflare passes an error code string to error-callback
+          // (e.g. "100xxx" init/domain, "200xxx" network). Surface it
+          // so we can tell domain-allowlist issues from network blocks.
+          "error-callback"?: (errorCode?: string) => void;
           "expired-callback"?: () => void;
           "before-interactive-callback"?: () => void;
           appearance?: "always" | "execute" | "interaction-only";
@@ -47,11 +50,33 @@ declare global {
 const SCRIPT_SRC =
   "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit";
 
+// How long to wait for the invisible widget to register before we give up.
+// Cloudflare's script normally loads + renders in well under a second; 5s
+// is enough headroom for slow networks without leaving the user staring.
+const READY_TIMEOUT_MS = 5000;
+
 export type TurnstileHandle = {
   execute: () => Promise<string>;
   reset: () => void;
   enabled: boolean;
 };
+
+// Diagnostic message helper — translates raw Cloudflare error codes (or
+// our own readiness errors) into something the user can act on.
+function diagnoseError(code: string | undefined): string {
+  if (!code) return "Captcha verification failed. Refresh and try again.";
+  if (code.startsWith("100") || code.startsWith("110")) {
+    // 100xxx = init / domain not allowed; 110xxx = invalid params
+    return "Captcha is misconfigured for this site. Try again in a moment.";
+  }
+  if (code.startsWith("200")) {
+    return "Captcha couldn't reach Cloudflare — check your connection or ad blocker.";
+  }
+  if (code.startsWith("300") || code.startsWith("600")) {
+    return "Captcha challenge failed. Try again.";
+  }
+  return `Captcha verification failed (${code}). Refresh and try again.`;
+}
 
 export function Turnstile({
   onVerify,
@@ -67,9 +92,22 @@ export function Turnstile({
   // The current execute() promise resolver. Re-armed each call.
   const pendingResolveRef = useRef<((token: string) => void) | null>(null);
   const pendingRejectRef = useRef<((err: Error) => void) | null>(null);
+  // Resolves once the widget has been rendered and has a usable widget id.
+  // execute() awaits this before calling window.turnstile.execute().
+  const readyPromiseRef = useRef<Promise<void> | null>(null);
+  const readyResolveRef = useRef<(() => void) | null>(null);
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const enabled = !!siteKey;
+
+  // Initialize the readiness promise once per component lifecycle. Has to
+  // happen synchronously in render so execute() can grab it before the
+  // first render-phase effect lands.
+  if (enabled && !readyPromiseRef.current) {
+    readyPromiseRef.current = new Promise<void>((resolve) => {
+      readyResolveRef.current = resolve;
+    });
+  }
 
   useEffect(() => {
     // Always populate the imperative handle, even when disabled — call sites
@@ -79,8 +117,27 @@ export function Turnstile({
         enabled,
         execute: async () => {
           if (!enabled) return "";
+          // Wait for the widget to register, with a hard ceiling so the
+          // form doesn't hang forever if the script never loaded
+          // (ad blocker, CSP, network policy).
+          if (readyPromiseRef.current) {
+            const timeout = new Promise<never>((_, reject) =>
+              setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      "Captcha didn't load in time — disable ad blockers or refresh the page.",
+                    ),
+                  ),
+                READY_TIMEOUT_MS,
+              ),
+            );
+            await Promise.race([readyPromiseRef.current, timeout]);
+          }
           if (!widgetIdRef.current || !window.turnstile) {
-            throw new Error("Turnstile not ready yet");
+            throw new Error(
+              "Captcha didn't initialize — disable ad blockers or refresh the page.",
+            );
           }
           return new Promise<string>((resolve, reject) => {
             pendingResolveRef.current = resolve;
@@ -115,9 +172,12 @@ export function Turnstile({
           pendingResolveRef.current = null;
           pendingRejectRef.current = null;
         },
-        "error-callback": () => {
+        "error-callback": (errorCode?: string) => {
+          // Surface Cloudflare's error code in browser console so prod
+          // failures can be diagnosed without backend access.
+          console.warn("[turnstile] error-callback", errorCode);
           onError?.();
-          pendingRejectRef.current?.(new Error("Turnstile error"));
+          pendingRejectRef.current?.(new Error(diagnoseError(errorCode)));
           pendingResolveRef.current = null;
           pendingRejectRef.current = null;
         },
@@ -126,7 +186,11 @@ export function Turnstile({
           // a fresh one, no further action needed here.
         },
       });
-      if (id) widgetIdRef.current = id;
+      if (id) {
+        widgetIdRef.current = id;
+        readyResolveRef.current?.();
+        readyResolveRef.current = null;
+      }
     };
 
     // Inject the script once per page-load. The `onloadTurnstileCallback`
@@ -143,6 +207,15 @@ export function Turnstile({
         s.src = SCRIPT_SRC;
         s.async = true;
         s.defer = true;
+        // If the script itself fails to load (CSP, network block,
+        // ad blocker), the readiness promise stays pending and execute()
+        // hits the timeout path — but we also log here so a quick
+        // browser-console glance reveals the cause.
+        s.onerror = () => {
+          console.warn(
+            "[turnstile] script load failed — challenges.cloudflare.com may be blocked",
+          );
+        };
         document.head.appendChild(s);
       }
     }

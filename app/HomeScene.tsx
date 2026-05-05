@@ -165,9 +165,14 @@ function Panel1() {
         let turnstileToken = "";
         try {
           turnstileToken = (await turnstileRef.current?.execute()) ?? "";
-        } catch {
+        } catch (e) {
+          // Surface the diagnostic message produced by Turnstile.tsx
+          // (timeout / cloudflare error code / load failure). Fall back
+          // to the generic line only if the error somehow isn't an Error.
           throw new Error(
-            "Couldn't verify you're human. Refresh the page and try again.",
+            e instanceof Error
+              ? e.message
+              : "Couldn't verify you're human. Refresh the page and try again.",
           );
         }
 
