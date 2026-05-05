@@ -51,7 +51,7 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
   - But `LeaderboardScene.tsx` ListRow share icon (`h-9 w-9` = 36×36) — under iOS 44pt minimum
   - `IdeaCard` in feed — share icon also 36×36
   - Footer links in `SiteFooter.tsx` are tiny (`text-[0.6rem]`) and on a single line — touch target may be under 44pt vertical
-- [ ] **A11y-6. Color contrast on muted text** — `text-white/40` (≈40% opacity) over `#0a0a0a` ≈ 3.1:1 contrast. This is below WCAG AA (4.5:1) for normal-size text. Many places use this for timestamps, hints. Tighten to at least `text-white/55` for any text that conveys meaningful info.
+- [x] **A11y-6. Color contrast on muted text** — `text-white/40` (≈40% opacity) over `#0a0a0a` ≈ 3.1:1 contrast. This is below WCAG AA (4.5:1) for normal-size text. Many places use this for timestamps, hints. Tighten to at least `text-white/55` for any text that conveys meaningful info.
 - [ ] **A11y-7. `<button>`s missing visible-focus styling on some pages** — `app/admin/AdminClient.tsx` rows may have only the default browser ring depending on tailwind reset. Audit pass needed.
 - [ ] **A11y-8. Skip link only jumps to `#main`** — works, but the `<main>` itself isn't always focusable (`tabindex="-1"`). Adding `tabindex="-1"` lets the skip target receive programmatic focus.
 
@@ -101,7 +101,7 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 
 ## 🟡 Priority 7 · Animation (MEDIUM)
 
-- [ ] **Anim-1. MotionConfig not applied uniformly** — only `Reveal.tsx` wraps in `<MotionConfig reducedMotion="user">`. The home scene, leaderboard, feed, etc. don't, meaning users with `prefers-reduced-motion: reduce` still see full animations on those pages.
+- [x] **Anim-1. MotionConfig not applied uniformly** — only `Reveal.tsx` wraps in `<MotionConfig reducedMotion="user">`. The home scene, leaderboard, feed, etc. don't, meaning users with `prefers-reduced-motion: reduce` still see full animations on those pages.
 - [ ] **Anim-2. Some animations use `width`/`height`** — should be `transform` only. Spot-check needed in `Hourglass.tsx`, frame-sequence canvas resizes (acceptable, that's a one-off resize).
 - [ ] **Anim-3. Scroll-pinned hero on mobile still has the canvas DOM** — even though canvas is disabled (`canvasActive=false` on mobile), the canvas element renders briefly before the matchMedia useEffect fires. Could cause a subtle flash. Initial state should be `largeEnough = false` then upgrade after media query confirms.
 
@@ -110,7 +110,7 @@ Comprehensive audit applying the priority 1-10 rule categories to every public s
 - [ ] **Form-1. Missing `autoComplete` attributes** — only `app/login/LoginScene.tsx:174` has it. The pitch textarea, comment textarea, and admin URL fields all lack autocomplete hints. Even setting `autoComplete="off"` is better than nothing for explicitly non-autofill inputs (prevents the browser from suggesting irrelevant data).
 - [ ] **Form-2. No skeleton states for comments while loading** — `Comments.tsx` shows nothing while initial render is happening (server-rendered), but the realtime subscription has a brief lag if the user posts while offline-then-online. Show a "posting…" placeholder row.
 - [ ] **Form-3. Magic-link form has no helper text about expected delivery time** — `LoginScene.tsx`. Users wonder whether to wait or refresh. Add "usually arrives in under 30 seconds — check spam if not".
-- [ ] **Form-4. Submit form doesn't preserve text on auth-redirect** — if a user types a pitch, gets booted to /login (when the IP rate limit triggers somehow), and comes back, their typed text is gone. Persist to localStorage on each keystroke, restore on mount.
+- [x] **Form-4. Submit form doesn't preserve text on auth-redirect** — if a user types a pitch, gets booted to /login (when the IP rate limit triggers somehow), and comes back, their typed text is gone. Persist to localStorage on each keystroke, restore on mount.
 - [ ] **Form-5. No "edited" state for comment edits in flight** — when user clicks Save, there's a `pending` state on the button but no visible feedback elsewhere. Add an opacity dip on the comment row while the PATCH is in flight.
 
 ## 🟠 Priority 9 · Navigation Patterns (HIGH)
