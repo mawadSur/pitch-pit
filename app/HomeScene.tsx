@@ -13,6 +13,7 @@ import { SUBMIT_LIMITS } from "@/lib/score-schema";
 
 const FRAMES_1_COUNT = 91;
 const FRAMES_2_COUNT = 90;
+const FRAMES_3_COUNT = 90;
 
 export function HomeScene() {
   return (
@@ -51,10 +52,16 @@ export function HomeScene() {
           <Panel2 />
         </HeroPanel>
 
-        {/* Panel 3 — Winner. Image only, single viewport — no extra
-            scroll-padding since there's no animation to play out. */}
+        {/* Panel 3 — Winner. Same 200vh treatment as the earlier panels:
+            scrubs 90 frames from /scene/frames-3 (extracted from
+            public/scene/last.mp4) across the pinned portion. The at-rest
+            image is the first frame of the sequence so the panel→canvas
+            handoff is byte-identical at the boundary. */}
         <HeroPanel
-          image="/scene/winbuiltapp.png"
+          image="/scene/frames-3/001.jpg"
+          framesPath="/scene/frames-3"
+          frameCount={FRAMES_3_COUNT}
+          heightVh={200}
           alt=""
           tone="dark"
           id="rules"
