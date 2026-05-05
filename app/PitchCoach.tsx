@@ -22,9 +22,50 @@ const MIN_LEN_FOR_COACH = 80;
 
 type CheckResult = { label: string; passed: boolean; hint: string };
 
+// Forbidden words pulled from the judge system prompts (Gstack, Vee,
+// Robbins). All three explicitly downgrade pitches that lean on these,
+// so flagging them during typing saves the user from a low score.
+const BUZZWORDS = [
+  "synergy",
+  "leverage",
+  "streamline",
+  "innovative",
+  "disrupt",
+  "revolutionize",
+  "paradigm",
+  "ecosystem",
+  "holistic",
+  "seamless",
+  "robust",
+  "scalable",
+  "frictionless",
+  "cutting-edge",
+  "next-gen",
+  "growth-hack",
+  "viral coefficient",
+  "manifest",
+  "vibration",
+  "abundance",
+];
+const BUZZWORD_RE = new RegExp(
+  `\\b(${BUZZWORDS.map((w) => w.replace(/-/g, "[- ]?")).join("|")})\\b`,
+  "i",
+);
+
+function detectBuzzwords(text: string): string[] {
+  const found = new Set<string>();
+  const re = new RegExp(BUZZWORD_RE, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    found.add(m[0].toLowerCase());
+  }
+  return Array.from(found);
+}
+
 function runChecks(text: string): CheckResult[] {
   const t = text.toLowerCase();
   const len = text.trim().length;
+  const detectedBuzzwords = detectBuzzwords(text);
   return [
     {
       label: "Names a specific user",
@@ -59,6 +100,17 @@ function runChecks(text: string): CheckResult[] {
       label: "Length is in range (60–1500)",
       hint: "Tight enough to read, deep enough to judge.",
       passed: len >= 60 && len <= 1500,
+    },
+    {
+      // The three judges all downgrade pitches that lean on buzzwords.
+      // Catching them during typing saves a real point off the score.
+      label: detectedBuzzwords.length
+        ? `Buzzwords spotted — drop ${detectedBuzzwords.slice(0, 3).join(", ")}${
+            detectedBuzzwords.length > 3 ? "…" : ""
+          }`
+        : "Avoids judge-flagged buzzwords",
+      hint: "Concrete verbs beat 'synergy', 'leverage', 'disrupt'.",
+      passed: detectedBuzzwords.length === 0,
     },
   ];
 }
