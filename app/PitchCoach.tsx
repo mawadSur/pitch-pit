@@ -341,21 +341,28 @@ export function PitchCoach({
                   ↘ Polished version
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
+                  <div className="flex min-w-0 flex-col">
                     <p className="scene-mono mb-1.5 text-[0.55rem] uppercase tracking-[0.3em] text-white/45">
                       Yours
                     </p>
-                    <p className="whitespace-pre-wrap text-[0.78rem] leading-relaxed text-white/65 line-clamp-[10]">
-                      {trimmed}
-                    </p>
+                    {/* Independently scrollable so a long pitch doesn't
+                        truncate or push the diff card out of view. Capped
+                        height keeps the side-by-side comparison usable. */}
+                    <div className="max-h-64 overflow-y-auto pr-2">
+                      <p className="whitespace-pre-wrap text-[0.78rem] leading-relaxed text-white/65">
+                        {trimmed}
+                      </p>
+                    </div>
                   </div>
-                  <div>
+                  <div className="flex min-w-0 flex-col">
                     <p className="scene-mono mb-1.5 text-[0.55rem] uppercase tracking-[0.3em] text-[var(--scene-gold-bright)]">
                       Polished
                     </p>
-                    <p className="whitespace-pre-wrap text-[0.78rem] leading-relaxed text-white/95 line-clamp-[10]">
-                      {enhanced}
-                    </p>
+                    <div className="max-h-64 overflow-y-auto pr-2">
+                      <p className="whitespace-pre-wrap text-[0.78rem] leading-relaxed text-white/95">
+                        {enhanced}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 border-t border-[var(--scene-gold)]/20 pt-3">

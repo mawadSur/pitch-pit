@@ -153,6 +153,15 @@ export function Reveal({
             <p className="mx-auto max-w-2xl text-xl font-light italic leading-snug text-white/90 sm:text-2xl">
               &ldquo;{idea.verdict}&rdquo;
             </p>
+            {/* Lead-reviewer attribution. Only shown for ideas scored under
+                the three-judge flow — legacy single-judge ideas don't have
+                judge_scores populated, so we leave the verdict unattributed
+                rather than misleadingly tagging them. */}
+            {idea.judge_scores?.gstack && (
+              <p className="scene-mono mt-4 text-[0.6rem] uppercase tracking-[0.35em] text-white/45">
+                — Gstack · lead reviewer
+              </p>
+            )}
           </motion.div>
 
           {/* community vote + share */}
