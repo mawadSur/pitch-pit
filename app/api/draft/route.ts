@@ -157,6 +157,9 @@ export async function POST(req: NextRequest) {
   // is fine — they're loading their own pitch on the way to evaluation).
   const accessToken = randomBytes(16).toString("hex");
 
+  // Spread request_id only when present so the insert stays compatible
+  // with environments that haven't yet applied migration 011 (the column
+  // was added after 010). PostgREST rejects unknown keys even when null.
   const { data: row, error: dbErr } = await supabase
     .from("draft_pitches")
     .insert({
@@ -165,7 +168,7 @@ export async function POST(req: NextRequest) {
       title,
       pitch,
       handle: handle && handle.length > 0 ? handle : null,
-      request_id: request_id ?? null,
+      ...(request_id ? { request_id } : {}),
     })
     .select("id, access_token")
     .single();
