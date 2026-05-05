@@ -35,39 +35,72 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
 
   // Realtime subscription: refresh state whenever votes change for this idea.
   // Skips refresh if a vote-toggle is in flight (we trust the optimistic state).
+  // Perf-4: pause the channel while the tab is hidden so we don't burn
+  // Supabase bandwidth on backgrounded tabs; re-subscribe on visibility return.
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`votes-${ideaId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "votes",
-          filter: `idea_id=eq.${ideaId}`,
-        },
-        () => {
-          // Re-fetch authoritative state and flash the count
-          fetch(`/api/vote?ideaId=${encodeURIComponent(ideaId)}`)
-            .then((r) => r.json())
-            .then((data) => {
-              setVoteCount(data.voteCount ?? 0);
-              setUserHasVoted(!!data.userHasVoted);
-              setFlash(true);
-              if (flashTimeoutRef.current)
-                window.clearTimeout(flashTimeoutRef.current);
-              flashTimeoutRef.current = window.setTimeout(
-                () => setFlash(false),
-                650,
-              );
-            })
-            .catch(() => {});
-        },
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    function refresh() {
+      fetch(`/api/vote?ideaId=${encodeURIComponent(ideaId)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setVoteCount(data.voteCount ?? 0);
+          setUserHasVoted(!!data.userHasVoted);
+          setFlash(true);
+          if (flashTimeoutRef.current)
+            window.clearTimeout(flashTimeoutRef.current);
+          flashTimeoutRef.current = window.setTimeout(
+            () => setFlash(false),
+            650,
+          );
+        })
+        .catch(() => {});
+    }
+
+    function subscribe() {
+      if (channel) return;
+      channel = supabase
+        .channel(`votes-${ideaId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "votes",
+            filter: `idea_id=eq.${ideaId}`,
+          },
+          refresh,
+        )
+        .subscribe();
+    }
+
+    function unsubscribe() {
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+    }
+
+    function handleVisibility() {
+      if (document.visibilityState === "hidden") {
+        unsubscribe();
+      } else {
+        // Coming back from hidden — refetch in case votes changed
+        // while we weren't listening, then resubscribe.
+        refresh();
+        subscribe();
+      }
+    }
+
+    if (typeof document === "undefined" || document.visibilityState !== "hidden") {
+      subscribe();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
-      supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      unsubscribe();
       if (flashTimeoutRef.current)
         window.clearTimeout(flashTimeoutRef.current);
     };
