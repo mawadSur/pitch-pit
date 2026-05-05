@@ -24,6 +24,10 @@ const inter = Inter({
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Three judges in parallel; each Anthropic call runs 5–15s. Bounded by
+// the slowest judge ≈ 20s with headroom. Pro plan default page timeout
+// is 60s; setting explicitly so a future Hobby downgrade fails loudly.
+export const maxDuration = 60;
 
 export const metadata = {
   title: "The judges deliberate — pitch-pit",
