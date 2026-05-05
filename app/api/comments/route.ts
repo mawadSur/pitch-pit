@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       idea_id: parsed.ideaId,
       body: parsed.body,
     })
-    .select("id, user_id, idea_id, body, created_at, updated_at")
+    .select("id, user_id, idea_id, body, created_at, updated_at, is_edited")
     .single();
 
   if (error || !data) {

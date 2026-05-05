@@ -19,6 +19,11 @@ export type Comment = {
   body: string;
   created_at: string;
   updated_at: string;
+  // True if the body was edited at least once. Server-side trigger sets
+  // this on UPDATE only when the body actually changes, so the badge
+  // is unambiguous (no false positives from updated_at being touched
+  // by future schema work).
+  is_edited?: boolean;
   // Joined display info (display_name, avatar_url) when available.
   // Resolved by joining `users` table at the page level; client falls back
   // gracefully when these are missing.
@@ -362,10 +367,10 @@ function CommentRow({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const rowRef = useRef<HTMLLIElement>(null);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wasEdited =
-    new Date(comment.updated_at).getTime() -
-      new Date(comment.created_at).getTime() >
-    1000; // > 1s diff = edited (avoid flagging the trigger-set updated_at on insert)
+  // Authoritative flag from the comments_mark_edited trigger (migration 014).
+  // Replaces the old timestamp-diff heuristic which false-positived whenever
+  // updated_at was touched without a body change.
+  const wasEdited = !!comment.is_edited;
 
   function clearConfirmTimer() {
     if (confirmTimerRef.current) {

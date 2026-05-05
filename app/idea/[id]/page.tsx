@@ -23,7 +23,7 @@ async function fetchComments(ideaId: string): Promise<Comment[]> {
   const { data, error } = await admin
     .from("comments")
     .select(
-      "id, user_id, idea_id, body, created_at, updated_at, users:user_id ( display_name, avatar_url )",
+      "id, user_id, idea_id, body, created_at, updated_at, is_edited, users:user_id ( display_name, avatar_url )",
     )
     .eq("idea_id", ideaId)
     .order("created_at", { ascending: false })
@@ -41,6 +41,7 @@ async function fetchComments(ideaId: string): Promise<Comment[]> {
       body: row.body,
       created_at: row.created_at,
       updated_at: row.updated_at,
+      is_edited: (row as unknown as { is_edited?: boolean }).is_edited ?? false,
       display_name: u?.display_name ?? null,
       avatar_url: u?.avatar_url ?? null,
     };

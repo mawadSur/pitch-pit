@@ -72,7 +72,7 @@ export async function PATCH(
     .from("comments")
     .update({ body: parsed.body })
     .eq("id", idCheck.data)
-    .select("id, user_id, idea_id, body, created_at, updated_at")
+    .select("id, user_id, idea_id, body, created_at, updated_at, is_edited")
     .maybeSingle();
 
   if (error) {
