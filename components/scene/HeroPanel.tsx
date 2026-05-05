@@ -75,7 +75,11 @@ export function HeroPanel({
   const rafIdRef = useRef<number | null>(null);
 
   const [scrolled, setScrolled] = useState(false);
-  const [largeEnough, setLargeEnough] = useState(true);
+  // Default false: on mobile, the canvas DOM should never appear at any
+  // point. Desktop has a 1-frame "wrong" state before the matchMedia check
+  // upgrades this to true — invisible since the canvas needs frame loads
+  // before it draws anything anyway.
+  const [largeEnough, setLargeEnough] = useState(false);
 
   const hasFrames = !!framesPath && !!frameCount && frameCount > 0;
   // Mobile: skip the canvas entirely to save memory + cpu. The static image

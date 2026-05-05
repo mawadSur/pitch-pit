@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Particles } from "@/components/scene/Particles";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
@@ -17,6 +17,9 @@ export function LoginScene() {
   const [pending, start] = useTransition();
   const [oauthPending, setOauthPending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  // A11y-4: on validation/API failure focus the email input so the user can
+  // immediately correct it.
+  const emailRef = useRef<HTMLInputElement | null>(null);
 
   // Tick the resend cooldown every second
   useEffect(() => {
@@ -55,6 +58,7 @@ export function LoginScene() {
     setError(null);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Enter a valid email address.");
+      emailRef.current?.focus();
       return;
     }
     start(async () => {
@@ -71,6 +75,7 @@ export function LoginScene() {
         setCooldown(RESEND_COOLDOWN_S);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Magic link failed.");
+        emailRef.current?.focus();
       }
     });
   }
@@ -83,7 +88,7 @@ export function LoginScene() {
   return (
     <>
       <MinimalistHeader />
-      <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
+      <main id="main" tabIndex={-1} className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam" />
         <Particles />
@@ -170,6 +175,7 @@ export function LoginScene() {
                       Email
                     </span>
                     <input
+                      ref={emailRef}
                       type="email"
                       autoComplete="email"
                       required
@@ -201,6 +207,9 @@ export function LoginScene() {
                     {pending ? "Sending…" : "Send magic link"}
                     <span aria-hidden>→</span>
                   </button>
+                  <p className="scene-mono text-center text-[0.6rem] uppercase tracking-[0.3em] text-white/45">
+                    Usually arrives within 30 seconds. Check spam if not.
+                  </p>
                 </form>
 
                 <p className="scene-mono text-center text-[0.6rem] uppercase tracking-[0.3em] text-white/55">

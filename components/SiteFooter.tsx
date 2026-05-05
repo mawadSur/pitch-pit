@@ -23,7 +23,7 @@ export function SiteFooter() {
         </p>
         <nav
           aria-label="Footer"
-          className="flex items-center gap-5 scene-mono text-[0.6rem] uppercase tracking-[0.3em]"
+          className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 scene-mono text-[0.6rem] uppercase tracking-[0.3em] sm:justify-end"
         >
           <Link
             href="/about"

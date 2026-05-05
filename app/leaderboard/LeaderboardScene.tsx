@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
@@ -24,10 +24,23 @@ export function LeaderboardScene({
   weekNumber: number | null;
   query?: string;
 }) {
-  const [tab, setTab] = useState<Tab>("alltime");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Tab state lives in the URL (`?tab=week`) so the native back button
+  // restores it alongside the search query. Default (no param) is alltime.
+  const tabParam = searchParams.get("tab");
+  const tab: Tab = tabParam === "week" ? "week" : "alltime";
+  const setTab = (next: Tab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "alltime") params.delete("tab");
+    else params.set("tab", next);
+    const qs = params.toString();
+    router.push(qs ? `/leaderboard?${qs}` : "/leaderboard");
+  };
+
   const ideas = tab === "alltime" ? alltime : week;
   const [first, second, third, ...rest] = ideas;
-  const router = useRouter();
 
   // Track when a realtime event last touched the board so we can flash the
   // LIVE indicator briefly. Refs avoid re-renders for stale-data tracking.
@@ -39,9 +52,14 @@ export function LeaderboardScene({
   // and `votes` (raw vote inserts/deletes). Coalesce bursts to one
   // refresh per ~600ms so a flurry of votes doesn't overwhelm the
   // server-component refetch.
+  //
+  // Visibility-gated: when the tab is hidden we tear down the channel so
+  // we don't burn realtime quota / battery on unseen updates. On
+  // visibility return we re-subscribe and refresh once to catch up.
   useEffect(() => {
     const supabase = createClient();
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const scheduleRefresh = () => {
       const now = Date.now();
@@ -56,23 +74,49 @@ export function LeaderboardScene({
       }, 250);
     };
 
-    const channel = supabase
-      .channel("leaderboard-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "ideas" },
-        scheduleRefresh,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "votes" },
-        scheduleRefresh,
-      )
-      .subscribe();
+    const subscribe = () => {
+      if (channel) return;
+      channel = supabase
+        .channel("leaderboard-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "ideas" },
+          scheduleRefresh,
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "votes" },
+          scheduleRefresh,
+        )
+        .subscribe();
+    };
+
+    const unsubscribe = () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        unsubscribe();
+      } else {
+        subscribe();
+        // Catch up on anything that happened while we were away.
+        router.refresh();
+      }
+    };
+
+    if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      subscribe();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (timer) clearTimeout(timer);
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [router]);
 
@@ -80,7 +124,7 @@ export function LeaderboardScene({
     <MotionConfig reducedMotion="user">
       <>
         <MinimalistHeader />
-      <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
+      <main id="main" tabIndex={-1} className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam-narrow" />
         <Particles />
@@ -172,8 +216,16 @@ export function LeaderboardScene({
  * ────────────────────────────────────────────────────────────────────── */
 function SearchBox({ initial }: { initial: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [value, setValue] = useState(initial);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // `isPending` is true from `startTransition` until the server-rendered
+  // navigation lands, so it covers the "request in flight" window after
+  // the 350ms debounce fires. Combined with the local `pendingDebounce`
+  // flag below, the spinner shows continuously from keystroke → result.
+  const [isPending, startTransition] = useTransition();
+  const [pendingDebounce, setPendingDebounce] = useState(false);
+  const showSpinner = pendingDebounce || isPending;
 
   // Keep local input in sync if the URL changes from elsewhere (back button).
   useEffect(() => {
@@ -182,17 +234,23 @@ function SearchBox({ initial }: { initial: string }) {
 
   function pushQuery(q: string) {
     const trimmed = q.trim();
-    if (trimmed.length === 0) {
-      router.push("/leaderboard");
-    } else {
-      router.push(`/leaderboard?q=${encodeURIComponent(trimmed)}`);
-    }
+    // Preserve any non-q params (e.g. ?tab=week) on every push.
+    const params = new URLSearchParams(searchParams.toString());
+    if (trimmed.length === 0) params.delete("q");
+    else params.set("q", trimmed);
+    const qs = params.toString();
+    const url = qs ? `/leaderboard?${qs}` : "/leaderboard";
+    setPendingDebounce(false);
+    startTransition(() => {
+      router.push(url);
+    });
   }
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const next = e.target.value;
     setValue(next);
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    setPendingDebounce(true);
     debounceRef.current = setTimeout(() => pushQuery(next), 350);
   }
 
@@ -242,14 +300,33 @@ function SearchBox({ initial }: { initial: string }) {
           onChange={onChange}
           placeholder="Search ideas by title or pitch text…"
           aria-label="Search ideas"
-          className="w-full rounded-full border border-white/12 bg-white/[0.03] py-3 pl-11 pr-12 text-base text-white placeholder:text-white/55 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
+          className="w-full rounded-full border border-white/12 bg-white/[0.03] py-3 pl-11 pr-20 text-base text-white placeholder:text-white/55 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
         />
+        {/* Right-anchored slot: spinner overlays during debounce + nav,
+            clear button shows whenever the field has text. They sit at
+            different inset offsets so they coexist without jumping. */}
+        {showSpinner && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2"
+          >
+            <span
+              role="status"
+              aria-live="polite"
+              aria-label="Searching"
+              className="block h-3.5 w-3.5 rounded-full border border-[var(--scene-gold)]/35 border-t-[var(--scene-gold-bright)] motion-safe:animate-spin"
+            />
+          </span>
+        )}
         {value.length > 0 && (
           <button
             type="button"
             onClick={onClear}
             aria-label="Clear search"
-            className="scene-mono absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-[0.6rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:bg-white/[0.04] hover:text-white"
+            className={cn(
+              "scene-mono absolute top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-[0.6rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:bg-white/[0.04] hover:text-white",
+              showSpinner ? "right-10" : "right-3",
+            )}
           >
             clear
           </button>

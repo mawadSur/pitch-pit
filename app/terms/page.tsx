@@ -15,6 +15,7 @@ export default function TermsPage() {
       <MinimalistHeader />
       <main
         id="main"
+        tabIndex={-1}
         className="scene relative isolate min-h-dvh overflow-hidden"
       >
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />

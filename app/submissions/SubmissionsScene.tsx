@@ -47,7 +47,7 @@ export function SubmissionsScene({
     <MotionConfig reducedMotion="user">
       <>
         <MinimalistHeader />
-      <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
+      <main id="main" tabIndex={-1} className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam-narrow" />
         <Particles />
@@ -173,7 +173,8 @@ function SubmissionCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay: Math.min(index * 0.05, 0.4) }}
-      className="scene-card overflow-hidden p-6 sm:p-7"
+      whileTap={{ scale: 0.985 }}
+      className="scene-card overflow-hidden p-6 transition-transform active:scale-[0.99] sm:p-7"
     >
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-[1fr_auto]">
         <div className="min-w-0">
@@ -246,20 +247,22 @@ function SubmissionCard({
                 <span aria-hidden>↗</span>
               </a>
             )}
-            <ShareMenu
-              idea={{
-                id: submission.id,
-                title: submission.title,
-                verdict: submission.verdict,
-                finalScore: submission.final_score ?? Math.round(submission.score * 10),
-                aiScore: submission.score,
-                voteCount: submission.vote_count,
-                strengths: submission.strengths,
-                concerns: submission.concerns,
-              }}
-              variant="icon"
-              ariaLabel={`Share "${submission.title}"`}
-            />
+            <span className="inline-flex h-11 w-11 items-center justify-center">
+              <ShareMenu
+                idea={{
+                  id: submission.id,
+                  title: submission.title,
+                  verdict: submission.verdict,
+                  finalScore: submission.final_score ?? Math.round(submission.score * 10),
+                  aiScore: submission.score,
+                  voteCount: submission.vote_count,
+                  strengths: submission.strengths,
+                  concerns: submission.concerns,
+                }}
+                variant="icon"
+                ariaLabel={`Share "${submission.title}"`}
+              />
+            </span>
           </div>
         </div>
 

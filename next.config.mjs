@@ -30,6 +30,15 @@ const nextConfig = {
       },
     ];
   },
+  images: {
+    // Trusted remote hosts for next/image. Add new origins here when we
+    // need to render external images via the Image component.
+    remotePatterns: [
+      // Google avatar host — used for OAuth user avatars (avatar_url from
+      // Supabase auth.users.user_metadata).
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+    ],
+  },
 };
 
 // Sentry build-time wrap. Source maps upload only when SENTRY_AUTH_TOKEN is

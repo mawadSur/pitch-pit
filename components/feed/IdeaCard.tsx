@@ -52,8 +52,9 @@ export function IdeaCard({
           ? { duration: 0.95, ease: "easeOut" }
           : { duration: 0.4, delay: Math.min(index * 0.04, 0.4) }
       }
+      whileTap={{ scale: 0.985 }}
       className={cn(
-        "scene-card relative overflow-hidden",
+        "scene-card relative overflow-hidden transition-transform active:scale-[0.99]",
         tier === "gold" &&
           "ring-1 ring-[var(--scene-gold)]/45 shadow-[0_0_36px_-12px_rgba(255,184,0,0.45)]",
       )}
@@ -142,18 +143,20 @@ export function IdeaCard({
               <span aria-hidden>→</span>
             </Link>
             <span aria-hidden className="text-white/15">·</span>
-            <ShareMenu
-              idea={{
-                id: idea.id,
-                title: idea.title,
-                verdict: idea.verdict,
-                finalScore: idea.final_score ?? Math.round(idea.score * 10),
-                aiScore: idea.score,
-                voteCount: idea.vote_count,
-              }}
-              variant="icon"
-              ariaLabel={`Share "${idea.title}"`}
-            />
+            <span className="inline-flex h-11 w-11 items-center justify-center">
+              <ShareMenu
+                idea={{
+                  id: idea.id,
+                  title: idea.title,
+                  verdict: idea.verdict,
+                  finalScore: idea.final_score ?? Math.round(idea.score * 10),
+                  aiScore: idea.score,
+                  voteCount: idea.vote_count,
+                }}
+                variant="icon"
+                ariaLabel={`Share "${idea.title}"`}
+              />
+            </span>
           </div>
         </div>
 

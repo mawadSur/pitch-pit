@@ -74,7 +74,7 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
     <MotionConfig reducedMotion="user">
       <>
         <MinimalistHeader />
-      <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
+      <main id="main" tabIndex={-1} className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam-narrow" />
         <Particles />
@@ -105,31 +105,37 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
             </p>
           </motion.header>
 
-          <FilterBar active={filter} onChange={setFilter} counts={counts} />
+          {ideas.length === 0 ? (
+            <ZeroState />
+          ) : (
+            <>
+              <FilterBar active={filter} onChange={setFilter} counts={counts} />
 
-          <MotionConfig reducedMotion="user">
-            <ul
-              className="space-y-4 sm:space-y-5"
-              aria-live="polite"
-              aria-label="Tributes"
-            >
-              <AnimatePresence initial={false} mode="popLayout">
-                {filtered.length === 0 ? (
-                  <EmptyState filter={filter} />
-                ) : (
-                  filtered.map((idea, i) => (
-                    <li key={idea.id}>
-                      <IdeaCard
-                        idea={idea}
-                        isNew={newIds.has(idea.id)}
-                        index={i}
-                      />
-                    </li>
-                  ))
-                )}
-              </AnimatePresence>
-            </ul>
-          </MotionConfig>
+              <MotionConfig reducedMotion="user">
+                <ul
+                  className="space-y-4 sm:space-y-5"
+                  aria-live="polite"
+                  aria-label="Tributes"
+                >
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {filtered.length === 0 ? (
+                      <EmptyState filter={filter} />
+                    ) : (
+                      filtered.map((idea, i) => (
+                        <li key={idea.id}>
+                          <IdeaCard
+                            idea={idea}
+                            isNew={newIds.has(idea.id)}
+                            index={i}
+                          />
+                        </li>
+                      ))
+                    )}
+                  </AnimatePresence>
+                </ul>
+              </MotionConfig>
+            </>
+          )}
 
           <div className="mt-16 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link href="/submissions" className="cta-btn-primary text-sm">
@@ -208,6 +214,24 @@ function FilterBar({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function ZeroState() {
+  return (
+    <div className="mt-16 flex flex-col items-center gap-6 text-center">
+      <div className="scene-card max-w-md px-10 py-12">
+        <p className="text-lg italic text-white/72">
+          No pitches yet — be the first to face the gamemaster.
+        </p>
+        <p className="mt-3 text-sm text-white/45">
+          The pit is empty. Stake your claim.
+        </p>
+        <Link href="/" className="cta-btn-primary mt-7 text-sm">
+          Pitch your idea <span aria-hidden>→</span>
+        </Link>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -42,6 +43,14 @@ export function Comments({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const seenIds = useRef<Set<string>>(new Set(initial.map((c) => c.id)));
+  // Form-2: brief skeleton flash on mount when there's nothing to show yet,
+  // gives perceived loading feedback even when the list is genuinely empty.
+  const [showSkeleton, setShowSkeleton] = useState(initial.length === 0);
+  useEffect(() => {
+    if (initial.length !== 0) return;
+    const t = setTimeout(() => setShowSkeleton(false), 200);
+    return () => clearTimeout(t);
+  }, [initial.length]);
 
   // Track auth state so the form can switch to "Sign in to comment"
   // without a full page reload after the user logs in.
@@ -58,43 +67,71 @@ export function Comments({
   // Realtime — subscribe to inserts on this idea's comments.
   // Coalesce duplicates (the optimistic insert will already be in state
   // when the realtime echo lands).
+  // Perf-4: pause the subscription while the tab is hidden so we don't burn
+  // bandwidth on backgrounded tabs; re-subscribe on visibility return.
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`comments-${ideaId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "comments",
-          filter: `idea_id=eq.${ideaId}`,
-        },
-        (payload) => {
-          const c = payload.new as Comment;
-          if (seenIds.current.has(c.id)) return;
-          seenIds.current.add(c.id);
-          setComments((prev) => [c, ...prev]);
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "comments",
-          filter: `idea_id=eq.${ideaId}`,
-        },
-        (payload) => {
-          const id = (payload.old as { id: string }).id;
-          seenIds.current.delete(id);
-          setComments((prev) => prev.filter((c) => c.id !== id));
-        },
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    function subscribe() {
+      if (channel) return;
+      channel = supabase
+        .channel(`comments-${ideaId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "comments",
+            filter: `idea_id=eq.${ideaId}`,
+          },
+          (payload) => {
+            const c = payload.new as Comment;
+            if (seenIds.current.has(c.id)) return;
+            seenIds.current.add(c.id);
+            setComments((prev) => [c, ...prev]);
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "comments",
+            filter: `idea_id=eq.${ideaId}`,
+          },
+          (payload) => {
+            const id = (payload.old as { id: string }).id;
+            seenIds.current.delete(id);
+            setComments((prev) => prev.filter((c) => c.id !== id));
+          },
+        )
+        .subscribe();
+    }
+
+    function unsubscribe() {
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+    }
+
+    function handleVisibility() {
+      if (document.visibilityState === "hidden") {
+        unsubscribe();
+      } else {
+        subscribe();
+      }
+    }
+
+    if (typeof document === "undefined" || document.visibilityState !== "hidden") {
+      subscribe();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      unsubscribe();
     };
   }, [ideaId]);
 
@@ -220,13 +257,34 @@ export function Comments({
             />
           ))}
         </AnimatePresence>
-        {comments.length === 0 && (
-          <li className="scene-card px-6 py-10 text-center">
-            <p className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/45">
-              No comments yet — be the first.
-            </p>
-          </li>
-        )}
+        {comments.length === 0 &&
+          (showSkeleton ? (
+            <>
+              {[0, 1, 2].map((i) => (
+                <li
+                  key={`skeleton-${i}`}
+                  aria-hidden
+                  className="scene-card flex animate-pulse gap-4 px-5 py-4 sm:px-6"
+                >
+                  <span className="h-9 w-9 flex-shrink-0 rounded-full bg-white/[0.06]" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex gap-3">
+                      <span className="h-3 w-24 rounded bg-white/[0.08]" />
+                      <span className="h-3 w-16 rounded bg-white/[0.05]" />
+                    </div>
+                    <span className="block h-3 w-11/12 rounded bg-white/[0.06]" />
+                    <span className="block h-3 w-3/4 rounded bg-white/[0.05]" />
+                  </div>
+                </li>
+              ))}
+            </>
+          ) : (
+            <li className="scene-card px-6 py-10 text-center">
+              <p className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/45">
+                No comments yet — be the first.
+              </p>
+            </li>
+          ))}
       </ol>
     </section>
   );
@@ -378,8 +436,26 @@ function CommentRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 6 }}
       transition={{ duration: 0.25 }}
-      className="scene-card flex gap-4 px-5 py-4 sm:px-6"
+      className={`scene-card relative flex gap-4 px-5 py-4 sm:px-6 ${
+        confirmingDelete ? "z-50 ring-2 ring-red-400/40" : ""
+      }`}
     >
+      {/* TI-3: scrim behind the active inline confirm so the rest of the page
+          dims and the row in question stands out. */}
+      <AnimatePresence>
+        {confirmingDelete && (
+          <motion.div
+            key="delete-scrim"
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-40 bg-black/40"
+            style={{ pointerEvents: "none" }}
+          />
+        )}
+      </AnimatePresence>
       <Avatar name={comment.display_name} url={comment.avatar_url} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-3">
@@ -482,7 +558,11 @@ function CommentRow({
           </div>
         ) : (
           <>
-            <p className="mt-1.5 whitespace-pre-wrap text-base leading-snug text-white/85">
+            <p
+              className={`mt-1.5 max-w-prose whitespace-pre-wrap text-base leading-snug text-white/85 transition-opacity ${
+                pending ? "opacity-60" : ""
+              }`}
+            >
               {comment.body}
             </p>
             {error && (
@@ -506,11 +586,13 @@ function Avatar({
 }) {
   const initial = (name?.[0] ?? "?").toUpperCase();
   if (url) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
-      <img
+      <Image
         src={url}
         alt=""
+        width={36}
+        height={36}
+        unoptimized
         className="h-9 w-9 flex-shrink-0 rounded-full border border-white/15 object-cover"
       />
     );

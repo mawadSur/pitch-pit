@@ -73,7 +73,7 @@ export function RulesScene() {
     <MotionConfig reducedMotion="user">
       <>
         <MinimalistHeader />
-      <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
+      <main id="main" tabIndex={-1} className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         {/* Sticky TOC sidebar (desktop only) */}
         <nav
           aria-label="Rules sections"

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, MotionConfig } from "framer-motion";
 import { Particles } from "@/components/scene/Particles";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
@@ -52,10 +52,35 @@ export function Reveal({
     day: "numeric",
   });
 
+  const [back, setBack] = useState<{ href: string; label: string }>({
+    href: "/leaderboard",
+    label: "Back to leaderboard",
+  });
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const ref = document.referrer;
+    if (!ref) return;
+    try {
+      const url = new URL(ref);
+      if (url.origin !== window.location.origin) return;
+      const path = url.pathname;
+      const sections: { match: string; href: string; label: string }[] = [
+        { match: "/leaderboard", href: "/leaderboard", label: "Back to leaderboard" },
+        { match: "/feed", href: "/feed", label: "Back to feed" },
+        { match: "/built", href: "/built", label: "Back to built" },
+        { match: "/submissions", href: "/submissions", label: "Back to submissions" },
+      ];
+      const hit = sections.find((s) => path.startsWith(s.match));
+      if (hit) setBack({ href: hit.href, label: hit.label });
+    } catch {
+      // ignore malformed referrer
+    }
+  }, []);
+
   return (
     <MotionConfig reducedMotion="user">
       <MinimalistHeader />
-      <main id="main" className="scene relative isolate min-h-dvh overflow-hidden">
+      <main id="main" tabIndex={-1} className="scene relative isolate min-h-dvh overflow-hidden">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam" />
         <Particles />
@@ -70,10 +95,10 @@ export function Reveal({
             className="flex items-center justify-between gap-4"
           >
             <Link
-              href="/"
+              href={back.href}
               className="scene-mono text-[0.65rem] uppercase tracking-[0.35em] text-white/55 transition-colors hover:text-white/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             >
-              ← New pitch
+              ← {back.label}
             </Link>
             <span className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
               Submitted · {dateLabel}
@@ -106,10 +131,11 @@ export function Reveal({
 
           {/* verdict */}
           <motion.div
+            id="verdict"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 1.2 }}
-            className="mt-12 text-center"
+            className="mt-12 scroll-mt-24 text-center"
           >
             <p className="scene-mono mb-4 text-[0.6rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
               · The Verdict ·
@@ -155,7 +181,7 @@ export function Reveal({
           )}
 
           {/* strengths / concerns */}
-          <div className="mt-14 grid gap-5 sm:grid-cols-2">
+          <div id="strengths" className="mt-14 grid scroll-mt-24 gap-5 sm:grid-cols-2">
             <Column
               title="Strengths"
               tone="gold"
@@ -172,10 +198,11 @@ export function Reveal({
 
           {/* reasoning */}
           <motion.section
+            id="reasoning"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 1.85 }}
-            className="scene-card mx-auto mt-10 max-w-3xl px-7 py-7 sm:px-9 sm:py-8"
+            className="scene-card mx-auto mt-10 max-w-3xl scroll-mt-24 px-7 py-7 sm:px-9 sm:py-8"
           >
             <p className="scene-mono mb-4 text-[0.6rem] uppercase tracking-[0.35em] text-white/55">
               Reasoning
@@ -249,11 +276,13 @@ export function Reveal({
           )}
 
           {/* comments */}
-          <Comments
-            ideaId={idea.id}
-            initial={initialComments}
-            initialUser={currentUser}
-          />
+          <div id="comments" className="scroll-mt-24">
+            <Comments
+              ideaId={idea.id}
+              initial={initialComments}
+              initialUser={currentUser}
+            />
+          </div>
 
           {/* footer link */}
           <motion.div

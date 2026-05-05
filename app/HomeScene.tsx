@@ -20,7 +20,7 @@ export function HomeScene() {
       <>
         <MinimalistHeader />
 
-      <main id="main" className="scene relative bg-black">
+      <main id="main" tabIndex={-1} className="scene relative bg-black">
         {/* Panel 1 — Capture. h-[200vh] gives the canvas a full 100vh of
             pinned scroll to scrub all 91 frames in front of the user before
             the panel hands off. Frame scrub completes during pin, not after. */}
@@ -99,6 +99,9 @@ function Panel1() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const turnstileRef = useRef<TurnstileHandle | null>(null);
+  // A11y-4: focus the textarea on any validation/submit error so the user
+  // lands on the field they need to fix without hunting for it.
+  const pitchRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Seed from localStorage on mount. Initial state stays "" so server-rendered
   // markup matches client first paint — we only hydrate the draft after.
@@ -134,6 +137,7 @@ function Panel1() {
     const trimmed = text.trim();
     if (trimmed.length < SUBMIT_LIMITS.pitchMin) {
       setError(`Be more specific — at least ${SUBMIT_LIMITS.pitchMin} characters.`);
+      pitchRef.current?.focus();
       return;
     }
     setError(null);
@@ -186,6 +190,7 @@ function Panel1() {
         router.push(`/idea/${id}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
+        pitchRef.current?.focus();
       }
     });
   }
@@ -248,6 +253,7 @@ function Panel1() {
               />
             )}
             <textarea
+              ref={pitchRef}
               value={text}
               onChange={(e) => {
                 setText(e.target.value);
@@ -258,6 +264,7 @@ function Panel1() {
               rows={1}
               maxLength={SUBMIT_LIMITS.pitchMax}
               aria-label="Pitch your idea"
+              autoComplete="off"
               className="scene-input pl-3"
               style={{ minHeight: "1.5rem", maxHeight: "9rem" }}
             />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -260,14 +260,23 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
   const router = useRouter();
+  // A11y-4: focus the offending URL field on submission failure. The server
+  // action returns a free-form error string; if it mentions mvpUrl we focus
+  // that input, otherwise screenshotUrl gets focus (and acts as the catch-all
+  // "second" field per the form spec).
+  const mvpUrlRef = useRef<HTMLInputElement | null>(null);
+  const screenshotUrlRef = useRef<HTMLInputElement | null>(null);
 
   function onMarkBuilt(formData: FormData) {
     setErr(null);
     formData.append("ideaId", idea.id);
     start(async () => {
       const res = await markBuilt(formData);
-      if (res?.error) setErr(res.error);
-      else router.refresh();
+      if (res?.error) {
+        setErr(res.error);
+        if (/mvp[\s_-]?url/i.test(res.error)) mvpUrlRef.current?.focus();
+        else screenshotUrlRef.current?.focus();
+      } else router.refresh();
     });
   }
 
@@ -321,9 +330,11 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
               mvp_url
             </span>
             <input
+              ref={mvpUrlRef}
               name="mvpUrl"
               type="url"
               required
+              autoComplete="url"
               placeholder="https://..."
               className="block w-full rounded-md border border-white/12 bg-white/[0.02] px-3 py-2.5 scene-mono text-sm text-white placeholder-white/25 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
             />
@@ -333,8 +344,10 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
               screenshot_url (optional)
             </span>
             <input
+              ref={screenshotUrlRef}
               name="screenshotUrl"
               type="url"
+              autoComplete="url"
               placeholder="https://..."
               className="block w-full rounded-md border border-white/12 bg-white/[0.02] px-3 py-2.5 scene-mono text-sm text-white placeholder-white/25 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
             />

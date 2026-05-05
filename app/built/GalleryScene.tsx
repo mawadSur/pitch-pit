@@ -24,7 +24,7 @@ export function GalleryScene({ ideas }: { ideas: BuiltIdea[] }) {
     <MotionConfig reducedMotion="user">
       <>
         <MinimalistHeader />
-      <main id="main" className="scene relative isolate min-h-dvh overflow-hidden bg-black">
+      <main id="main" tabIndex={-1} className="scene relative isolate min-h-dvh overflow-hidden bg-black">
         <div aria-hidden className="scene-bg-gradient absolute inset-0" />
         <div aria-hidden className="scene-beam-narrow" />
         <Particles />
@@ -92,8 +92,9 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-15% 0px" }}
       transition={{ duration: 0.7 }}
+      whileTap={{ scale: 0.985 }}
       className={cn(
-        "grid items-center gap-10 lg:grid-cols-2 lg:gap-16",
+        "grid items-center gap-10 transition-transform active:scale-[0.99] lg:grid-cols-2 lg:gap-16",
         reverse && "lg:[&>*:first-child]:order-last",
       )}
     >
@@ -145,18 +146,20 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
           >
             Read the judgment →
           </Link>
-          <ShareMenu
-            idea={{
-              id: idea.id,
-              title: idea.title,
-              verdict: idea.verdict,
-              finalScore: Math.round(idea.score * 10),
-              aiScore: idea.score,
-              voteCount: undefined,
-            }}
-            variant="icon"
-            ariaLabel={`Share "${idea.title}"`}
-          />
+          <span className="inline-flex h-11 w-11 items-center justify-center">
+            <ShareMenu
+              idea={{
+                id: idea.id,
+                title: idea.title,
+                verdict: idea.verdict,
+                finalScore: Math.round(idea.score * 10),
+                aiScore: idea.score,
+                voteCount: undefined,
+              }}
+              variant="icon"
+              ariaLabel={`Share "${idea.title}"`}
+            />
+          </span>
         </div>
       </div>
     </motion.article>
