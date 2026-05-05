@@ -191,7 +191,10 @@ export function PitchCoach({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-4 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md"
+          // Margin owned by the parent — this component is currently
+          // mounted above the input pill on the homepage, so spacing
+          // belongs on the wrapper rather than on the bubble itself.
+          className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md"
         >
           {/* Header row: title + AI-enhance toggle */}
           <div className="flex flex-wrap items-center justify-between gap-3">

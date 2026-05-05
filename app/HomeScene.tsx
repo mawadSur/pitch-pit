@@ -325,6 +325,13 @@ function Panel1() {
         }}
         className="absolute inset-x-0 top-[58%] mx-auto w-full max-w-2xl px-6"
       >
+        {/* Pitch coach — above the input. Quality checks, AI follow-ups,
+            and an opt-in "polish my pitch" enhancer. Visible once the
+            user starts typing; hidden otherwise so the at-rest layout
+            stays aligned with the bg image's input pill. */}
+        <div className="mb-4">
+          <PitchCoach text={text} setText={setText} />
+        </div>
         <div className="scene-input-shell flex items-center gap-3 px-5 py-3 sm:gap-4 sm:px-6 sm:py-4">
           <div className="relative flex flex-1 items-center">
             {length === 0 && (
@@ -382,12 +389,6 @@ function Panel1() {
             submit(). Most legitimate users see nothing; suspicious sessions
             get a Cloudflare interaction prompt. */}
         <Turnstile handleRef={turnstileRef} />
-
-        {/* Pitch coach — quality checks, AI follow-ups, and an opt-in
-            "polish my pitch" enhancer. Sits below the textarea inside
-            the form so layout stays cohesive. Visible once the user
-            starts typing. */}
-        <PitchCoach text={text} setText={setText} />
       </motion.form>
 
       {/* Full-screen overlay during submit. Bridges the ~600ms window
