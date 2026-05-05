@@ -12,7 +12,7 @@ export const JUDGES: ReadonlyArray<JudgeMeta & { systemPrompt: string }> = [
     name: "Gstack",
     role: "YC office hours",
     signatureLine: "Render judgment.",
-    portrait: "/judges/gstack.svg",
+    portrait: "/judges/gstack.avif",
     systemPrompt: GSTACK_SYSTEM_PROMPT,
   },
   {
@@ -20,7 +20,7 @@ export const JUDGES: ReadonlyArray<JudgeMeta & { systemPrompt: string }> = [
     name: "Gary V",
     role: "Attention & distribution",
     signatureLine: "Patience and empathy.",
-    portrait: "/judges/vee.svg",
+    portrait: "/judges/vee.avif",
     systemPrompt: VEE_SYSTEM_PROMPT,
   },
   {
@@ -28,7 +28,7 @@ export const JUDGES: ReadonlyArray<JudgeMeta & { systemPrompt: string }> = [
     name: "Tony R",
     role: "Conviction & standards",
     signatureLine: "Raise your standards.",
-    portrait: "/judges/robbins.svg",
+    portrait: "/judges/robbins.avif",
     systemPrompt: ROBBINS_SYSTEM_PROMPT,
   },
 ] as const;

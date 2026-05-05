@@ -29,7 +29,7 @@ export function HomeScene() {
             pinned scroll to scrub all 91 frames in front of the user before
             the panel hands off. Frame scrub completes during pin, not after. */}
         <HeroPanel
-          image="/scene/firstimage.png"
+          image="/scene/firstimage.avif"
           framesPath="/scene/frames-1"
           frameCount={FRAMES_1_COUNT}
           heightVh={200}
@@ -44,7 +44,7 @@ export function HomeScene() {
         {/* Panel 2 — Judge. Same 200vh treatment so the frames-2 sequence
             (90 frames) plays out in the centered viewport while pinned. */}
         <HeroPanel
-          image="/scene/transition-poster.png"
+          image="/scene/transition-poster.avif"
           framesPath="/scene/frames-2"
           frameCount={FRAMES_2_COUNT}
           heightVh={200}
