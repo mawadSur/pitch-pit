@@ -9,6 +9,9 @@ import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Timeline } from "@/components/idea/Timeline";
 import { VoteButton } from "@/components/idea/VoteButton";
 import { Comments, type Comment } from "@/components/idea/Comments";
+import { OtherTakes } from "@/components/idea/OtherTakes";
+import type { ScoreResult } from "@/lib/score-schema";
+import type { JudgeId } from "@/lib/judges";
 import { ShareMenu } from "@/components/idea/ShareMenu";
 import { useRouter } from "next/navigation";
 import { formatVoteCount } from "@/lib/format";
@@ -32,6 +35,12 @@ export type Idea = {
   mvp_url: string | null;
   screenshot_url: string | null;
   created_at: string;
+  // Per-judge breakdown for ideas submitted under the three-judge flow.
+  // Null for legacy single-judge ideas. Top-level score / verdict /
+  // strengths / concerns / reasoning are populated from the canonical
+  // judge (gstack > vee > robbins) so the existing UI keeps working
+  // when judge_scores is absent.
+  judge_scores?: Partial<Record<JudgeId, ScoreResult>> | null;
 };
 
 export function Reveal({
@@ -212,6 +221,12 @@ export function Reveal({
               {idea.reasoning}
             </p>
           </motion.section>
+
+          {/* Other judges (Vee + Robbins) — only renders when the idea
+              was scored under the three-judge flow. The lead reviewer
+              (gstack) is already covered by the verdict / strengths /
+              concerns / reasoning sections above. */}
+          <OtherTakes judgeScores={idea.judge_scores} reasoningDelay={1.95} />
 
           {/* original pitch */}
           <motion.section

@@ -11,7 +11,7 @@ const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
 
 const SELECT =
-  "id,user_id,title,pitch,handle,score,final_score,vote_count,verdict,strengths,concerns,reasoning,build_recommended,status,mvp_url,screenshot_url,created_at";
+  "id,user_id,title,pitch,handle,score,final_score,vote_count,verdict,strengths,concerns,reasoning,build_recommended,status,mvp_url,screenshot_url,created_at,judge_scores";
 
 // Joined comment shape — `users` table mirror provides display_name + avatar.
 // Older comments from users without metadata may have nulls; the client
