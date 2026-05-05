@@ -184,11 +184,19 @@ function Panel1() {
     // to localStorage on every keystroke, so bouncing through /login
     // costs the user nothing — they return with ?resume=1, the mount
     // effect below restores the text and fires submit() automatically.
+    //
+    // We use getSession() (reads cookie locally) instead of getUser()
+    // (network round-trip) because the latter can briefly return null
+    // immediately after a recent navigation while Supabase's auth
+    // refresh is in flight — symptom: a signed-in user trying to submit
+    // a second pitch gets bounced to /login spuriously. The server-side
+    // /api/draft does the real verification; if the local session is
+    // invalid, the route returns 401 and we redirect there too.
     const supabase = createSupabaseBrowser();
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
       router.push(`/login?next=${encodeURIComponent("/?resume=1")}`);
       return;
     }
@@ -235,8 +243,18 @@ function Panel1() {
           }),
         });
         if (!res.ok) {
-          const err = (await res.json().catch(() => ({}))) as { error?: string };
+          const err = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            redirect_to?: string;
+          };
           turnstileRef.current?.reset();
+          // Server-side auth check disagrees with the client wall —
+          // session cookie is missing or expired. Redirect to login
+          // and let the resume effect re-fire after auth.
+          if (res.status === 401 && err.redirect_to) {
+            router.push(err.redirect_to);
+            return;
+          }
           throw new Error(err.error ?? "Submission failed.");
         }
         const { token } = (await res.json()) as { token: string };

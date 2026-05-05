@@ -70,7 +70,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ─── capture session (best-effort) ────────────────────────
+  // ─── auth gate ────────────────────────────────────────────
+  // Submissions require a signed-in user. The client-side wall in
+  // HomeScene also checks this (getSession), but we re-verify here
+  // because that local check is cookie-state only — network failures,
+  // expired tokens, or someone hitting the API directly all need a
+  // real server-side check. Returns 401 with redirect_to so the
+  // client knows to bounce to /login.
   let userId: string | null = null;
   try {
     const cookieClient = createCookieClient();
@@ -79,37 +85,46 @@ export async function POST(req: NextRequest) {
     } = await cookieClient.auth.getUser();
     userId = user?.id ?? null;
   } catch {
-    /* anonymous flow */
+    /* fall through to 401 below */
+  }
+  if (!userId) {
+    return NextResponse.json(
+      {
+        error: "Sign in to submit a pitch.",
+        category: "auth",
+        redirect_to: `/login?next=${encodeURIComponent("/?resume=1")}`,
+      },
+      { status: 401 },
+    );
   }
 
   // ─── per-user weekly quota ────────────────────────────────
-  if (userId) {
-    const quota = await checkUserQuota(userId);
-    if (!quota.ok) {
-      return NextResponse.json(
-        {
-          error: quota.reason,
-          category: "quota",
-          used: quota.used,
-          limit: quota.limit,
-          resetAt: quota.resetAt?.toISOString() ?? null,
+  // userId is guaranteed non-null here (auth gate above).
+  const quota = await checkUserQuota(userId);
+  if (!quota.ok) {
+    return NextResponse.json(
+      {
+        error: quota.reason,
+        category: "quota",
+        used: quota.used,
+        limit: quota.limit,
+        resetAt: quota.resetAt?.toISOString() ?? null,
+      },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": String(WEEKLY_LIMIT),
+          "X-RateLimit-Remaining": "0",
+          ...(quota.resetAt
+            ? {
+                "X-RateLimit-Reset": String(
+                  Math.floor(quota.resetAt.getTime() / 1000),
+                ),
+              }
+            : {}),
         },
-        {
-          status: 429,
-          headers: {
-            "X-RateLimit-Limit": String(WEEKLY_LIMIT),
-            "X-RateLimit-Remaining": "0",
-            ...(quota.resetAt
-              ? {
-                  "X-RateLimit-Reset": String(
-                    Math.floor(quota.resetAt.getTime() / 1000),
-                  ),
-                }
-              : {}),
-          },
-        },
-      );
-    }
+      },
+    );
   }
 
   // ─── persist draft ────────────────────────────────────────
