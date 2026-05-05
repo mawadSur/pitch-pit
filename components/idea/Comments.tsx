@@ -42,6 +42,9 @@ export function Comments({
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // A11y-4: focus the textarea on any validation/submit error so the
+  // user lands on the field they need to fix without hunting for it.
+  const addCommentRef = useRef<HTMLTextAreaElement | null>(null);
   // Form-2: optimistic placeholder body shown while a POST is in flight,
   // so the user sees their comment land at the top of the list immediately
   // and not after the round-trip. Cleared on response (success: replaced
@@ -143,9 +146,13 @@ export function Comments({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = text.trim();
-    if (trimmed.length === 0) return;
+    if (trimmed.length === 0) {
+      addCommentRef.current?.focus();
+      return;
+    }
     if (!user) {
       setError("Sign in to leave a comment.");
+      addCommentRef.current?.focus();
       return;
     }
     setError(null);
@@ -170,6 +177,7 @@ export function Comments({
         setText("");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
+        addCommentRef.current?.focus();
       } finally {
         setPostingDraft(null);
       }
@@ -200,6 +208,7 @@ export function Comments({
             <label className="block">
               <span className="sr-only">Add a comment</span>
               <textarea
+                ref={addCommentRef}
                 value={text}
                 onChange={(e) => {
                   setText(e.target.value);
@@ -347,6 +356,9 @@ function CommentRow({
   const [draft, setDraft] = useState(comment.body);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // A11y-4: focus the edit textarea on save error so the user lands
+  // on the field they need to fix.
+  const editRef = useRef<HTMLTextAreaElement | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const rowRef = useRef<HTMLLIElement>(null);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -403,7 +415,10 @@ function CommentRow({
 
   function save() {
     const trimmed = draft.trim();
-    if (trimmed.length === 0) return;
+    if (trimmed.length === 0) {
+      editRef.current?.focus();
+      return;
+    }
     if (trimmed === comment.body.trim()) {
       setEditing(false);
       return;
@@ -431,6 +446,7 @@ function CommentRow({
         setEditing(false);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
+        editRef.current?.focus();
       }
     });
   }
@@ -565,6 +581,7 @@ function CommentRow({
         {editing ? (
           <div className="mt-2 space-y-2">
             <textarea
+              ref={editRef}
               value={draft}
               onChange={(e) => {
                 setDraft(e.target.value);
