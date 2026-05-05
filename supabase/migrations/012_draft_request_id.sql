@@ -1,9 +1,15 @@
--- pitch-pit · 011 · request_id idempotency on draft_pitches (HOTFIX)
+-- pitch-pit · 012 · request_id idempotency on draft_pitches (HOTFIX)
 --
 -- /api/draft inserts a `request_id` column the schema didn't have, so
 -- prod submissions were failing with PostgREST "column not found." This
 -- adds the column + an index matching the dedupe lookup shape in the
 -- route (request_id + user_id + created_at desc, last 5 minutes).
+--
+-- Originally numbered 011 but version 011 was already taken in the
+-- remote `schema_migrations` table from a prior unrelated push, so
+-- this file was renumbered. Statements are fully idempotent
+-- (add column if not exists / create index if not exists), so a
+-- partial earlier run on the same column is fine.
 --
 -- Safe to run on a populated table — column is nullable, no backfill
 -- needed; pre-existing rows simply have NULL request_id and skip the

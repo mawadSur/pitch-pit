@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
   const accessToken = randomBytes(16).toString("hex");
 
   // Spread request_id only when present so the insert stays compatible
-  // with environments that haven't yet applied migration 011 (the column
+  // with environments that haven't yet applied migration 012 (the column
   // was added after 010). PostgREST rejects unknown keys even when null.
   const { data: row, error: dbErr } = await supabase
     .from("draft_pitches")
