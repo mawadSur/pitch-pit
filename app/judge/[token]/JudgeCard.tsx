@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import type { ScoreResult } from "@/lib/score-schema";
 import type { JudgeMeta } from "@/lib/judges";
 import { JudgeCardClient } from "./JudgeCardClient";
@@ -24,6 +25,13 @@ export async function JudgeCard({
     result = await promise;
   } catch (e) {
     console.error(`[judge:${judge.id}] failed`, e);
+    // Capture so a partial-panel verdict (Anthropic timeout, schema
+    // validation reject, content filter throw) is visible in Sentry —
+    // otherwise the only signal is a failed-card UI on the user's screen.
+    Sentry.captureException(e, {
+      tags: { route: "judge", judge: judge.id, phase: "render-promise" },
+      extra: { token },
+    });
     errored = true;
   }
 

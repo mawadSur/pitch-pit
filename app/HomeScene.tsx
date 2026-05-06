@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, MotionConfig } from "framer-motion";
+import * as Sentry from "@sentry/nextjs";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { HeroPanel } from "@/components/scene/HeroPanel";
 import { CountdownClock } from "@/components/scene/CountdownClock";
@@ -274,6 +275,13 @@ function Panel1() {
         }
         router.push(`/judge/${token}`);
       } catch (e) {
+        // Surface to the user AND to Sentry. The local setError shows the
+        // message in the bottom counter line; Sentry needs the explicit
+        // capture because the error never propagates past this catch.
+        Sentry.captureException(e, {
+          tags: { surface: "home-submit", phase: "client-fetch" },
+          extra: { request_id: requestId, has_attachments: attachments.length > 0 },
+        });
         setError(e instanceof Error ? e.message : "Something went wrong.");
         pitchRef.current?.focus();
       }

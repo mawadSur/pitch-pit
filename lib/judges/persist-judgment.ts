@@ -152,21 +152,82 @@ export type DraftLookup =
   | { status: "expired"; resolvedIdeaId: string | null }
   | { status: "ok"; draft: Draft };
 
+// Columns present on draft_pitches in every environment (migrations 001..014).
+const DRAFT_BASE_COLUMNS =
+  "id, user_id, access_token, title, pitch, handle, resolved_idea_id, expires_at";
+
+// Postgres error code for "undefined_column" — surfaces when migration 015
+// hasn't been applied to a target environment but the code references
+// `image_urls` in the SELECT. We retry without the column instead of
+// returning a misleading 404.
+// https://www.postgresql.org/docs/current/errcodes-appendix.html
+const UNDEFINED_COLUMN = "42703";
+
 // Returns a structured verdict so the page can:
 //   - 404 on truly-missing tokens
 //   - redirect to /idea/[id] when the draft expired but had resolved
 //   - render the dashboard when the draft is fresh
 export async function loadDraftByToken(token: string): Promise<DraftLookup> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+
+  // Try the rich SELECT first (with image_urls). If the column doesn't
+  // exist, retry without it so a pre-migration-015 prod still serves the
+  // judge dashboard. ANY other PostgREST error is captured to Sentry —
+  // returning {missing} on a real DB failure used to make this look like
+  // a token-not-found bug, which is what just bit us in prod.
+  // Two-step SELECT to stay tolerant of pre-migration-015 environments
+  // where the `image_urls` column doesn't exist yet. The richer SELECT's
+  // typed return shape is the union; the narrower fallback is widened to
+  // it on assignment.
+  type DraftRow = {
+    id: string;
+    user_id: string | null;
+    access_token: string;
+    title: string;
+    pitch: string;
+    handle: string | null;
+    resolved_idea_id: string | null;
+    expires_at: string;
+    image_urls?: string[] | null;
+  };
+
+  let data: DraftRow | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let error: any = null;
+
+  const rich = await supabase
     .from("draft_pitches")
-    .select(
-      "id, user_id, access_token, title, pitch, handle, resolved_idea_id, expires_at, image_urls",
-    )
+    .select(`${DRAFT_BASE_COLUMNS}, image_urls`)
     .eq("access_token", token)
     .maybeSingle();
+  data = rich.data as DraftRow | null;
+  error = rich.error;
 
-  if (error || !data) return { status: "missing" };
+  if (error && error.code === UNDEFINED_COLUMN) {
+    // Migration 015 hasn't been applied yet. Tell ops loudly via Sentry
+    // (one event, not per-request — this is a deploy/migration drift) and
+    // fall back to the schema we know works.
+    Sentry.captureException(error, {
+      tags: { route: "loadDraftByToken", phase: "select-image-urls-missing" },
+    });
+    const fallback = await supabase
+      .from("draft_pitches")
+      .select(DRAFT_BASE_COLUMNS)
+      .eq("access_token", token)
+      .maybeSingle();
+    data = fallback.data as DraftRow | null;
+    error = fallback.error;
+  }
+
+  if (error) {
+    // Real DB error (network, timeout, RLS misconfig). Capture so we don't
+    // mistake it for a missing-token 404 on the user's screen.
+    Sentry.captureException(error, {
+      tags: { route: "loadDraftByToken", phase: "supabase-select" },
+    });
+    return { status: "missing" };
+  }
+  if (!data) return { status: "missing" };
 
   const isExpired = new Date(data.expires_at).getTime() < Date.now();
   if (isExpired) {

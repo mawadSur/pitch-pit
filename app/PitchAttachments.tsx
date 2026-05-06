@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import * as Sentry from "@sentry/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Paperclip,
@@ -177,6 +178,12 @@ export function PitchAttachments({
         );
       } catch (e) {
         const message = e instanceof Error ? e.message : "Upload failed.";
+        // Per-file capture so we see flaky uploads in Sentry rather than
+        // them silently turning into a red AlertTriangle on the thumbnail.
+        Sentry.captureException(e, {
+          tags: { surface: "pitch-attachments", phase: "upload" },
+          extra: { fileName: file.name, fileSize: file.size, fileType: file.type },
+        });
         onAttachmentsChange(
           replaceByBlobUrl(
             next,
