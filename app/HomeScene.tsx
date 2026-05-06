@@ -357,55 +357,60 @@ function Panel1() {
         <div className="mb-4">
           <PitchCoach text={text} setText={setText} />
         </div>
-        {/* Padding bumped ~10% from the previous px-5 / py-3 / sm:px-6 /
-            sm:py-4. Specifically: 20→22px, 12→14px, 24→26px, 16→18px.
-            Matches the +10% size bump the user asked for. */}
-        <div className="scene-input-shell flex items-center gap-3 px-[1.375rem] py-[0.875rem] sm:gap-4 sm:px-[1.625rem] sm:py-[1.125rem]">
-          <div className="relative flex flex-1 items-center">
-            {length === 0 && (
-              <span
-                aria-hidden
-                className="scene-cursor pointer-events-none absolute left-0 top-1/2 -translate-y-1/2"
+        {/* Two-piece input row to match the design ref:
+              .scene-input-shell — rounded-rect glass that wraps ONLY
+              the textarea. Padding ~10% larger than original.
+              .scene-submit — standalone glass-tile button as a sibling,
+              separated by a small gap so the two pieces read as
+              discrete elements rather than a unified pill. */}
+        <div className="flex items-stretch gap-3">
+          <div className="scene-input-shell flex flex-1 items-center px-[1.375rem] py-[0.875rem] sm:px-[1.625rem] sm:py-[1.125rem]">
+            <div className="relative flex flex-1 items-center">
+              {length === 0 && (
+                <span
+                  aria-hidden
+                  className="scene-cursor pointer-events-none absolute left-0 top-1/2 -translate-y-1/2"
+                />
+              )}
+              <textarea
+                ref={pitchRef}
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  if (error) setError(null);
+                }}
+                onKeyDown={onKey}
+                disabled={pending}
+                autoCorrect="off"
+                spellCheck="true"
+                rows={1}
+                maxLength={SUBMIT_LIMITS.pitchMax}
+                aria-label="Pitch your idea"
+                autoComplete="off"
+                className="scene-input pl-3"
+                // minHeight + maxHeight bumped 10% so the textarea's
+                // own intrinsic size grows with the shell. 1.5→1.65rem
+                // (=26.4px) for the closed at-rest state; 9→9.9rem
+                // (=158.4px) for the max expanded.
+                style={{ minHeight: "1.65rem", maxHeight: "9.9rem" }}
               />
-            )}
-            <textarea
-              ref={pitchRef}
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                if (error) setError(null);
-              }}
-              onKeyDown={onKey}
-              disabled={pending}
-              autoCorrect="off"
-              spellCheck="true"
-              rows={1}
-              maxLength={SUBMIT_LIMITS.pitchMax}
-              aria-label="Pitch your idea"
-              autoComplete="off"
-              className="scene-input pl-3"
-              // minHeight + maxHeight bumped 10% so the textarea's
-              // own intrinsic size grows with the shell. 1.5→1.65rem
-              // (=26.4px) for the closed at-rest state; 9→9.9rem
-              // (=158.4px) for the max expanded.
-              style={{ minHeight: "1.65rem", maxHeight: "9.9rem" }}
-            />
-            {length === 0 && !pending && (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-white/55"
-              >
-                Pitch your idea…
-              </span>
-            )}
-            {pending && length === 0 && (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-white/45"
-              >
-                Judging…
-              </span>
-            )}
+              {length === 0 && !pending && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-white/55"
+                >
+                  Pitch your idea…
+                </span>
+              )}
+              {pending && length === 0 && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-white/45"
+                >
+                  Judging…
+                </span>
+              )}
+            </div>
           </div>
           <button
             type="submit"

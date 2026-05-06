@@ -172,11 +172,12 @@
   width: 100%;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 184, 0, 0.5);
-  /* Squared corners — was a 999px pill; now a small 4px radius reads
-     as "square" without going so brutalist that the corners visually
-     fight the rest of the cinematic dark surface. The slight rounding
-     keeps the gold border antialiased cleanly at every zoom level. */
-  border-radius: 4px;
+  /* Rounded-rect, not pill, not square. Matches the design ref:
+     a horizontal pill-with-corners that reads as a "search bar"
+     rather than a tag. Paired with the standalone .scene-submit
+     tile (a separate rounded-square sibling), the two pieces
+     compose into the two-element input row from the reference. */
+  border-radius: 22px;
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
   box-shadow:
@@ -238,46 +239,53 @@
 }
 
 /* submit button — paper plane */
+/* Standalone submit tile — sibling of .scene-input-shell, NOT nested
+   inside it. Frosted-glass + gold-border + outer-glow treatment that
+   visually rhymes with the input shell to its left, but rendered as
+   a discrete rounded square (per the reference). The icon inside is
+   stroked in gold via currentColor. The previous solid-gold pill
+   treatment was replaced because the reference ditches the
+   high-contrast yellow chiclet for a glass-tile that matches the
+   shell's material. */
 .scene-submit {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(
-    180deg,
-    #ffe7a3 0%,
-    #ffd17a 30%,
-    #ffb800 70%,
-    #c98b00 100%
-  );
-  border: 1px solid rgba(40, 24, 0, 0.65);
-  color: #1a1100;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 184, 0, 0.5);
+  color: var(--scene-gold-bright);
   cursor: pointer;
   flex-shrink: 0;
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 rgba(80, 50, 0, 0.4),
-    0 0 24px rgba(255, 184, 0, 0.55),
-    0 0 48px rgba(255, 184, 0, 0.3);
-  transition: transform 0.18s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 24px rgba(255, 184, 0, 0.08),
+    0 0 0 1px rgba(255, 184, 0, 0.18),
+    0 18px 48px -12px rgba(255, 184, 0, 0.35),
+    0 0 64px rgba(255, 184, 0, 0.18);
+  transition: transform 0.18s ease, box-shadow 0.2s ease, filter 0.2s ease,
+    border-color 0.2s ease;
 }
 .scene-submit:hover:not(:disabled) {
   transform: translateY(-1px);
-  filter: brightness(1.08);
+  border-color: rgba(255, 184, 0, 0.85);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -1px 0 rgba(80, 50, 0, 0.4),
-    0 0 36px rgba(255, 184, 0, 0.85),
-    0 0 72px rgba(255, 184, 0, 0.45);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 36px rgba(255, 184, 0, 0.14),
+    0 0 0 1px rgba(255, 184, 0, 0.45),
+    0 24px 72px -10px rgba(255, 184, 0, 0.55),
+    0 0 96px rgba(255, 184, 0, 0.32);
 }
 .scene-submit:active:not(:disabled) {
   transform: translateY(0);
 }
 .scene-submit:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
