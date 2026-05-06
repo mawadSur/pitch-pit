@@ -810,20 +810,21 @@ function JudgeBreakdown({
 
 function Empty({ tab }: { tab: Tab }) {
   return (
-    <div className="mt-16 flex flex-col items-center gap-6 text-center">
-      <div className="scene-card max-w-md px-10 py-12">
-        <p className="scene-display-italic text-lg text-white/72">
-          {tab === "alltime"
-            ? "The arena awaits its first champion."
-            : "No tribute has triumphed this week."}
-        </p>
-        <p className="mt-3 text-sm text-white/45">
-          Render an offering. Stand atop the games.
-        </p>
-        <Link href="/submissions" className="cta-btn-primary mt-7 text-sm">
-          Pitch your idea <span aria-hidden>→</span>
-        </Link>
-      </div>
+    <div className="mt-20 flex flex-col items-center gap-6 text-center">
+      <p className="scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)]">
+        {tab === "alltime" ? "· awaiting first champion ·" : "· week not yet judged ·"}
+      </p>
+      <h2 className="scene-display-italic max-w-2xl text-balance text-3xl leading-tight text-white sm:text-5xl">
+        {tab === "alltime"
+          ? "The leaderboard is empty."
+          : "No idea has crossed the wire this week."}
+      </h2>
+      <p className="scene-display max-w-md text-balance text-base text-white/55 sm:text-lg">
+        First pitches landing soon. Be the first.
+      </p>
+      <Link href="/submissions" className="cta-btn-primary mt-3 text-sm">
+        Pitch your idea <span aria-hidden>→</span>
+      </Link>
     </div>
   );
 }

@@ -243,15 +243,17 @@ function EmptyGallery() {
   return (
     <div className="mt-20 flex flex-col items-center text-center">
       <Pedestal />
-      <h2 className="mt-10 text-balance text-3xl font-medium tracking-tight text-white sm:text-4xl">
-        The first champion has yet to{" "}
-        <span className="italic text-[var(--scene-gold-bright)]">rise</span>.
-      </h2>
-      <p className="mx-auto mt-5 max-w-xl text-base italic text-white/65 sm:text-lg">
-        No tribute has been built. The pedestal awaits the worthy.
+      <p className="mt-10 scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)]">
+        · the gallery is dark ·
       </p>
-      <p className="scene-mono mx-auto mt-3 max-w-xl text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
-        Earn a high score · be greenlit · watch your idea take form
+      <h2 className="scene-display-italic mt-5 max-w-2xl text-balance text-3xl leading-tight text-white sm:text-5xl">
+        Nothing has been built &mdash; yet.
+      </h2>
+      <p className="scene-display mx-auto mt-5 max-w-xl text-base text-white/55 sm:text-lg">
+        Earn a sharp score. Be greenlit. Watch your idea ship.
+      </p>
+      <p className="scene-mono mx-auto mt-4 max-w-xl text-[0.55rem] uppercase tracking-[0.32em] text-white/35">
+        winners ship under their own name
       </p>
     </div>
   );

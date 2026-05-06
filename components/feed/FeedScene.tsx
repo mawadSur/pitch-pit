@@ -220,35 +220,45 @@ function FilterBar({
 
 function ZeroState() {
   return (
-    <div className="mt-16 flex flex-col items-center gap-6 text-center">
-      <div className="scene-card max-w-md px-10 py-12">
-        <p className="text-lg italic text-white/72">
-          Be the first to pitch — submit at /
-        </p>
-        <p className="mt-3 text-sm text-white/55">
-          The pit is empty. Stake your claim.
-        </p>
-        <Link href="/" className="cta-btn-primary mt-7 text-sm">
-          Pitch your idea <span aria-hidden>→</span>
-        </Link>
-      </div>
+    <div className="mt-20 flex flex-col items-center gap-6 text-center">
+      <p className="scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)]">
+        · the pit is empty ·
+      </p>
+      <h2 className="scene-display-italic max-w-2xl text-balance text-3xl leading-tight text-white sm:text-5xl">
+        Stake your claim.
+      </h2>
+      <p className="scene-display max-w-md text-balance text-base leading-snug text-white/55 sm:text-lg">
+        Be the first to enter the pit. Three judges. One winner.
+      </p>
+      <Link href="/" className="cta-btn-primary mt-3 text-sm">
+        Pitch your idea <span aria-hidden>→</span>
+      </Link>
     </div>
   );
 }
 
 function EmptyState({ filter }: { filter: Filter }) {
-  const messages: Record<Filter, string> = {
-    all: "No tributes yet. Be the first to face the pit.",
-    survivors: "No tribute has yet survived. The pit is hungry.",
+  const headline: Record<Filter, string> = {
+    all: "Be the first.",
+    survivors: "No survivors yet.",
+    victors: "No victors yet.",
+    fallen: "No tributes fallen.",
+  };
+  const sub: Record<Filter, string> = {
+    all: "The pit is empty. Stake your claim.",
+    survivors: "Score sharp. Stand above the rest.",
     victors: "Few are chosen. None yet stand victorious.",
-    fallen: "No tribute has fallen — yet.",
+    fallen: "Even the rejected leave a mark on the wall.",
   };
   return (
-    <li className="scene-card px-10 py-14 text-center">
-      <p className="text-lg italic text-white/72 sm:text-xl">
-        {messages[filter]}
+    <li className="mt-12 flex flex-col items-center gap-4 py-14 text-center">
+      <h3 className="scene-display-italic text-balance text-2xl leading-tight text-white sm:text-4xl">
+        {headline[filter]}
+      </h3>
+      <p className="scene-display max-w-sm text-balance text-base text-white/55">
+        {sub[filter]}
       </p>
-      <Link href="/submissions" className="cta-btn-primary mt-6 text-sm">
+      <Link href="/" className="cta-btn-primary mt-3 text-sm">
         Pitch your idea <span aria-hidden>→</span>
       </Link>
     </li>
