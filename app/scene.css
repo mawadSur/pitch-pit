@@ -172,7 +172,11 @@
   width: 100%;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 184, 0, 0.5);
-  border-radius: 999px;
+  /* Squared corners — was a 999px pill; now a small 4px radius reads
+     as "square" without going so brutalist that the corners visually
+     fight the rest of the cinematic dark surface. The slight rounding
+     keeps the gold border antialiased cleanly at every zoom level. */
+  border-radius: 4px;
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
   box-shadow:

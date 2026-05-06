@@ -344,7 +344,11 @@ function Panel1() {
           e.preventDefault();
           submit();
         }}
-        className="absolute inset-x-0 top-[52%] mx-auto w-full max-w-2xl px-6"
+        // max-w bumped from 2xl (672px) → arbitrary 740px (+~10%) so
+        // the input is visibly wider, matching the size bump the user
+        // requested. Inner padding is also bumped 10% on the input
+        // shell below.
+        className="absolute inset-x-0 top-[52%] mx-auto w-full max-w-[740px] px-6"
       >
         {/* Pitch coach — above the input. Quality checks, AI follow-ups,
             and an opt-in "polish my pitch" enhancer. Visible once the
@@ -353,7 +357,10 @@ function Panel1() {
         <div className="mb-4">
           <PitchCoach text={text} setText={setText} />
         </div>
-        <div className="scene-input-shell flex items-center gap-3 px-5 py-3 sm:gap-4 sm:px-6 sm:py-4">
+        {/* Padding bumped ~10% from the previous px-5 / py-3 / sm:px-6 /
+            sm:py-4. Specifically: 20→22px, 12→14px, 24→26px, 16→18px.
+            Matches the +10% size bump the user asked for. */}
+        <div className="scene-input-shell flex items-center gap-3 px-[1.375rem] py-[0.875rem] sm:gap-4 sm:px-[1.625rem] sm:py-[1.125rem]">
           <div className="relative flex flex-1 items-center">
             {length === 0 && (
               <span
@@ -377,7 +384,11 @@ function Panel1() {
               aria-label="Pitch your idea"
               autoComplete="off"
               className="scene-input pl-3"
-              style={{ minHeight: "1.5rem", maxHeight: "9rem" }}
+              // minHeight + maxHeight bumped 10% so the textarea's
+              // own intrinsic size grows with the shell. 1.5→1.65rem
+              // (=26.4px) for the closed at-rest state; 9→9.9rem
+              // (=158.4px) for the max expanded.
+              style={{ minHeight: "1.65rem", maxHeight: "9.9rem" }}
             />
             {length === 0 && !pending && (
               <span
