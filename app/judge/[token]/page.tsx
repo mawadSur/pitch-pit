@@ -96,7 +96,7 @@ export default async function JudgeRoute({
             <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
               ↘ Deliberation in progress
             </p>
-            <h1 className="mt-3 text-balance text-3xl font-medium leading-tight text-white sm:text-4xl">
+            <h1 className="scene-display mt-3 text-balance text-3xl font-medium leading-tight text-white sm:text-4xl">
               Three judges. One pitch.
             </h1>
             <Link

@@ -17,7 +17,7 @@ export function AggregateBandPending() {
         animate={{ opacity: [0.3, 0.8, 0.3] }}
         transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
       />
-      <p className="scene-mono relative text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
+      <p className="scene-display-italic relative text-lg text-white/65 sm:text-xl">
         awaiting consensus
       </p>
     </motion.div>

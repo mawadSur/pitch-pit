@@ -15,7 +15,10 @@ import type { JudgeId } from "@/lib/judges";
 import type { JudgePanel } from "@/lib/judges/persist-judgment";
 
 // Final aggregate verdict band — appears after all three judges resolve.
-// Big avg score on the left, per-judge breakdown + status pill on the right.
+// Cinema-wide treatment: full-bleed letterboxing (black bars top/bottom)
+// flanking a center band with a Fraunces tabular numeral that fills the
+// frame. The synthesis row sits beside the score with the per-judge
+// breakdown chips and status pills.
 export function AggregateBandClient({
   avg,
   panel,
@@ -42,65 +45,76 @@ export function AggregateBandClient({
   const buildRecommended = avg >= 7;
 
   return (
-    <motion.div
+    <motion.section
       role="status"
       aria-live="polite"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className="relative overflow-hidden rounded-2xl border border-[var(--scene-gold)]/30 bg-gradient-to-r from-[var(--scene-gold)]/[0.08] via-transparent to-[var(--scene-gold)]/[0.08] p-6 backdrop-blur-md sm:p-8"
+      // Escape the parent's max-w-6xl with negative margins so the band
+      // reads as a true wide-shot. Sized via 100vw with viewport-unit
+      // math so the bars hit the actual edges of the screen.
+      className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen"
     >
-      {/* ambient gold blob */}
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute -top-20 left-1/2 h-60 w-60 -translate-x-1/2 rounded-full bg-[var(--scene-gold)]/[0.08] blur-3xl"
-        animate={{ opacity: [0.4, 0.8, 0.4], scale: [1, 1.15, 1] }}
-        transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
-      />
+      {/* top letterbox bar */}
+      <div aria-hidden className="h-3 bg-black" />
 
-      <div className="relative grid items-center gap-6 sm:grid-cols-[auto_1fr]">
-        <ScoreCounter avg={avg} />
+      <div className="relative overflow-hidden border-y border-[var(--scene-gold)]/20 bg-gradient-to-r from-[var(--scene-gold)]/[0.06] via-transparent to-[var(--scene-gold)]/[0.06]">
+        {/* ambient gold blob */}
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute -top-32 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-[var(--scene-gold)]/[0.08] blur-3xl"
+          animate={{ opacity: [0.4, 0.8, 0.4], scale: [1, 1.15, 1] }}
+          transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+        />
 
-        <div className="flex flex-col gap-3 sm:items-start">
-          <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
-            consensus · final score
-          </p>
+        <div className="relative mx-auto flex max-w-6xl flex-col items-start gap-6 px-4 py-8 sm:px-6 sm:py-10 lg:flex-row lg:items-center lg:gap-12 lg:px-8 lg:py-14">
+          <ScoreCounter avg={avg} />
 
-          <div className="flex flex-wrap items-center gap-2">
-            {buildRecommended && (
-              <span className="scene-mono inline-flex h-11 items-center rounded-full bg-[var(--scene-gold)]/15 px-3 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-[var(--scene-gold)]">
-                build queue
-              </span>
-            )}
-            {ideaId && (
-              <Link
-                href={`/idea/${ideaId}`}
-                className="scene-mono inline-flex h-11 items-center rounded-full border border-white/15 px-4 text-[0.65rem] font-medium uppercase tracking-[0.32em] text-white/85 transition-all hover:border-[var(--scene-gold)]/55 hover:text-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
-              >
-                open idea page →
-              </Link>
-            )}
-            {canClaim && ideaId && <ClaimButton ideaId={ideaId} />}
-          </div>
+          <div className="flex flex-col gap-3 sm:items-start">
+            <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
+              consensus · final score
+            </p>
 
-          <ul className="scene-mono mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] uppercase tracking-[0.16em] text-white/55">
-            {judgesMeta.map((j, i) => (
-              <li key={j.id} className="flex items-center gap-1.5">
-                {i > 0 && (
-                  <span aria-hidden className="text-white/30">
-                    ·
-                  </span>
-                )}
-                <span>{j.name}</span>
-                <span className="text-white/85 tabular-nums">
-                  {panel[j.id]?.score ?? "—"}
+            <div className="flex flex-wrap items-center gap-2">
+              {buildRecommended && (
+                <span className="scene-display inline-flex h-11 items-center rounded-full bg-[var(--scene-gold)]/15 px-4 text-sm font-medium uppercase tracking-[0.18em] text-[var(--scene-gold)]">
+                  build queue
                 </span>
-              </li>
-            ))}
-          </ul>
+              )}
+              {ideaId && (
+                <Link
+                  href={`/idea/${ideaId}`}
+                  className="scene-display inline-flex h-11 items-center rounded-full border border-white/15 px-4 text-sm font-medium tracking-[0.02em] text-white/85 transition-all hover:border-[var(--scene-gold)]/55 hover:text-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+                >
+                  Open idea page →
+                </Link>
+              )}
+              {canClaim && ideaId && <ClaimButton ideaId={ideaId} />}
+            </div>
+
+            <ul className="scene-mono mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] uppercase tracking-[0.16em] text-white/55">
+              {judgesMeta.map((j, i) => (
+                <li key={j.id} className="flex items-center gap-1.5">
+                  {i > 0 && (
+                    <span aria-hidden className="text-white/30">
+                      ·
+                    </span>
+                  )}
+                  <span>{j.name}</span>
+                  <span className="text-white/85 tabular-nums">
+                    {panel[j.id]?.score ?? "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
-    </motion.div>
+
+      {/* bottom letterbox bar */}
+      <div aria-hidden className="h-3 bg-black" />
+    </motion.section>
   );
 }
 
@@ -132,7 +146,7 @@ function ClaimButton({ ideaId }: { ideaId: string }) {
     });
   }
 
-  // Parent <motion.div role="status" aria-live="polite"> covers
+  // Parent <motion.section role="status" aria-live="polite"> covers
   // announcement; no inner aria-live to avoid double-announce.
   if (done) {
     return (
@@ -190,12 +204,18 @@ function ScoreCounter({ avg }: { avg: number }) {
   return (
     <div className="flex items-baseline">
       <motion.span
-        className="scene-mono text-[5rem] font-semibold leading-none tabular-nums text-[var(--scene-gold)] sm:text-[6rem]"
-        style={{ textShadow: "0 0 32px rgba(255, 184, 0, 0.35)" }}
+        // Fraunces tabular numeral — drop dramatically on small screens so
+        // 220px doesn't blow past the viewport. Tabular-nums in
+        // `.scene-numeral` keeps width steady through the 0→avg
+        // transition so the surrounding layout doesn't reflow per tick.
+        className="scene-numeral text-[120px] text-[var(--scene-gold)] sm:text-[180px] lg:text-[220px]"
+        style={{ textShadow: "0 0 48px rgba(255, 184, 0, 0.35)" }}
       >
         {display}
       </motion.span>
-      <span className="ml-2 text-3xl tabular-nums text-white/55">/10</span>
+      <span className="ml-3 text-3xl tabular-nums text-white/45 sm:text-5xl">
+        /10
+      </span>
     </div>
   );
 }

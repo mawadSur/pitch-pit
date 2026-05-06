@@ -19,7 +19,7 @@ export function SoftGateCTA({ token }: { token: string }) {
         <Lock className="h-5 w-5 text-[var(--scene-gold)]" aria-hidden />
       </div>
 
-      <h2 className="mt-5 text-xl font-medium text-white sm:text-2xl">
+      <h2 className="scene-display mt-5 text-xl font-medium text-white sm:text-2xl">
         The judges said more.
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-white/65">
