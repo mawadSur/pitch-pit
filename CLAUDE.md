@@ -23,7 +23,7 @@ Tagline: "to the victor go the tokens." The pit closes Monday at midnight EST.
 
 The codebase has two aesthetics layered on the same backend. Don't conflate them.
 
-**Minimalist cinematic** (the user-facing surface): `/`, `/submit`, `/idea/[id]`, `/leaderboard`, `/built`, `/rules`, `/login`. Black void + warm gold (#FFB800) accents + glass cards + scroll-driven frame sequences. Inter + JetBrains Mono fonts. Tokens scoped under `.scene` in `app/scene.css`.
+**Minimalist cinematic** (the user-facing surface): `/`, `/submit`, `/idea/[id]`, `/leaderboard`, `/built`, `/rules`, `/login`. Black void + warm gold (#FFB800) accents + glass cards + scroll-driven frame sequences. Three-axis typography: **Fraunces** variable serif (display + verdict + score numerals via `--font-display` and the `.scene-display` / `.scene-display-italic` / `.scene-numeral` utility classes), **Inter** for body, **Geist Mono** for caption / label / status pills. Status colors beyond gold: `--scene-oxblood` (fallen, ≤3), `--scene-verdigris` (built — final state), `--scene-slate` (passable, 4–6). Tokens scoped under `.scene` in `app/scene.css`.
 
 **Capitol theatrical** (legacy operator surface): `/feed`, `/admin`. Cinzel + Cormorant Garamond fonts, gold-on-charcoal palette, ornamental dividers. Tokens defined globally in `app/globals.css` and `tailwind.config.ts`. `design-system/MASTER.md` documents this aesthetic but is **stale** — it describes the old Capitol homepage that has since been replaced.
 
@@ -109,7 +109,7 @@ Both redirect to `/auth/callback` (`app/auth/callback/route.ts`) which calls `ex
 
 ## Conventions worth knowing
 
-- **Per-route fonts**: `next/font/google` is imported per page (e.g., `app/page.tsx` loads Inter + JetBrains Mono with `--font-scene`/`--font-scene-mono` CSS variables) so each visual surface scopes its typography. Don't move font loading to root layout — it'd pull all fonts everywhere.
+- **Per-route fonts**: each per-route `page.tsx` loads three fonts and applies them as CSS variables on its root: Inter (`--font-scene`, body, via `next/font/google`), Geist Mono (`--font-scene-mono`, captions, self-hosted via `next/font/local` from `lib/fonts/geist-mono.ts`), and Fraunces (`--font-display`, display/verdict/score numerals, self-hosted from `lib/fonts/fraunces.ts`). Don't move font loading to root layout — it'd pull all three on every route. Self-hosting both Geist and Fraunces avoids the Google Fonts download flakiness we hit early. Use `.scene-display` / `.scene-display-italic` / `.scene-numeral` utility classes for serif moments; raw `var(--font-display)` is also available.
 - **`<Image>` shadowing**: when using `next/image` in a file that also constructs `new Image()` (e.g., for canvas frame preloading), import as `NextImage` to avoid shadowing the global `Image` constructor. See `components/scene/HeroPanel.tsx`.
 - **Scoped CSS**: minimalist styles live in `app/scene.css` under `.scene-*` class prefixes. Don't pollute `app/globals.css` (which holds the legacy Capitol palette).
 - **Route-level conditional Header**: when adding a new route that uses the minimalist theme, add it to the path check at the top of `components/Header.tsx` so the Capitol header doesn't leak in.
