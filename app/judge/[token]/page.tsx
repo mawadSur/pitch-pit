@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Inter } from "next/font/google";
 import { notFound, redirect } from "next/navigation";
-import { jetbrains } from "@/lib/fonts/jetbrains-mono";
+import { jetbrains } from "@/lib/fonts/geist-mono";
+import { fraunces } from "@/lib/fonts/fraunces";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { createClient as createCookieClient } from "@/lib/supabase/server";
 import { JUDGES, type JudgeId } from "@/lib/judges";
@@ -80,7 +81,7 @@ export default async function JudgeRoute({
 
   return (
     <div
-      className={`scene min-h-screen ${inter.variable} ${jetbrains.variable}`}
+      className={`scene min-h-screen ${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}
       style={{ background: "var(--scene-bg)" }}
     >
       <MinimalistHeader />

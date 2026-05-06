@@ -1,5 +1,6 @@
 import { Inter } from "next/font/google";
-import { jetbrains } from "@/lib/fonts/jetbrains-mono";
+import { jetbrains } from "@/lib/fonts/geist-mono";
+import { fraunces } from "@/lib/fonts/fraunces";
 import { createClient } from "@/lib/supabase/server";
 import {
   FEED_SELECT,
@@ -42,7 +43,7 @@ export default async function FeedRoute() {
 
   return (
     <div
-      className={`${inter.variable} ${jetbrains.variable}`}
+      className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}
       style={{ display: "contents" }}
     >
       <FeedScene initial={ideas} />

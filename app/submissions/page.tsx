@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Inter } from "next/font/google";
-import { jetbrains } from "@/lib/fonts/jetbrains-mono";
+import { jetbrains } from "@/lib/fonts/geist-mono";
+import { fraunces } from "@/lib/fonts/fraunces";
 import { createClient } from "@/lib/supabase/server";
 import { SubmissionsScene, type Submission } from "./SubmissionsScene";
 import "../scene.css";
@@ -48,7 +49,7 @@ export default async function SubmissionsRoute() {
 
   return (
     <div
-      className={`${inter.variable} ${jetbrains.variable}`}
+      className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}
       style={{ display: "contents" }}
     >
       <SubmissionsScene submissions={submissions} userLabel={userLabel} />

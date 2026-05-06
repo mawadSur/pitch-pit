@@ -7,6 +7,15 @@
   --scene-gold-bright: #ffd17a;
   --scene-gold-dim: #8b6500;
   --scene-amber: #ffa000;
+  /* Status accents — used semantically beyond the always-gold default.
+     Oxblood for fallen / rejected (≤3). Verdigris for built (final
+     state). Slate for passable (4–6). Lets the gold mean something
+     because the alternative tiers no longer share its color. */
+  --scene-oxblood: #7b1f2b;
+  --scene-oxblood-bright: #b53a4d;
+  --scene-verdigris: #5b8a6e;
+  --scene-verdigris-bright: #88b89c;
+  --scene-slate: #6b7280;
   --scene-text: rgba(255, 255, 255, 0.92);
   --scene-text-dim: rgba(255, 255, 255, 0.55);
   --scene-text-faint: rgba(255, 255, 255, 0.32);
@@ -23,6 +32,44 @@
 
 .scene-mono {
   font-family: var(--font-scene-mono), ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Display serif — Fraunces variable. Reserved for h1 page titles, the
+   verdict pull-quote, big score numerals, and the OG card titles. The
+   `font-feature-settings` enables Fraunces' opsz axis so text renders
+   with proper display-size proportions (tighter joins, sharper terminals)
+   when used at the sizes it's meant for. The `optical-sizing: auto`
+   makes browsers respect the opsz axis automatically.
+   `font-variation-settings: "SOFT" 50, "WONK" 0` keeps the more
+   conventional terminals — no "wonky" caps. */
+.scene-display {
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
+  font-feature-settings: "kern", "liga", "calt";
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 50, "WONK" 0;
+  letter-spacing: -0.018em;
+}
+.scene-display-italic {
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
+  font-feature-settings: "kern", "liga", "calt";
+  font-style: italic;
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 50, "WONK" 0;
+  letter-spacing: -0.012em;
+}
+
+/* Cinematic numeral utility — for the big score moments (avg on
+   /judge/[token], rank `01` on leaderboard, score on /idea/[id]).
+   Fraunces is the family; this class is the size + treatment.
+   Tabular figures so a 7→8 transition doesn't shift width. */
+.scene-numeral {
+  font-family: var(--font-display), Georgia, serif;
+  font-variation-settings: "SOFT" 50, "WONK" 0;
+  font-feature-settings: "tnum", "lnum";
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 600;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
 }
 
 /* ───── ambient backgrounds ───── */

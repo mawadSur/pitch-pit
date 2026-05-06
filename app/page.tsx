@@ -1,5 +1,6 @@
 import { Inter } from "next/font/google";
-import { jetbrains } from "@/lib/fonts/jetbrains-mono";
+import { jetbrains } from "@/lib/fonts/geist-mono";
+import { fraunces } from "@/lib/fonts/fraunces";
 import { HomeScene } from "./HomeScene";
 import "./scene.css";
 
@@ -19,7 +20,7 @@ export const metadata = {
 export default function Home() {
   return (
     <div
-      className={`${inter.variable} ${jetbrains.variable}`}
+      className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}
       style={{ display: "contents" }}
     >
       <HomeScene />

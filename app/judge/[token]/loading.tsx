@@ -1,5 +1,6 @@
 import { Inter } from "next/font/google";
-import { jetbrains } from "@/lib/fonts/jetbrains-mono";
+import { jetbrains } from "@/lib/fonts/geist-mono";
+import { fraunces } from "@/lib/fonts/fraunces";
 import { JUDGES } from "@/lib/judges";
 import { DeliberatingCard } from "./DeliberatingCard";
 import { AggregateBandPending } from "./AggregateBandPending";
@@ -22,7 +23,7 @@ const inter = Inter({
 export default function JudgeLoading() {
   return (
     <div
-      className={`scene min-h-screen ${inter.variable} ${jetbrains.variable}`}
+      className={`scene min-h-screen ${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}
       style={{ background: "var(--scene-bg)" }}
     >
       <MotionWrapper>
