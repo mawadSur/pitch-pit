@@ -587,6 +587,9 @@ function PodiumSlot({
       <div
         className={cn(
           "scene-numeral text-[140px] sm:text-[180px] lg:text-[220px]",
+          // Only rank 1 gets the foil sweep — keeps the moment
+          // singular instead of three numerals fighting for the eye.
+          isFirst && "scene-foil",
           numeralColor,
         )}
         style={numeralGlow}

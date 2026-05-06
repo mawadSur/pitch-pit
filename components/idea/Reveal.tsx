@@ -457,7 +457,7 @@ function BigScoreMoment({ finalScore }: { finalScore: number }) {
       className="mt-12 flex items-baseline justify-center gap-2"
     >
       <span
-        className="scene-numeral text-[96px] text-[var(--scene-gold)] sm:text-[160px] lg:text-[220px]"
+        className="scene-numeral scene-foil text-[96px] text-[var(--scene-gold)] sm:text-[160px] lg:text-[220px]"
         style={{ textShadow: "0 0 36px rgba(255, 184, 0, 0.25)" }}
       >
         {finalScore}
