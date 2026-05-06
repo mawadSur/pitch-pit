@@ -7,11 +7,16 @@ import { timeAgo, truncate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ShareMenu } from "@/components/idea/ShareMenu";
 
-// Final-score tiers for the minimalist accent treatment.
-// (Score on /idea/[id] is the canonical 0-100; here we tint by tier.)
-function tierFor(finalScore: number | null | undefined, aiScore: number) {
-  // Use AI score as the "fallen" gate (legacy filter compatibility),
-  // and final_score for the tint.
+// Final-score tiers for the accent treatment. Status takes precedence
+// over score: a built idea reads as "verdigris" (final state of the
+// contest) regardless of its numeric tier. Otherwise we fall through
+// to score-based tiers.
+function tierFor(
+  finalScore: number | null | undefined,
+  aiScore: number,
+  status: string,
+) {
+  if (status === "built") return "built" as const;
   if (aiScore <= 3) return "fallen" as const;
   const f = finalScore ?? Math.round(aiScore * 10);
   if (f >= 80) return "gold" as const;
@@ -28,7 +33,7 @@ export function IdeaCard({
   isNew?: boolean;
   index?: number;
 }) {
-  const tier = tierFor(idea.final_score, idea.score);
+  const tier = tierFor(idea.final_score, idea.score, idea.status);
   const finalDisplay = idea.final_score ?? 0;
 
   return (
@@ -57,6 +62,16 @@ export function IdeaCard({
         "scene-card relative overflow-hidden transition-transform active:scale-[0.99]",
         tier === "gold" &&
           "ring-1 ring-[var(--scene-gold)]/45 shadow-[0_0_36px_-12px_rgba(255,184,0,0.45)]",
+        // Built ideas are the contest's final state — verdigris
+        // ring + glow distinguishes them from the in-flight "build queue"
+        // gold tier and from the fallen oxblood tier below.
+        tier === "built" &&
+          "ring-1 ring-[var(--scene-verdigris-bright)]/45 shadow-[0_0_36px_-12px_rgba(91,138,110,0.45)]",
+        // Fallen ideas (score ≤ 3) get a subtle oxblood ring rather than
+        // the previous flat glass — communicates "rejected" semantically
+        // alongside the existing strikethrough title styling.
+        tier === "fallen" &&
+          "ring-1 ring-[var(--scene-oxblood)]/30",
       )}
     >
       <div className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-[1fr_auto] sm:p-7">
@@ -115,14 +130,16 @@ export function IdeaCard({
 
           <p
             className={cn(
-              "border-l pl-4 text-base italic leading-snug",
+              "scene-display-italic border-l pl-4 text-lg leading-snug sm:text-xl",
               tier === "gold"
                 ? "border-[var(--scene-gold-bright)]/55 text-white"
-                : tier === "silver"
-                  ? "border-white/30 text-white"
-                  : tier === "fallen"
-                    ? "border-white/15 text-white/50"
-                    : "border-[var(--scene-gold)]/35 text-white/85",
+                : tier === "built"
+                  ? "border-[var(--scene-verdigris-bright)]/55 text-white"
+                  : tier === "silver"
+                    ? "border-white/30 text-white"
+                    : tier === "fallen"
+                      ? "border-[var(--scene-oxblood-bright)]/35 text-white/55"
+                      : "border-[var(--scene-gold)]/35 text-white/85",
             )}
           >
             &ldquo;{idea.verdict}&rdquo;

@@ -421,10 +421,10 @@ function Panel1() {
             : pending
               ? "↘ The machine is judging"
               : length === 0
-                ? `Press enter to submit · ${SUBMIT_LIMITS.pitchMin}-${SUBMIT_LIMITS.pitchMax} chars`
+                ? `Press enter to enter the pit · ${SUBMIT_LIMITS.pitchMin}-${SUBMIT_LIMITS.pitchMax} chars`
                 : length < SUBMIT_LIMITS.pitchMin
-                  ? `${SUBMIT_LIMITS.pitchMin - length} more to submit · ${length}/${SUBMIT_LIMITS.pitchMax}`
-                  : `${length}/${SUBMIT_LIMITS.pitchMax} · enter to submit`}
+                  ? `${SUBMIT_LIMITS.pitchMin - length} more to enter the pit · ${length}/${SUBMIT_LIMITS.pitchMax}`
+                  : `${length}/${SUBMIT_LIMITS.pitchMax} · enter to enter the pit`}
         </p>
         <ScrollCue />
       </motion.div>

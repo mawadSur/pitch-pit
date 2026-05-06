@@ -15,6 +15,32 @@ import { cn } from "@/lib/utils";
 
 type Tab = "alltime" | "week";
 
+/* ════════════════════════ Status palette ════════════════════════════
+ * Semantic score color: oxblood for fallen, verdigris for built, gold
+ * everywhere else. The thresholds match the design spec:
+ *   - status === "built"      → verdigris-bright + BUILT pill
+ *   - final_score ≤ 30 OR     → oxblood-bright (fallen)
+ *     score ≤ 3
+ *   - default                  → gold-bright (the sharp ones)
+ * Returns a CSS var name so consumers can compose with Tailwind arbitrary
+ * value classes (e.g. `text-[var(--scene-gold-bright)]`).
+ * ────────────────────────────────────────────────────────────────────── */
+function scoreTone(idea: Pick<LeaderboardIdea, "final_score" | "score" | "status">):
+  | "gold"
+  | "oxblood"
+  | "verdigris" {
+  if (idea.status === "built") return "verdigris";
+  const final = idea.final_score ?? 0;
+  if (final <= 30 || idea.score <= 3) return "oxblood";
+  return "gold";
+}
+
+function toneVar(tone: "gold" | "oxblood" | "verdigris"): string {
+  if (tone === "oxblood") return "var(--scene-oxblood-bright)";
+  if (tone === "verdigris") return "var(--scene-verdigris-bright)";
+  return "var(--scene-gold-bright)";
+}
+
 export function LeaderboardScene({
   alltime,
   week,
@@ -143,9 +169,9 @@ export function LeaderboardScene({
             <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.92rem]">
               ↘ Roll of honor
             </p>
-            <h1 className="mt-5 text-balance text-[2.25rem] font-medium leading-[1.02] text-white sm:text-6xl lg:text-7xl">
+            <h1 className="scene-display mt-5 text-balance text-4xl font-medium leading-[1.02] text-white sm:text-5xl lg:text-6xl">
               The{" "}
-              <span className="italic text-[var(--scene-gold-bright)]">
+              <span className="scene-display-italic text-[var(--scene-gold-bright)]">
                 victors
               </span>
               .
@@ -173,20 +199,39 @@ export function LeaderboardScene({
             <Empty tab={tab} />
           ) : (
             <>
-              {/* PODIUM */}
-              <div className="mt-16 grid gap-5 md:grid-cols-3 md:gap-4">
-                {second && <PodiumCard idea={second} rank={2} />}
-                {first && <PodiumCard idea={first} rank={1} />}
-                {third && <PodiumCard idea={third} rank={3} />}
+              {/* PODIUM — top 3 hero row.
+                  Visual order on desktop is rank 2 (left), rank 1 (center,
+                  raised + scaled), rank 3 (right). On mobile we collapse to
+                  a single column with rank 1 first so the giant numeral
+                  treatment is always the first thing visible. Empty slots
+                  render placeholder cards so the 3-column grid never
+                  collapses or shifts column widths. */}
+              <div className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-4 sm:items-end">
+                <PodiumSlot idea={second ?? null} rank={2} order="sm:order-1" />
+                <PodiumSlot idea={first ?? null} rank={1} order="order-first sm:order-2" />
+                <PodiumSlot idea={third ?? null} rank={3} order="sm:order-3" />
               </div>
 
-              {/* REST */}
+              {/* LEDGER — ranks 4+ rendered as flat ledger rows (no glass) */}
               {rest.length > 0 && (
-                <ol className="scene-card mt-12 divide-y divide-white/[0.05]">
-                  {rest.map((idea, i) => (
-                    <ListRow key={idea.id} idea={idea} rank={i + 4} />
-                  ))}
-                </ol>
+                <div className="mt-16">
+                  <div className="scene-mono mb-3 flex items-baseline justify-between border-b border-white/[0.08] pb-3 text-[0.55rem] uppercase tracking-[0.32em] text-white/40">
+                    <span>The remainder</span>
+                    <span className="tabular-nums">
+                      {rest.length} {rest.length === 1 ? "entry" : "entries"}
+                    </span>
+                  </div>
+                  <ol className="border-t border-white/[0.05]">
+                    {rest.map((idea, i) => (
+                      <LedgerRow
+                        key={idea.id}
+                        idea={idea}
+                        rank={i + 4}
+                        zebra={i % 2 === 0}
+                      />
+                    ))}
+                  </ol>
+                </div>
               )}
             </>
           )}
@@ -438,15 +483,22 @@ function Tabs({
             aria-selected={isActive}
             onClick={() => onChange(t.id)}
             className={cn(
-              "scene-mono inline-flex items-center gap-2.5 rounded-full border px-5 py-2 text-[0.65rem] uppercase tracking-[0.3em] transition-colors",
+              "inline-flex items-center gap-2.5 rounded-full border px-5 py-2 transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-black",
               isActive
-                ? "border-[var(--scene-gold)] bg-[var(--scene-gold)]/10 text-[var(--scene-gold-bright)]"
-                : "border-white/15 text-white/55 hover:border-white/35 hover:text-white",
+                ? "scene-display border-[var(--scene-gold)] bg-[var(--scene-gold)]/10 text-[1rem] tracking-tight text-[var(--scene-gold-bright)]"
+                : "scene-mono border-white/15 text-[0.65rem] uppercase tracking-[0.3em] text-white/55 hover:border-white/35 hover:text-white",
             )}
           >
             <span>{t.label}</span>
-            <span className="tabular-nums opacity-80">{counts[t.id]}</span>
+            <span
+              className={cn(
+                "tabular-nums opacity-80",
+                isActive ? "scene-mono text-[0.65rem] tracking-[0.3em]" : "",
+              )}
+            >
+              {counts[t.id]}
+            </span>
           </button>
         );
       })}
@@ -454,83 +506,125 @@ function Tabs({
   );
 }
 
-function PodiumCard({
+/* ════════════════════════ PodiumSlot ════════════════════════════════
+ * Top-3 hero card. The rank numeral is the visual anchor — rendered at
+ * 140-220px in Fraunces (`.scene-numeral`) so it reads as "ledger book"
+ * typography, not a UI badge. Rank 1 lives in the center column on
+ * desktop (`sm:order-2`), gets a `lg:scale-110 lg:-mt-4` lift, and a
+ * gold glow text-shadow on its numeral. Ranks 2 & 3 share a quieter
+ * white/55 numeral.
+ *
+ * Renders an "Awaiting" placeholder when the slot has no idea yet so
+ * the 3-column layout never collapses.
+ *
+ * The whole card is wrapped in <Link> to /idea/[id] (when populated)
+ * so the entire surface is the click target. ShareMenu lives inline at
+ * the bottom and stops propagation via its own click handler.
+ * ────────────────────────────────────────────────────────────────────── */
+function PodiumSlot({
   idea,
   rank,
+  order,
 }: {
-  idea: LeaderboardIdea;
+  idea: LeaderboardIdea | null;
   rank: 1 | 2 | 3;
+  order: string;
 }) {
   const isFirst = rank === 1;
-  const palette =
-    rank === 1
-      ? { accent: "var(--scene-gold-bright)", label: "Token King" }
-      : rank === 2
-        ? { accent: "#dcdfe6", label: "Almost Ascended" }
-        : { accent: "#d59554", label: "Still Climbing" };
+  const numeralColor = isFirst ? "text-[var(--scene-gold)]" : "text-white/55";
+  const numeralGlow = isFirst
+    ? { textShadow: "0 0 36px rgba(255,184,0,0.35)" }
+    : undefined;
+
+  // Empty placeholder — keeps grid columns from collapsing.
+  if (!idea) {
+    return (
+      <div
+        className={cn(
+          "relative flex flex-col items-center px-6 py-8 text-center",
+          order,
+          isFirst ? "lg:-mt-4 lg:scale-105" : "",
+        )}
+      >
+        <div
+          className={cn(
+            "scene-numeral text-[140px] sm:text-[180px] lg:text-[220px]",
+            "text-white/15",
+          )}
+          aria-hidden
+        >
+          {String(rank).padStart(2, "0")}
+        </div>
+        <div className="scene-display mt-2 text-xl text-white/35 sm:text-2xl">
+          —
+        </div>
+        <p className="scene-mono mt-3 text-[0.55rem] uppercase tracking-[0.35em] text-white/35">
+          Awaiting
+        </p>
+      </div>
+    );
+  }
+
+  const tone = scoreTone(idea);
+  const scoreColor = toneVar(tone);
+  const isBuilt = idea.status === "built";
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.7, delay: rank * 0.1 }}
+    <Link
+      href={`/idea/${idea.id}`}
+      aria-label={`Rank ${rank}: ${idea.title}`}
       className={cn(
-        "relative flex flex-col px-7 py-7 text-center sm:px-8 sm:py-8",
-        isFirst ? "scene-card-gold md:order-2 md:-mt-4 md:py-12" : "scene-card",
+        "group relative flex flex-col items-center rounded-2xl px-6 py-8 text-center",
+        "border border-white/[0.06] bg-white/[0.015]",
+        "transition-all duration-300",
+        "hover:border-[var(--scene-gold)]/40 hover:bg-white/[0.025]",
+        "active:scale-[0.99]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-black",
+        order,
+        isFirst ? "lg:-mt-4 lg:scale-110" : "",
       )}
     >
-      <p
-        className="scene-mono text-[0.55rem] uppercase tracking-[0.35em]"
-        style={{ color: palette.accent }}
-      >
-        {palette.label}
-      </p>
-      <p
-        className="scene-mono mt-3 text-5xl font-semibold leading-none tabular-nums sm:text-6xl"
-        style={{
-          color: palette.accent,
-          textShadow: isFirst
-            ? "0 0 16px rgba(255, 184, 0, 0.55), 0 0 36px rgba(255, 184, 0, 0.3)"
-            : undefined,
-        }}
+      <div
+        className={cn(
+          "scene-numeral text-[140px] sm:text-[180px] lg:text-[220px]",
+          numeralColor,
+        )}
+        style={numeralGlow}
+        aria-hidden
       >
         {String(rank).padStart(2, "0")}
-      </p>
+      </div>
 
-      <h3 className="mt-6 text-lg font-medium leading-tight text-white sm:text-xl">
+      <h3 className="scene-display mt-2 line-clamp-2 text-xl font-medium text-white sm:text-2xl">
         {idea.title}
       </h3>
-      {idea.handle && (
-        <p className="scene-mono mt-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/50">
-          {idea.handle}
-        </p>
+
+      {isBuilt && (
+        <span className="scene-mono mt-3 inline-flex items-center rounded-full border border-[var(--scene-verdigris-bright)]/40 bg-[var(--scene-verdigris)]/10 px-2 py-0.5 text-[0.55rem] uppercase tracking-[0.3em] text-[var(--scene-verdigris-bright)]">
+          Built
+        </span>
       )}
 
-      <p className="mt-4 line-clamp-3 text-sm italic leading-snug text-white/72">
-        &ldquo;{idea.verdict}&rdquo;
+      <div className="mt-5 flex items-baseline justify-center gap-1">
+        <span
+          className="scene-numeral text-3xl tabular-nums"
+          style={{ color: scoreColor }}
+        >
+          {idea.final_score ?? 0}
+        </span>
+        <span className="text-base tabular-nums text-white/45">/100</span>
+      </div>
+
+      <p className="scene-mono mt-3 text-[0.65rem] uppercase tracking-[0.16em] text-white/55">
+        {formatVoteCount(idea.vote_count)} votes
       </p>
 
-      <div className="mt-6 flex items-center justify-center gap-5">
-        <span>
-          <span
-            className="scene-mono text-2xl font-semibold tabular-nums"
-            style={{ color: palette.accent }}
-          >
-            {idea.final_score ?? 0}
-          </span>
-          <span className="scene-mono ml-1 text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
-            / 100
-          </span>
-        </span>
-        <span className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
-          AI {idea.score} · {formatVoteCount(idea.vote_count)} votes
-        </span>
-        <Link
-          href={`/idea/${idea.id}`}
-          className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:text-white"
-        >
-          View →
-        </Link>
+      <div
+        className="mt-4"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        role="presentation"
+      >
         <ShareMenu
           idea={{
             id: idea.id,
@@ -544,51 +638,121 @@ function PodiumCard({
           ariaLabel={`Share "${idea.title}"`}
         />
       </div>
-    </motion.article>
+    </Link>
   );
 }
 
-function ListRow({ idea, rank }: { idea: LeaderboardIdea; rank: number }) {
+/* ════════════════════════ LedgerRow ═════════════════════════════════
+ * Ranks 4+. Flat table-like row, no glass. Even-indexed rows get a
+ * faint `bg-white/[0.015]` zebra tint. Whole row is a clickable Link
+ * to /idea/[id]; ShareMenu stops propagation so its own click target
+ * works without triggering navigation.
+ *
+ * Layout: rank | title (+ judge breakdown stacked under on desktop) |
+ * score | share. On <sm: viewports the rank/title/score collapse to a
+ * two-line vertical stack so the row stays readable on phones.
+ * ────────────────────────────────────────────────────────────────────── */
+function LedgerRow({
+  idea,
+  rank,
+  zebra,
+}: {
+  idea: LeaderboardIdea;
+  rank: number;
+  zebra: boolean;
+}) {
+  const tone = scoreTone(idea);
+  const scoreColor = toneVar(tone);
+  const isBuilt = idea.status === "built";
+
   return (
-    <li>
-      <div className="group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-5 py-4 transition-[colors,transform] hover:bg-white/[0.025] focus-within:bg-white/[0.04] active:scale-[0.99] sm:gap-6 sm:px-7">
-        <span className="scene-mono w-8 text-right text-sm tabular-nums text-white/55">
+    <li
+      className={cn(
+        "border-b border-white/[0.05]",
+        zebra ? "bg-white/[0.015]" : "",
+      )}
+    >
+      <Link
+        href={`/idea/${idea.id}`}
+        aria-label={`Rank ${rank}: ${idea.title}`}
+        className={cn(
+          "group flex items-stretch gap-4 px-3 py-4 transition-colors sm:gap-6 sm:px-5",
+          "hover:bg-white/[0.03] active:scale-[0.99]",
+          "focus-visible:outline-none focus-visible:bg-white/[0.03]",
+        )}
+      >
+        {/* Rank — mono, faint */}
+        <span className="scene-mono w-10 shrink-0 self-center text-base tabular-nums text-white/45 sm:w-12">
           {String(rank).padStart(2, "0")}
         </span>
-        <Link
-          href={`/idea/${idea.id}`}
-          className="min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--scene-gold)]/55"
-        >
-          <span className="block truncate text-base text-white sm:text-lg">
-            {idea.title}
-          </span>
-          <span className="scene-mono mt-0.5 block text-[0.55rem] uppercase tracking-[0.3em] text-white/45">
-            {idea.handle ?? "anonymous"}
-          </span>
-        </Link>
-        <div className="hidden flex-col items-end gap-1 sm:flex">
-          <span className="scene-mono tabular-nums text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
-            {formatVoteCount(idea.vote_count)} votes
-          </span>
-          <JudgeBreakdown scores={idea.judge_scores} />
+
+        {/* Title + meta — stacks differently on mobile vs desktop */}
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 sm:gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate text-base text-white transition-colors group-hover:text-[var(--scene-gold-bright)]">
+              {idea.title}
+            </span>
+            {isBuilt && (
+              <span className="scene-mono inline-flex shrink-0 items-center rounded-full border border-[var(--scene-verdigris-bright)]/40 bg-[var(--scene-verdigris)]/10 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.25em] text-[var(--scene-verdigris-bright)]">
+                Built
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <JudgeBreakdown scores={idea.judge_scores} />
+            <span className="scene-mono text-[0.6rem] uppercase tracking-[0.16em] tabular-nums text-white/45 sm:hidden">
+              {formatVoteCount(idea.vote_count)} votes
+            </span>
+            {/* mobile-only inline score so the row is scannable */}
+            <span
+              className="scene-numeral ml-auto text-xl tabular-nums sm:hidden"
+              style={{ color: scoreColor }}
+            >
+              {idea.final_score ?? 0}
+              <span className="ml-0.5 text-[0.6rem] text-white/45">/100</span>
+            </span>
+          </div>
         </div>
-        <span className="scene-mono w-14 text-right tabular-nums text-base font-semibold text-[var(--scene-gold-bright)] sm:w-16 sm:text-lg">
-          {idea.final_score ?? 0}
-          <span className="ml-0.5 text-[0.55rem] text-white/55">/100</span>
+
+        {/* Vote count — desktop only, in the gutter */}
+        <span className="scene-mono hidden self-center text-[0.65rem] uppercase tracking-[0.16em] tabular-nums text-white/55 sm:inline">
+          {formatVoteCount(idea.vote_count)} votes
         </span>
-        <ShareMenu
-          idea={{
-            id: idea.id,
-            title: idea.title,
-            verdict: idea.verdict,
-            finalScore: idea.final_score ?? Math.round(idea.score * 10),
-            aiScore: idea.score,
-            voteCount: idea.vote_count,
-          }}
-          variant="icon"
-          ariaLabel={`Share "${idea.title}"`}
-        />
-      </div>
+
+        {/* Final score — the marquee number on desktop */}
+        <span className="hidden w-20 shrink-0 items-baseline justify-end self-center sm:flex">
+          <span
+            className="scene-numeral text-2xl tabular-nums"
+            style={{ color: scoreColor }}
+          >
+            {idea.final_score ?? 0}
+          </span>
+          <span className="ml-0.5 text-[0.6rem] tabular-nums text-white/45">
+            /100
+          </span>
+        </span>
+
+        {/* Share — stops propagation so click on the icon doesn't navigate */}
+        <span
+          className="flex shrink-0 self-center"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <ShareMenu
+            idea={{
+              id: idea.id,
+              title: idea.title,
+              verdict: idea.verdict,
+              finalScore: idea.final_score ?? Math.round(idea.score * 10),
+              aiScore: idea.score,
+              voteCount: idea.vote_count,
+            }}
+            variant="icon"
+            ariaLabel={`Share "${idea.title}"`}
+          />
+        </span>
+      </Link>
     </li>
   );
 }
@@ -620,7 +784,7 @@ function JudgeBreakdown({
   }
   if (entries.length < 2) return null;
   return (
-    <dl className="hidden sm:flex">
+    <dl className="flex">
       <dt className="sr-only">Per-judge scores</dt>
       <dd className="scene-mono flex items-center gap-1.5 text-[0.55rem] uppercase tracking-[0.16em] tabular-nums text-white/55">
         {entries.map((entry, i) => (
@@ -645,7 +809,7 @@ function Empty({ tab }: { tab: Tab }) {
   return (
     <div className="mt-16 flex flex-col items-center gap-6 text-center">
       <div className="scene-card max-w-md px-10 py-12">
-        <p className="text-lg italic text-white/72">
+        <p className="scene-display-italic text-lg text-white/72">
           {tab === "alltime"
             ? "The arena awaits its first champion."
             : "No tribute has triumphed this week."}

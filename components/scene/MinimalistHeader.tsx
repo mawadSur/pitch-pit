@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "@/components/scene/Logo";
+import { HeaderCountdown } from "@/components/scene/HeaderCountdown";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -99,6 +100,10 @@ export function MinimalistHeader() {
         >
           <Logo variant="lockup" size={30} />
         </Link>
+
+        {/* live countdown ticker — every page reminds you the pit is
+            running. Visible only on lg:+ so it doesn't crowd mobile. */}
+        <HeaderCountdown />
 
         {/* center nav (desktop) */}
         <nav

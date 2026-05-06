@@ -24,6 +24,7 @@ export type LeaderboardIdea = {
   vote_count: number;
   verdict: string;
   build_recommended: boolean;
+  status: string;
   created_at: string;
   judge_scores: Partial<Record<JudgeId, ScoreResult>> | null;
 };
@@ -32,7 +33,7 @@ export const FEED_SELECT =
   "id,title,pitch,handle,score,final_score,vote_count,verdict,build_recommended,status,created_at";
 
 export const LEADERBOARD_SELECT =
-  "id,title,handle,score,final_score,vote_count,verdict,build_recommended,created_at,judge_scores";
+  "id,title,handle,score,final_score,vote_count,verdict,build_recommended,status,created_at,judge_scores";
 
 export const VISIBLE_STATUSES = [
   "scored",

@@ -160,7 +160,7 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
           }`}
         >
           <TokenIcon active={userHasVoted} />
-          <span>{userHasVoted ? "Voted" : "Cast a vote"}</span>
+          <span>{userHasVoted ? "Token cast" : "Cast a token"}</span>
           <span
             className={`scene-mono ml-1 tabular-nums text-sm font-semibold transition-colors duration-300 ${
               flash ? "text-[var(--scene-gold-bright)]" : ""
@@ -177,7 +177,7 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
           className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/[0.04] px-6 py-3 text-base font-medium text-white transition-colors hover:border-[var(--scene-gold)] hover:text-[var(--scene-gold-bright)]"
         >
           <TokenIcon active={false} />
-          <span>Sign in to vote</span>
+          <span>Sign in to cast a token</span>
           <span
             className={`scene-mono ml-1 tabular-nums text-sm font-semibold transition-colors duration-300 ${
               flash ? "text-[var(--scene-gold-bright)]" : "text-white/65"
