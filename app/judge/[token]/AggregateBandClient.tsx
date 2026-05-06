@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 import {
   motion,
   useMotionValue,
@@ -141,6 +142,10 @@ function ClaimButton({ ideaId }: { ideaId: string }) {
         // Refresh server data so canClaim flips to false on next render.
         router.refresh();
       } catch (e) {
+        Sentry.captureException(e, {
+          tags: { surface: "claim-button", phase: "client-fetch" },
+          extra: { ideaId },
+        });
         setError(e instanceof Error ? e.message : "Claim failed");
       }
     });

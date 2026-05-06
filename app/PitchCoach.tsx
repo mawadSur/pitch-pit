@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, Sparkles, Check, X, Loader2, MessageSquareText } from "lucide-react";
 
@@ -187,8 +188,14 @@ export function PitchCoach({
         .then((data) => {
           setFollowups(data.questions ?? []);
         })
-        .catch(() => {
-          /* network blip — leave followups empty */
+        .catch((e) => {
+          // Followups are nice-to-have, so we leave the panel empty
+          // instead of breaking the input. But if the endpoint is
+          // actually down (vs. a one-off blip), Sentry should see
+          // the failure pattern.
+          Sentry.captureException(e, {
+            tags: { surface: "pitch-coach", phase: "followups" },
+          });
         })
         .finally(() => setFollowupsLoading(false));
     }, FOLLOWUPS_DEBOUNCE_MS);
@@ -216,6 +223,9 @@ export function PitchCoach({
       if (!data.enhanced) throw new Error("Coach returned an empty result.");
       setEnhanced(data.enhanced);
     } catch (e) {
+      Sentry.captureException(e, {
+        tags: { surface: "pitch-coach", phase: "enhance" },
+      });
       setError(e instanceof Error ? e.message : "Polish failed.");
       onPolishEnd?.();
     } finally {

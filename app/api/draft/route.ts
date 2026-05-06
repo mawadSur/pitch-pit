@@ -161,8 +161,14 @@ export async function POST(req: NextRequest) {
     const { data: existing, error: lookupErr } = await q.maybeSingle();
     if (lookupErr) {
       // Don't fail the request on a lookup glitch — fall through and
-      // mint a new draft. Worst case we lose dedupe on this request.
+      // mint a new draft. Worst case we lose dedupe on this request,
+      // but the user gets a fresh token and the duplicate orphan can be
+      // GC'd by the prune RPC. Capture so we see if this becomes a
+      // pattern (would point at index drift or RLS regression).
       console.warn("[draft] idempotency lookup failed", lookupErr);
+      Sentry.captureException(lookupErr, {
+        tags: { route: "draft", phase: "idempotency-lookup" },
+      });
     } else if (existing) {
       return NextResponse.json({ token: existing.access_token });
     }
