@@ -632,7 +632,7 @@ function HowItWorks() {
     {
       n: 2,
       title: "Claude rates it",
-      body: "Sonnet 4.7 evaluates your pitch against the YC office-hours rubric — demand, wedge, founder edge, feasibility, defensibility, distribution. Score 1–10 with strengths, concerns, and reasoning.",
+      body: "Opus 4.7 evaluates your pitch against the YC office-hours rubric — demand, wedge, founder edge, feasibility, defensibility, distribution. Score 1–10 with strengths, concerns, and reasoning.",
     },
     {
       n: 3,
