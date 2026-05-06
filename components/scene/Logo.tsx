@@ -34,7 +34,7 @@ export function Logo({
       <PitMark size={size} monochrome={monochrome} />
       <span
         className={cn(
-          "text-[0.95em] font-medium leading-none tracking-[-0.013em] text-white",
+          "whitespace-nowrap text-[0.95em] font-medium leading-none tracking-[-0.013em] text-white",
           wordClassName,
         )}
         style={{ fontSize: `${Math.round(size * 0.78)}px` }}

@@ -165,10 +165,17 @@ export function MinimalistHeader() {
               >
                 Sign in
               </Link>
-              <Link href="/login" className="cta-btn-primary text-base">
-                Get started
-                <span aria-hidden>→</span>
-              </Link>
+              {/* Hide on <sm: the hamburger covers the same path via the
+                  mobile dropdown's "Get started →" row, so the pill only
+                  competes for space on tiny viewports. The `.cta-btn-primary`
+                  rule sets `display: inline-flex !important` via cascade order,
+                  so wrap with a span to gate visibility. */}
+              <span className="hidden sm:inline-block">
+                <Link href="/login" className="cta-btn-primary text-base">
+                  Get started
+                  <span aria-hidden>→</span>
+                </Link>
+              </span>
             </>
           )}
 
@@ -317,7 +324,7 @@ function AuthClusterSkeleton() {
       style={{ opacity: 0 }}
     >
       <span className="h-11 w-11 rounded-full bg-white/[0.04]" />
-      <span className="h-11 w-36 rounded-full bg-white/[0.04]" />
+      <span className="hidden h-11 w-36 rounded-full bg-white/[0.04] sm:inline-block" />
     </div>
   );
 }
@@ -363,13 +370,15 @@ function UserMenu({ user }: { user: User }) {
     <div ref={ref} className="relative">
       {/* Pitch-now CTA stays visible alongside the avatar */}
       <div className="flex items-center gap-3 sm:gap-4">
-        <Link
-          href="/submissions"
-          className="cta-btn-primary hidden text-base sm:inline-flex"
-        >
-          Pitch idea
-          <span aria-hidden>→</span>
-        </Link>
+        {/* Wrapped to actually hide on <sm:; .cta-btn-primary forces
+            display:inline-flex via cascade so Tailwind's `hidden` alone
+            on the link doesn't take effect. */}
+        <span className="hidden sm:inline-block">
+          <Link href="/submissions" className="cta-btn-primary text-base">
+            Pitch idea
+            <span aria-hidden>→</span>
+          </Link>
+        </span>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
