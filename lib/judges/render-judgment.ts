@@ -2,7 +2,8 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { scoreSchema, type ScoreResult } from "@/lib/score-schema";
 import { extractJson } from "@/lib/extract-json";
-import { getJudge, userPrompt, type JudgeId } from "./index";
+import { getJudge, type JudgeId } from "./index";
+import { userMessageContent } from "./shared";
 
 // Sonnet 4.6 pricing per million tokens (USD).
 const PRICE_PER_MTOK = {
@@ -12,14 +13,17 @@ const PRICE_PER_MTOK = {
   cache_read: 0.3,
 } as const;
 
-// Calls the named judge against (title, pitch) and returns a validated
-// ScoreResult. Throws on Anthropic / parse / schema failure — the caller
-// (the streaming server component) decides whether to surface a per-judge
-// error card or retry.
+// Calls the named judge against (title, pitch, imageUrls) and returns a
+// validated ScoreResult. When imageUrls is non-empty, they're sent as
+// Anthropic url-source content blocks alongside the pitch text — Claude
+// fetches them at request time. Throws on Anthropic / parse / schema
+// failure; the caller (the streaming server component) decides whether
+// to surface a per-judge error card or retry.
 export async function renderJudgment(
   judgeId: JudgeId,
   title: string,
   pitch: string,
+  imageUrls: string[] = [],
 ): Promise<ScoreResult> {
   const judge = getJudge(judgeId);
   const client = new Anthropic();
@@ -29,6 +33,8 @@ export async function renderJudgment(
   // two judges mid-stream. AbortError here surfaces as a thrown error
   // to the per-judge Suspense boundary; JudgeCard catches it and renders
   // an errored card while AggregateBand falls back to the partial panel.
+  // With images attached the per-call cost climbs (~1k–2k input tokens
+  // per image at default detail), but timeout headroom stays the same.
   const response = await client.messages.create(
     {
       model: "claude-sonnet-4-6",
@@ -40,7 +46,9 @@ export async function renderJudgment(
           cache_control: { type: "ephemeral" },
         },
       ],
-      messages: [{ role: "user", content: userPrompt(title, pitch) }],
+      messages: [
+        { role: "user", content: userMessageContent(title, pitch, imageUrls) },
+      ],
     },
     { signal: AbortSignal.timeout(25_000) },
   );

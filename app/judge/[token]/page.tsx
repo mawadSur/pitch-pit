@@ -72,11 +72,16 @@ export default async function JudgeRoute({
   // below awaits its own promise — React streams them as they resolve.
   // The aggregate band awaits Promise.all of all three to compute the
   // average and persist the ideas row.
+  //
+  // image_urls is normalized to [] by loadDraftByToken when the column
+  // is missing (pre-migration-015 fallback path), so passing it through
+  // here is safe even on a stale schema.
+  const images = draft.image_urls ?? [];
   const promises: Record<JudgeId, Promise<import("@/lib/score-schema").ScoreResult>> =
     {
-      gstack: renderJudgmentCached(draft.id, "gstack", draft.title, draft.pitch),
-      vee: renderJudgmentCached(draft.id, "vee", draft.title, draft.pitch),
-      robbins: renderJudgmentCached(draft.id, "robbins", draft.title, draft.pitch),
+      gstack: renderJudgmentCached(draft.id, "gstack", draft.title, draft.pitch, images),
+      vee: renderJudgmentCached(draft.id, "vee", draft.title, draft.pitch, images),
+      robbins: renderJudgmentCached(draft.id, "robbins", draft.title, draft.pitch, images),
     };
 
   return (

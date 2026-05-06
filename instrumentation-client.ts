@@ -5,7 +5,9 @@ import * as Sentry from "@sentry/nextjs";
 
 // Browser-extension noise that has nothing to do with our app but gets
 // hoisted into our console (and into Sentry) by Chrome's global error
-// hooks. Drop in beforeSend so we don't burn quota on extension drama.
+// hooks. Drop in beforeSend so we don't burn quota on extension drama,
+// and suppress at the unhandledrejection level so it stops polluting
+// DevTools too.
 //
 // • "listener indicated an asynchronous response... message channel closed":
 //     extension's chrome.runtime.onMessage handler returned true to
@@ -20,6 +22,30 @@ const EXTENSION_NOISE_PATTERNS: RegExp[] = [
   /message channel closed before a response was received/i,
   /ResizeObserver loop (limit exceeded|completed with undelivered notifications)/i,
 ];
+
+function isExtensionNoise(message: string): boolean {
+  return EXTENSION_NOISE_PATTERNS.some((re) => re.test(message));
+}
+
+// Browser-side: stop the noise from reaching the DevTools console. We
+// preventDefault only on matched patterns so genuine app rejections still
+// surface as errors — silencing all unhandledrejections would hide real
+// bugs. Window check guards SSR/edge bundles where window is undefined.
+if (typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason;
+    const message =
+      reason instanceof Error
+        ? reason.message
+        : typeof reason === "string"
+          ? reason
+          : "";
+    if (isExtensionNoise(message)) event.preventDefault();
+  });
+  window.addEventListener("error", (event) => {
+    if (isExtensionNoise(event.message ?? "")) event.preventDefault();
+  });
+}
 
 Sentry.init({
   dsn: "https://5bd18a616f2f904a6471e12663463dcb@o4511272590835712.ingest.us.sentry.io/4511272600076288",
@@ -38,7 +64,7 @@ Sentry.init({
       event.exception?.values?.[0]?.value ??
       (typeof event.message === "string" ? event.message : "") ??
       "";
-    if (EXTENSION_NOISE_PATTERNS.some((re) => re.test(message))) {
+    if (isExtensionNoise(message)) {
       return null; // drop — never reaches Sentry
     }
     return event;

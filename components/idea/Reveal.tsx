@@ -11,6 +11,7 @@ import { Timeline } from "@/components/idea/Timeline";
 import { VoteButton } from "@/components/idea/VoteButton";
 import { Comments, type Comment } from "@/components/idea/Comments";
 import { OtherTakes } from "@/components/idea/OtherTakes";
+import { AttachmentGallery } from "@/components/idea/AttachmentGallery";
 import type { ScoreResult } from "@/lib/score-schema";
 import type { JudgeId } from "@/lib/judges";
 import { ShareMenu } from "@/components/idea/ShareMenu";
@@ -42,6 +43,10 @@ export type Idea = {
   // judge (gstack > vee > robbins) so the existing UI keeps working
   // when judge_scores is absent.
   judge_scores?: Partial<Record<JudgeId, ScoreResult>> | null;
+  // Up to 3 public Supabase Storage URLs of images attached to the
+  // pitch. Empty array when the user didn't attach any (or the
+  // pre-migration-015 fallback path was taken).
+  image_urls?: string[];
 };
 
 export function Reveal({
@@ -262,6 +267,24 @@ export function Reveal({
               <span className="whitespace-pre-wrap">{idea.pitch}</span>
             </blockquote>
           </motion.section>
+
+          {/* attachments — only when the founder uploaded images. The
+              judges saw these too (multimodal Claude content blocks),
+              so showing them publicly anchors the verdict in what they
+              actually reviewed. Click any thumbnail for a lightbox. */}
+          {idea.image_urls && idea.image_urls.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 2.05 }}
+              className="mx-auto mt-8 max-w-3xl"
+            >
+              <p className="scene-mono mb-4 text-[0.65rem] uppercase tracking-[0.35em] text-white/55">
+                Attachments
+              </p>
+              <AttachmentGallery urls={idea.image_urls} />
+            </motion.section>
+          )}
 
           {/* timeline */}
           <motion.div

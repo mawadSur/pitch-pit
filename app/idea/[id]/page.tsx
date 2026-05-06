@@ -11,6 +11,14 @@ const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
 
 const SELECT =
+  "id,user_id,title,pitch,handle,score,final_score,vote_count,verdict,strengths,concerns,reasoning,build_recommended,status,mvp_url,screenshot_url,created_at,judge_scores,image_urls";
+
+// Postgres "undefined column" — emitted when migration 015 hasn't been
+// applied to the target Supabase yet. We retry without image_urls so
+// /idea/[id] still renders for legacy ideas instead of throwing 404.
+const UNDEFINED_COLUMN = "42703";
+
+const SELECT_FALLBACK =
   "id,user_id,title,pitch,handle,score,final_score,vote_count,verdict,strengths,concerns,reasoning,build_recommended,status,mvp_url,screenshot_url,created_at,judge_scores";
 
 // Joined comment shape — `users` table mirror provides display_name + avatar.
@@ -50,13 +58,31 @@ async function fetchComments(ideaId: string): Promise<Comment[]> {
 
 async function fetchIdea(id: string): Promise<Idea | null> {
   const supabase = createClient();
-  const { data } = await supabase
+  const first = await supabase
     .from("ideas")
     .select(SELECT)
     .eq("id", id)
     .in("status", ["scored", "queued", "building", "built"])
     .maybeSingle<Idea>();
-  return data;
+
+  if (first.error?.code === UNDEFINED_COLUMN) {
+    // Migration 015 hasn't been applied yet — drop image_urls and retry
+    // so a stale schema doesn't take the whole idea page offline.
+    const fallback = await supabase
+      .from("ideas")
+      .select(SELECT_FALLBACK)
+      .eq("id", id)
+      .in("status", ["scored", "queued", "building", "built"])
+      .maybeSingle<Idea>();
+    return fallback.data
+      ? { ...fallback.data, image_urls: [] }
+      : null;
+  }
+
+  // Normalize null → [] so client code doesn't have to branch.
+  const data = first.data;
+  if (!data) return null;
+  return { ...data, image_urls: data.image_urls ?? [] };
 }
 
 // Per-page metadata so each idea has its own title, description, and OG card.

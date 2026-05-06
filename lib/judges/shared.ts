@@ -78,6 +78,9 @@ Rules for verdict:
 build_recommended = true ONLY if score >= 7.
 `;
 
+// Plain-text variant — kept for callers that don't deal with attachments
+// (e.g. tests, future text-only retries). The multimodal path uses
+// userMessageContent() below.
 export function userPrompt(title: string, pitch: string) {
   return `IDEA TITLE: ${title}
 
@@ -85,6 +88,39 @@ THE PITCH:
 ${pitch}
 
 Render judgment.`;
+}
+
+// Anthropic content block for multimodal user messages.
+type UserBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; source: { type: "url"; url: string } };
+
+// Builds the user-message content array sent to each judge. Always
+// leads with the pitch text so the model has framing before any image
+// frame draws CPU. When the user attached images, they're appended as
+// url-source blocks (Claude fetches them at request time — our
+// Supabase pitch-images bucket is public so no signed URL needed).
+// The 3-image cap is enforced upstream (zod schema + UI); we trust the
+// caller and don't re-clamp here.
+export function userMessageContent(
+  title: string,
+  pitch: string,
+  imageUrls: string[],
+): UserBlock[] {
+  const blocks: UserBlock[] = [
+    { type: "text", text: `IDEA TITLE: ${title}\n\nTHE PITCH:\n${pitch}` },
+  ];
+  if (imageUrls.length > 0) {
+    blocks.push({
+      type: "text",
+      text: `\nThe user attached ${imageUrls.length} image${imageUrls.length === 1 ? "" : "s"} below as supporting visuals (screenshots, mockups, sketches, photos). Examine them and let what you see inform your judgment — call out specifics if they sharpen or weaken the pitch.`,
+    });
+    for (const url of imageUrls) {
+      blocks.push({ type: "image", source: { type: "url", url } });
+    }
+  }
+  blocks.push({ type: "text", text: "Render judgment." });
+  return blocks;
 }
 
 export type JudgeId = "gstack" | "vee" | "robbins";
