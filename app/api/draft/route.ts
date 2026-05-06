@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, pitch, handle, turnstile_token, request_id } = parsed.data;
+  const { title, pitch, handle, turnstile_token, request_id, image_urls } =
+    parsed.data;
 
   // ─── captcha ──────────────────────────────────────────────
   if (turnstileEnabled) {
@@ -184,6 +185,10 @@ export async function POST(req: NextRequest) {
       pitch,
       handle: handle && handle.length > 0 ? handle : null,
       ...(request_id ? { request_id } : {}),
+      // Only include image_urls when the column has actually been added
+      // (migration 015). Spread guard mirrors the request_id pattern so
+      // a deploy without the migration still accepts text-only pitches.
+      ...(image_urls.length > 0 ? { image_urls } : {}),
     })
     .select("id, access_token")
     .single();

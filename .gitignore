@@ -50,3 +50,6 @@ next-env.d.ts
 # Supabase CLI local state — project ref, version cache, etc.
 supabase/.temp/
 .claude
+
+# Marketing notes (not for the repo)
+marketing.md

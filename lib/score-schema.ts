@@ -26,6 +26,14 @@ export const submitSchema = z.object({
   // minting a new one. Optional for backwards compat: requests without
   // request_id skip the dedupe path entirely.
   request_id: z.string().uuid().optional(),
+  // Up to 3 public Supabase Storage URLs for images attached to the
+  // pitch. Each URL must point at the project's pitch-images bucket;
+  // we validate that on the server before persisting. Empty array
+  // when no attachments — the default keeps existing callers working.
+  image_urls: z
+    .array(z.string().url())
+    .max(3, "Maximum 3 images per pitch.")
+    .default([]),
 });
 
 export type SubmitInput = z.infer<typeof submitSchema>;

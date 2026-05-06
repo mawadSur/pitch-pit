@@ -21,6 +21,9 @@ type Draft = {
   pitch: string;
   handle: string | null;
   resolved_idea_id: string | null;
+  // Up to 3 image URLs from the pitch-images bucket. Empty array when
+  // no images. Carried across to the ideas row so /idea/[id] can render.
+  image_urls?: string[];
 };
 
 // Idempotently persist the ideas row for this draft. If the draft already
@@ -67,6 +70,12 @@ export async function persistJudgment(
       build_recommended: buildRecommended,
       judge_scores: panel,
       status: "scored",
+      // Carry images over only when present + the column exists. Same
+      // spread-guard pattern /api/draft uses to stay compatible with
+      // pre-migration-015 environments.
+      ...(draft.image_urls && draft.image_urls.length > 0
+        ? { image_urls: draft.image_urls }
+        : {}),
     })
     .select("id")
     .single();
@@ -152,7 +161,7 @@ export async function loadDraftByToken(token: string): Promise<DraftLookup> {
   const { data, error } = await supabase
     .from("draft_pitches")
     .select(
-      "id, user_id, access_token, title, pitch, handle, resolved_idea_id, expires_at",
+      "id, user_id, access_token, title, pitch, handle, resolved_idea_id, expires_at, image_urls",
     )
     .eq("access_token", token)
     .maybeSingle();
@@ -166,5 +175,12 @@ export async function loadDraftByToken(token: string): Promise<DraftLookup> {
 
   const { expires_at: _expires_at, ...rest } = data;
   void _expires_at;
-  return { status: "ok", draft: rest as Draft };
+  // image_urls may be undefined on pre-migration-015 environments —
+  // normalize to an empty array so the persist-judgment insert spread
+  // guard works without a TS or PostgREST surprise.
+  const draft: Draft = {
+    ...(rest as Omit<Draft, "image_urls">),
+    image_urls: (rest as { image_urls?: string[] | null }).image_urls ?? [],
+  };
+  return { status: "ok", draft };
 }

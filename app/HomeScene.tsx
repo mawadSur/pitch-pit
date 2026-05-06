@@ -11,6 +11,7 @@ import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
 import { SubmittingOverlay } from "./SubmittingOverlay";
 import { PitchCoach } from "./PitchCoach";
+import { PitchAttachments, type Attachment } from "./PitchAttachments";
 import { SUBMIT_LIMITS } from "@/lib/score-schema";
 import { createClient as createSupabaseBrowser } from "@/lib/supabase/client";
 
@@ -108,6 +109,7 @@ function Panel1() {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const turnstileRef = useRef<TurnstileHandle | null>(null);
   // A11y-4: focus the textarea on any validation/submit error so the user
   // lands on the field they need to fix without hunting for it.
@@ -241,6 +243,12 @@ function Panel1() {
             handle: "",
             turnstile_token: turnstileToken,
             ...(requestId ? { request_id: requestId } : {}),
+            // Only completed uploads (uploaded === true, no error)
+            // are forwarded; in-flight + errored attachments are
+            // dropped silently. Schema caps at 3.
+            image_urls: attachments
+              .filter((a) => !a.uploading && !a.error && a.url)
+              .map((a) => a.url),
           }),
         });
         if (!res.ok) {
@@ -402,6 +410,22 @@ function Panel1() {
             submit(). Most legitimate users see nothing; suspicious sessions
             get a Cloudflare interaction prompt. */}
         <Turnstile handleRef={turnstileRef} />
+
+        {/* Image attachments + voice input. Sits below the input shell
+            so the textarea stays anchored at top-[52%]; thumbnails grow
+            downward into the gap above the bottom subtitle. The mic
+            uses Web Speech API and is hidden in browsers that don't
+            support it (Firefox, older Safari). */}
+        <div className="mt-3">
+          <PitchAttachments
+            attachments={attachments}
+            onAttachmentsChange={setAttachments}
+            onAppendText={(extra) =>
+              setText((prev) => (prev.trim() ? `${prev.trim()} ${extra}` : extra))
+            }
+            disabled={pending}
+          />
+        </div>
       </motion.form>
 
       {/* Full-screen overlay during submit. Bridges the ~600ms window
