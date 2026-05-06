@@ -304,17 +304,29 @@ function Panel1() {
         </h1>
       </motion.div>
 
-      {/* MID-UPPER — countdown directly below the hourglass (image at ~30%) */}
+      {/* MID-UPPER — countdown. Originally at top-[42%] to sit below
+          the bg image's hourglass at ~30%. Bumped to top-[32%] so the
+          form below has clearance to grow the pitch coach upward when
+          the user types — without pushing the input off-screen. The
+          slight overlap with the hourglass is acceptable since the
+          cinematic bg crossfades to the canvas as soon as the user
+          starts scrolling anyway. */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.15 }}
-        className="absolute inset-x-0 top-[42%] mx-auto flex max-w-md flex-col items-center px-6"
+        className="absolute inset-x-0 top-[32%] mx-auto flex max-w-md flex-col items-center px-6"
       >
         <CountdownClock />
       </motion.div>
 
-      {/* MID — real input overlays the image's input pill (image at ~55%) */}
+      {/* MID — real input. Originally at top-[58%] to overlay the bg
+          image's input pill at ~55%. Bumped to top-[46%] for the same
+          reason: the pitch coach renders ABOVE the input as a sibling
+          in normal flow (so the input shifts down when the coach
+          opens). Starting higher means a coach 200px tall lands the
+          input at ~70%/viewport — still well clear of the bottom
+          subtitle at bottom-[8%], even on iPhone SE (568px tall). */}
       <motion.form
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -323,7 +335,7 @@ function Panel1() {
           e.preventDefault();
           submit();
         }}
-        className="absolute inset-x-0 top-[58%] mx-auto w-full max-w-2xl px-6"
+        className="absolute inset-x-0 top-[46%] mx-auto w-full max-w-2xl px-6"
       >
         {/* Pitch coach — above the input. Quality checks, AI follow-ups,
             and an opt-in "polish my pitch" enhancer. Visible once the
