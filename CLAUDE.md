@@ -80,7 +80,7 @@ Tables: `users` (mirrors `auth.users`), `ideas`, `votes`, `build_queue`. Migrati
 
 ## AI scoring
 
-`POST /api/score` — body validated by `submitSchema` (`lib/score-schema.ts`, min 60 / max 1500 chars). Calls Claude Sonnet 4.6 (`claude-sonnet-4-6`) with the gstack-style prompt from `lib/score-prompt.ts`. The prompt enforces structured JSON output (validated by `scoreSchema`); the response is inserted via service-role and the new id returned. The client redirects to `/idea/[id]` to show the reveal.
+`POST /api/score` — body validated by `submitSchema` (`lib/score-schema.ts`, min 60 / max 3500 chars). Calls Claude Sonnet 4.6 (`claude-sonnet-4-6`) with the gstack-style prompt from `lib/score-prompt.ts`. The prompt enforces structured JSON output (validated by `scoreSchema`); the response is inserted via service-role and the new id returned. The client redirects to `/idea/[id]` to show the reveal.
 
 The prompt has `cache_control: { type: "ephemeral" }` set on the system block — when it grows past the cache threshold this becomes free.
 

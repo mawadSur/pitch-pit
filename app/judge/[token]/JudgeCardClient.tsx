@@ -216,14 +216,19 @@ function ScoreNumber({
   }, [mv, score, reduce]);
 
   return (
-    <div className="flex items-baseline">
+    <div className="flex min-w-0 items-baseline">
+      {/* Sized so the two-digit numeral + "/10" suffix fits inside the
+          card's right edge across every breakpoint — including the
+          narrowest case (xl:grid-cols-3 inside max-w-6xl, ~360px per
+          card minus the 96px portrait + gap-4 + p-6). The previous
+          112px was getting clipped by the article's overflow-hidden. */}
       <motion.span
-        className={`scene-numeral scene-foil text-[88px] sm:text-[112px] ${textClass}`}
+        className={`scene-numeral scene-foil text-[64px] sm:text-[80px] ${textClass}`}
         style={{ textShadow: shadow }}
       >
         {display}
       </motion.span>
-      <span className="ml-1 text-2xl tabular-nums text-white/55">/10</span>
+      <span className="ml-1 text-xl tabular-nums text-white/55">/10</span>
     </div>
   );
 }

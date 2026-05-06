@@ -175,7 +175,7 @@ export function Reveal({
                 mono) so it reads like a real attribution line. */}
             {idea.judge_scores?.gstack && (
               <p className="scene-display-italic mt-5 text-base text-white/55">
-                — Gstack · lead reviewer
+                — Garry Tan · lead reviewer
               </p>
             )}
           </motion.div>

@@ -98,9 +98,9 @@ function runChecks(text: string): CheckResult[] {
         ),
     },
     {
-      label: "Length is in range (60–1500)",
+      label: "Length is in range (60–3500)",
       hint: "Tight enough to read, deep enough to judge.",
-      passed: len >= 60 && len <= 1500,
+      passed: len >= 60 && len <= 3500,
     },
     {
       // The three judges all downgrade pitches that lean on buzzwords.

@@ -41,7 +41,7 @@ export const submitSchema = z.object({
     .string()
     .trim()
     .min(60, "Be more specific — at least 60 characters.")
-    .max(1500, "Keep it under 1500 characters."),
+    .max(3500, "Keep it under 3500 characters."),
   handle: z
     .string()
     .trim()
@@ -85,6 +85,6 @@ export type ScoreResult = z.infer<typeof scoreSchema>;
 export const SUBMIT_LIMITS = {
   titleMax: 80,
   pitchMin: 60,
-  pitchMax: 1500,
+  pitchMax: 3500,
   handleMax: 50,
 } as const;

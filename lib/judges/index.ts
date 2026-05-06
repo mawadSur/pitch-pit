@@ -9,7 +9,7 @@ export { userPrompt } from "./shared";
 export const JUDGES: ReadonlyArray<JudgeMeta & { systemPrompt: string }> = [
   {
     id: "gstack",
-    name: "Gstack",
+    name: "Garry Tan",
     role: "YC office hours",
     signatureLine: "Render judgment.",
     portrait: "/judges/gstack.avif",
@@ -17,7 +17,7 @@ export const JUDGES: ReadonlyArray<JudgeMeta & { systemPrompt: string }> = [
   },
   {
     id: "vee",
-    name: "Gary V",
+    name: "Gary Vee",
     role: "Attention & distribution",
     signatureLine: "Patience and empathy.",
     portrait: "/judges/vee.avif",
@@ -25,7 +25,7 @@ export const JUDGES: ReadonlyArray<JudgeMeta & { systemPrompt: string }> = [
   },
   {
     id: "robbins",
-    name: "Tony R",
+    name: "Tony Robbins",
     role: "Conviction & standards",
     signatureLine: "Raise your standards.",
     portrait: "/judges/robbins.avif",

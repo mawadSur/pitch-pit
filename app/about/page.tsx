@@ -37,7 +37,7 @@ export default function AboutPage() {
               <Step
                 n={1}
                 title="Submit"
-                body="60–1500 characters. Anyone can pitch — anonymous or signed in."
+                body="60–3500 characters. Anyone can pitch — anonymous or signed in."
               />
               <Step
                 n={2}

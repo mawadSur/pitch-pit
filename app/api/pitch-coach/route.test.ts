@@ -66,7 +66,7 @@ function makeReq(body: unknown): Request {
 }
 
 // 80-char filler pitch — comfortably above the 40-char minimum but not
-// long enough to trip the 1500-char ceiling. Re-used across cases that
+// long enough to trip the 3500-char ceiling. Re-used across cases that
 // just need a "valid-shaped" pitch.
 const VALID_PITCH =
   "We help indie founders ship MVPs in a weekend by automating boilerplate setup-x.";

@@ -8,7 +8,7 @@
 
 ## What it is
 
-Founders submit a 60–1500 character pitch. Claude Sonnet 4.6 rates it 1–10 across six dimensions (demand, wedge, founder edge, feasibility, defensibility, distribution) and produces a structured verdict. The community votes for a week. Final score = 50% AI + 50% community, normalized 0–100. The pit closes Monday at midnight EDT, and the top idea each week gets built and shipped under the founder's name.
+Founders submit a 60–3500 character pitch. Claude Sonnet 4.6 rates it 1–10 across six dimensions (demand, wedge, founder edge, feasibility, defensibility, distribution) and produces a structured verdict. The community votes for a week. Final score = 50% AI + 50% community, normalized 0–100. The pit closes Monday at midnight EDT, and the top idea each week gets built and shipped under the founder's name.
 
 Live at **[pitchpit.app](https://pitchpit.app)** ([Vercel preview](https://pitch-pit.vercel.app)).
 
@@ -91,7 +91,7 @@ Recomputed for all visible ideas on any vote insert/delete (denominator shifts g
 
 `POST /api/score`:
 
-1. Body validated by `submitSchema` (`lib/score-schema.ts`, min 60 / max 1500 chars)
+1. Body validated by `submitSchema` (`lib/score-schema.ts`, min 60 / max 3500 chars)
 2. Cloudflare Turnstile token verified (no-op when env vars unset)
 3. Synchronous content filter (`lib/content-filter.ts`) — prompt-injection patterns, slur list, all-caps spam, repeated chars, low-effort filler. Rejects junk before burning Anthropic tokens
 4. Per-user weekly quota check (`lib/user-quota.ts`) — 2 submissions / 7-day rolling window for signed-in users

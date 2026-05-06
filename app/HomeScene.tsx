@@ -148,7 +148,7 @@ function Panel1() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Mirror every change to localStorage. Strings ≤1500 chars; sync write is
+  // Mirror every change to localStorage. Strings ≤3500 chars; sync write is
   // cheap enough that a debounce buys nothing.
   useEffect(() => {
     try {
@@ -627,7 +627,7 @@ function HowItWorks() {
     {
       n: 1,
       title: "Submit your pitch",
-      body: "60 to 1500 characters. Anyone can pitch — anonymous or signed in. Two submissions per week if you sign in; one IP-rate-limited slot if you don't.",
+      body: "60 to 3500 characters. Anyone can pitch — anonymous or signed in. Two submissions per week if you sign in; one IP-rate-limited slot if you don't.",
     },
     {
       n: 2,

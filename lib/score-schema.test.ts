@@ -14,10 +14,10 @@ describe("submitSchema", () => {
     expect(r.success).toBe(false);
   });
 
-  it("rejects pitches over 1500 chars", () => {
+  it("rejects pitches over 3500 chars", () => {
     const r = submitSchema.safeParse({
       title: "x",
-      pitch: "a".repeat(1501),
+      pitch: "a".repeat(3501),
     });
     expect(r.success).toBe(false);
   });

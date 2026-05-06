@@ -14,7 +14,7 @@ export const maxDuration = 25;
 const bodySchema = z.object({
   // Same length envelope as the homepage textarea so we don't burn an
   // Anthropic call on something the user can't actually submit.
-  pitch: z.string().trim().min(40).max(1500),
+  pitch: z.string().trim().min(40).max(3500),
   action: z.enum(["followups", "enhance"]),
 });
 
