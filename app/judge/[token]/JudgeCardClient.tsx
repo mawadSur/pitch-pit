@@ -92,9 +92,13 @@ export function JudgeCardClient({
           judge's accent color rather than universal gold. */}
       {result && <AccentFlash color={accent.flashShadow} />}
 
-      <header className="flex items-start justify-between">
+      <header className="flex items-start justify-between gap-4">
+        {/* flex-shrink-0 keeps the portrait at 96×96 even when the
+            adjacent ScoreNumber's render width pushes the row past
+            its grid track — without it, flex's default min-width:auto
+            squashes the circle into a slim sliver on narrow viewports. */}
         <div
-          className={`relative h-24 w-24 overflow-hidden rounded-full ring-1 ${accent.ring}`}
+          className={`relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-full ring-1 ${accent.ring}`}
         >
           <Image
             src={judge.portrait}
