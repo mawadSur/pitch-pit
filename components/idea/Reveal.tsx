@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { motion, MotionConfig } from "framer-motion";
+import { motion, MotionConfig, useReducedMotion } from "framer-motion";
 import { Particles } from "@/components/scene/Particles";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
+import { Hourglass } from "@/components/scene/Hourglass";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Timeline } from "@/components/idea/Timeline";
 import { VoteButton } from "@/components/idea/VoteButton";
@@ -139,26 +140,36 @@ export function Reveal({
             )}
           </motion.div>
 
+          {/* big score moment — Fraunces numeral above the verdict.
+              Pairs typographically with the verdict pull-quote so the two
+              read as one editorial unit. Final score with /100 baseline-
+              aligned to its right; falls back to ai_score × 10 for
+              legacy rows where final_score hasn't been computed yet. */}
+          <BigScoreMoment
+            finalScore={idea.final_score ?? idea.score * 10}
+          />
+
           {/* verdict */}
           <motion.div
             id="verdict"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 1.2 }}
-            className="mt-12 text-center"
+            className="mt-10 text-center"
           >
-            <p className="scene-mono mb-4 text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
+            <p className="scene-mono mb-5 text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
               · The Verdict ·
             </p>
-            <p className="mx-auto max-w-2xl text-xl font-light italic leading-snug text-white/90 sm:text-2xl">
+            <p className="scene-display-italic mx-auto max-w-3xl text-balance text-3xl leading-tight text-white/92 sm:text-5xl">
               &ldquo;{idea.verdict}&rdquo;
             </p>
             {/* Lead-reviewer attribution. Only shown for ideas scored under
                 the three-judge flow — legacy single-judge ideas don't have
                 judge_scores populated, so we leave the verdict unattributed
-                rather than misleadingly tagging them. */}
+                rather than misleadingly tagging them. Set in Fraunces (not
+                mono) so it reads like a real attribution line. */}
             {idea.judge_scores?.gstack && (
-              <p className="scene-mono mt-4 text-[0.6rem] uppercase tracking-[0.35em] text-white/45">
+              <p className="scene-display-italic mt-5 text-base text-white/55">
                 — Gstack · lead reviewer
               </p>
             )}
@@ -265,7 +276,9 @@ export function Reveal({
             />
           </motion.div>
 
-          {/* live MVP CTA */}
+          {/* live MVP CTA — built status reads in verdigris (final state),
+              not gold. Gold is reserved for the build-queue / scored-sharp
+              moments; verdigris is the "this one made it" tint. */}
           {idea.status === "built" && idea.mvp_url && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -277,7 +290,13 @@ export function Reveal({
                 href={idea.mvp_url}
                 target="_blank"
                 rel="noreferrer"
-                className="scene-card-gold inline-flex items-center gap-3 px-8 py-4 text-base font-medium text-white transition-transform hover:-translate-y-0.5"
+                className="inline-flex items-center gap-3 rounded-[18px] border px-8 py-4 text-base font-medium text-white backdrop-blur-md transition-transform hover:-translate-y-0.5"
+                style={{
+                  background: "rgba(91, 138, 110, 0.08)",
+                  borderColor: "rgba(91, 138, 110, 0.45)",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(136, 184, 156, 0.12), 0 24px 72px -24px rgba(91, 138, 110, 0.4), 0 0 48px rgba(91, 138, 110, 0.16)",
+                }}
               >
                 Open the build
                 <span aria-hidden>↗</span>
@@ -335,6 +354,17 @@ export function Reveal({
         {/* corner sparkle */}
         <div className="pointer-events-none absolute bottom-6 right-6 sm:bottom-8 sm:right-8">
           <CornerSparkle size={26} />
+        </div>
+
+        {/* Hourglass watermark — top-right, fixed. Subtle reminder
+            that the timer is running. The Hourglass SVG already
+            respects prefers-reduced-motion via .scene-halo-breathe /
+            .sand-dot rules in scene.css. */}
+        <div
+          aria-hidden
+          className="pointer-events-none fixed right-4 top-20 z-30 opacity-25 sm:right-6 sm:top-24"
+        >
+          <Hourglass size={24} />
         </div>
       </main>
     </MotionConfig>
@@ -406,6 +436,36 @@ function ClaimAnonymous({ ideaId }: { ideaId: string }) {
         </p>
       )}
     </div>
+  );
+}
+
+// Editorial score moment — large Fraunces numeral that anchors the
+// verdict pull-quote typographically. Pairs with the verdict so the
+// two read as one editorial unit (think Bloomberg headline + price
+// callout). Tabular figures + line-height 0.92 from .scene-numeral
+// so a 7→8 transition doesn't shift width. The /100 is baseline-
+// aligned to the right at ~1/3 the size. Respects reduced-motion via
+// useReducedMotion — when reduced, the entrance is a static fade
+// rather than the spring scale.
+function BigScoreMoment({ finalScore }: { finalScore: number }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
+      animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, delay: 1.1 }}
+      className="mt-12 flex items-baseline justify-center gap-2"
+    >
+      <span
+        className="scene-numeral text-[96px] text-[var(--scene-gold)] sm:text-[160px] lg:text-[220px]"
+        style={{ textShadow: "0 0 36px rgba(255, 184, 0, 0.25)" }}
+      >
+        {finalScore}
+      </span>
+      <span className="scene-numeral text-2xl tabular-nums text-white/45 sm:text-3xl">
+        /100
+      </span>
+    </motion.div>
   );
 }
 
