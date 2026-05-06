@@ -43,6 +43,19 @@ const RULES = [
 export function RulesScene() {
   const [activeId, setActiveId] = useState<string>(TOC_SECTIONS[0].id);
 
+  // Scroll-to-top on mount UNLESS the user arrived via a hash anchor.
+  // The homepage is a long scrollable cinematic; clicking "rules page →"
+  // from deep in that scroll lands here at whatever the previous scroll
+  // position was. Force the top so a fresh navigation starts clean.
+  // Hash-based deep links (e.g. /rules#rubric) still work — we leave
+  // the browser's native anchor scroll alone in that case.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.location.hash) {
+      window.scrollTo(0, 0);
+    }
+  }, []);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
