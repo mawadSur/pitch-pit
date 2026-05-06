@@ -38,18 +38,18 @@ export function GalleryScene({ ideas }: { ideas: BuiltIdea[] }) {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.92rem]">
-              ↘ The gallery
+            <p className="scene-mono text-[0.65rem] uppercase tracking-[0.42em] text-[var(--scene-verdigris-bright)] sm:text-[0.78rem]">
+              · the gallery ·
             </p>
-            <h1 className="mt-5 text-balance text-[2.25rem] font-medium leading-[1.02] text-white sm:text-6xl lg:text-7xl">
+            <h1 className="scene-display mt-5 text-balance text-[2.25rem] font-medium leading-[1.02] text-white sm:text-6xl lg:text-7xl">
               Built and{" "}
-              <span className="italic text-[var(--scene-gold-bright)]">
+              <span className="scene-display-italic text-[var(--scene-verdigris-bright)]">
                 shipped
               </span>
               .
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-base text-white/72 sm:text-lg">
-              Tributes the Capitol marked, built, and broadcast under the
+            <p className="scene-display mx-auto mt-5 max-w-xl text-base text-white/65 sm:text-lg">
+              Ideas the pit chose, built, and shipped under the
               founder&rsquo;s name.
             </p>
           </motion.header>
@@ -109,23 +109,30 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
       </div>
 
       <div className={cn("max-w-xl", reverse ? "lg:ml-auto" : "")}>
-        <p className="scene-mono text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
-          № {ordinal} &nbsp;·&nbsp; Score {idea.score}
-        </p>
-        <h2 className="mt-4 text-3xl font-medium leading-tight text-white sm:text-4xl">
+        {/* Ordinal — serif numeral leads the eye on each entry, like a
+            chapter mark in a book. The score sits as a quiet caption. */}
+        <div className="flex items-baseline gap-4">
+          <span className="scene-numeral text-5xl text-[var(--scene-verdigris-bright)] sm:text-6xl">
+            {ordinal}
+          </span>
+          <span className="scene-mono text-[0.55rem] uppercase tracking-[0.35em] text-white/45 tabular-nums">
+            score {idea.score}/10
+          </span>
+        </div>
+        <h2 className="scene-display mt-4 text-3xl font-medium leading-tight text-white sm:text-4xl">
           {idea.title}
         </h2>
         {idea.handle && (
-          <p className="scene-mono mt-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/50">
+          <p className="scene-mono mt-2 text-[0.55rem] uppercase tracking-[0.32em] text-white/45">
             {idea.handle}
           </p>
         )}
 
-        <p className="mt-5 border-l-2 border-[var(--scene-gold)]/45 pl-4 text-lg italic leading-snug text-white sm:text-xl">
+        <p className="scene-display-italic mt-6 border-l-2 border-[var(--scene-verdigris-bright)]/55 pl-5 text-xl leading-snug text-white sm:text-2xl">
           &ldquo;{idea.verdict}&rdquo;
         </p>
 
-        <p className="mt-5 text-base leading-relaxed text-white/75 sm:text-lg">
+        <p className="scene-display mt-5 text-base leading-relaxed text-white/75 sm:text-lg">
           {idea.pitch}
         </p>
 
@@ -135,14 +142,16 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
               href={idea.mvp_url}
               target="_blank"
               rel="noreferrer"
-              className="cta-btn-primary text-sm"
+              // Verdigris pill — distinguishes the "built" CTA from the
+              // gold "Pitch idea" / "Read judgment" affordances elsewhere.
+              className="scene-display inline-flex h-11 items-center gap-2 rounded-full bg-[var(--scene-verdigris-bright)]/15 px-5 text-sm font-medium text-[var(--scene-verdigris-bright)] transition-all hover:bg-[var(--scene-verdigris-bright)]/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-verdigris-bright)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
             >
               Open the build <span aria-hidden>↗</span>
             </a>
           )}
           <Link
             href={`/idea/${idea.id}`}
-            className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:text-white"
+            className="scene-mono text-[0.55rem] uppercase tracking-[0.32em] text-white/55 transition-colors hover:text-white"
           >
             Read the judgment →
           </Link>
@@ -188,7 +197,10 @@ function MvpFrame({
       target="_blank"
       rel="noreferrer"
       aria-label={`Open ${title}`}
-      className="scene-card-gold group relative block overflow-hidden transition-shadow"
+      // Verdigris-tinted frame instead of the gold scene-card-gold.
+      // Built ideas live in the verdigris status state — keeps gold
+      // scarce so it means "scored sharp" / "build queue".
+      className="group relative block overflow-hidden rounded-2xl border border-[var(--scene-verdigris-bright)]/35 bg-white/[0.03] shadow-[0_0_36px_-12px_rgba(91,138,110,0.45)] transition-shadow hover:shadow-[0_0_48px_-8px_rgba(91,138,110,0.6)]"
       style={{ aspectRatio: "16 / 10" }}
     >
       {screenshotUrl ? (
@@ -216,20 +228,20 @@ function MvpFrame({
       />
       <div className="absolute inset-0 flex flex-col justify-between p-5 sm:p-7">
         <div className="flex items-center gap-2">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--scene-gold)] motion-safe:animate-pulse" />
-          <span className="scene-mono text-[0.55rem] uppercase tracking-[0.35em] text-[var(--scene-gold-bright)]">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--scene-verdigris-bright)] motion-safe:animate-pulse" />
+          <span className="scene-mono text-[0.55rem] uppercase tracking-[0.35em] text-[var(--scene-verdigris-bright)]">
             Live · {hostname(url)}
           </span>
         </div>
         <div className="flex items-end justify-between gap-4">
           <span className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            <span className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white">
+            <span className="scene-mono text-[0.55rem] uppercase tracking-[0.32em] text-white">
               Enter
             </span>
           </span>
           <span
             aria-hidden
-            className="text-2xl text-[var(--scene-gold-bright)] transition-transform duration-300 group-hover:translate-x-1"
+            className="text-2xl text-[var(--scene-verdigris-bright)] transition-transform duration-300 group-hover:translate-x-1"
           >
             →
           </span>
