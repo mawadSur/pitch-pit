@@ -320,13 +320,14 @@ function Panel1() {
         <CountdownClock />
       </motion.div>
 
-      {/* MID — real input. Originally at top-[58%] to overlay the bg
-          image's input pill at ~55%. Bumped to top-[46%] for the same
-          reason: the pitch coach renders ABOVE the input as a sibling
-          in normal flow (so the input shifts down when the coach
-          opens). Starting higher means a coach 200px tall lands the
-          input at ~70%/viewport — still well clear of the bottom
-          subtitle at bottom-[8%], even on iPhone SE (568px tall). */}
+      {/* MID — real input. At-rest target around the upper-center of the
+          panel — high enough that the pitch coach (which grows the form
+          upward as a sibling in normal flow) doesn't push the input
+          off the bottom subtitle, low enough that the at-rest layout
+          doesn't feel top-heavy. top-[52%] threads that needle: empty
+          pitch lands the input slightly past mid-viewport; coach open
+          shifts it to ~70%/viewport on desktop, ~85% on iPhone SE —
+          still clear of the bottom subtitle at bottom-[8%] (=92%). */}
       <motion.form
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -335,7 +336,7 @@ function Panel1() {
           e.preventDefault();
           submit();
         }}
-        className="absolute inset-x-0 top-[46%] mx-auto w-full max-w-2xl px-6"
+        className="absolute inset-x-0 top-[52%] mx-auto w-full max-w-2xl px-6"
       >
         {/* Pitch coach — above the input. Quality checks, AI follow-ups,
             and an opt-in "polish my pitch" enhancer. Visible once the
