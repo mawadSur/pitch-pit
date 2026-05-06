@@ -1,4 +1,35 @@
 import { z } from "zod";
+import * as Sentry from "@sentry/nextjs";
+
+// Lock image_urls to URLs served by the project's pitch-images bucket.
+// `NEXT_PUBLIC_SUPABASE_URL` is exposed to both client + server, so the
+// schema is consistent across both runtimes. If unset (e.g. a preview
+// build with missing env), fall through and accept any valid URL — but
+// loudly warn so ops sees it. The defense-in-depth check exists to
+// reject direct API hits with hostile URLs; UI uploads always come back
+// from /api/pitch-upload with the expected prefix.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// Strip any trailing slashes so the prefix is exactly one slash before
+// the bucket path, regardless of whether the env var has one or not.
+const EXPECTED_IMAGE_PREFIX = supabaseUrl
+  ? `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/pitch-images/`
+  : null;
+
+if (!EXPECTED_IMAGE_PREFIX) {
+  Sentry.captureMessage(
+    "[score-schema] NEXT_PUBLIC_SUPABASE_URL not set; image_urls host check disabled",
+    "warning",
+  );
+}
+
+const imageUrlSchema = z
+  .string()
+  .url()
+  .refine(
+    (url) =>
+      EXPECTED_IMAGE_PREFIX === null || url.startsWith(EXPECTED_IMAGE_PREFIX),
+    { message: "image_urls must come from the pitch-images bucket" },
+  );
 
 export const submitSchema = z.object({
   title: z
@@ -31,7 +62,7 @@ export const submitSchema = z.object({
   // we validate that on the server before persisting. Empty array
   // when no attachments — the default keeps existing callers working.
   image_urls: z
-    .array(z.string().url())
+    .array(imageUrlSchema)
     .max(3, "Maximum 3 images per pitch.")
     .default([]),
 });

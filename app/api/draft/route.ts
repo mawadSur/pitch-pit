@@ -32,10 +32,21 @@ export async function POST(req: NextRequest) {
 
   const parsed = submitSchema.safeParse(body);
   if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    // Tag the host-allowlist rejection so the client (and ops) can
+    // distinguish it from a generic shape mismatch. The UI never
+    // produces these URLs, so any hit here means a direct API call
+    // from outside the upload flow.
+    const imageHostRejected = fieldErrors.image_urls?.some((m) =>
+      m.includes("pitch-images bucket"),
+    );
     return NextResponse.json(
       {
-        error: "Submission is malformed.",
-        details: parsed.error.flatten().fieldErrors,
+        error: imageHostRejected
+          ? "Image URLs must come from the pitch-images bucket."
+          : "Submission is malformed.",
+        category: imageHostRejected ? "image-host-rejected" : undefined,
+        details: fieldErrors,
       },
       { status: 400 },
     );
