@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PageTransition } from "@/components/PageTransition";
 import { SiteFooter } from "@/components/SiteFooter";
+import { JsonLd } from "@/components/seo/JsonLd";
 import "./globals.css";
 
 // Per-route font loading: each route's page.tsx loads only the fonts it
@@ -39,12 +40,27 @@ export const metadata: Metadata = {
   },
 };
 
+// Site-wide Organization schema. Picked up by Google's knowledge panel
+// and other structured-data consumers; logo points at the auto-generated
+// homepage OG card (Next renders it from app/opengraph-image.tsx) so we
+// don't need to ship a separate logo asset. sameAs is intentionally empty
+// — we'll add socials once they exist instead of seeding broken links.
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "pitch-pit",
+  url: SITE_URL,
+  logo: `${SITE_URL}/opengraph-image`,
+  sameAs: [],
+} as const;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body className="antialiased">
+        <JsonLd data={organizationJsonLd} />
         {/* Skip-to-content for keyboard / screen-reader users.
             Hidden until focused, then jumps the scroll past every header/nav. */}
         <a

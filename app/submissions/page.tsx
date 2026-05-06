@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Inter } from "next/font/google";
 import { jetbrains } from "@/lib/fonts/geist-mono";
@@ -5,6 +6,9 @@ import { fraunces } from "@/lib/fonts/fraunces";
 import { createClient } from "@/lib/supabase/server";
 import { SubmissionsScene, type Submission } from "./SubmissionsScene";
 import "../scene.css";
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -17,8 +21,27 @@ const inter = Inter({
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export const metadata = {
+const SUBMISSIONS_DESCRIPTION =
+  "Your pitches in the pit — scores, verdicts, vote counts, build status. Two lifetime submissions, infinite chances to vote on someone else's.";
+
+export const metadata: Metadata = {
   title: "My pitches — pitch-pit",
+  description: SUBMISSIONS_DESCRIPTION,
+  // Auth-gated route — keep search engines out so they don't index a
+  // permanent /login redirect as the canonical page content.
+  robots: { index: false, follow: false },
+  alternates: { canonical: `${SITE_URL}/submissions` },
+  openGraph: {
+    title: "My pitches — pitch-pit",
+    description: SUBMISSIONS_DESCRIPTION,
+    url: `${SITE_URL}/submissions`,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "My pitches — pitch-pit",
+    description: SUBMISSIONS_DESCRIPTION,
+  },
 };
 
 const SUBMISSION_SELECT =
