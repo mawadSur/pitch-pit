@@ -14,6 +14,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Trophy, Check } from "lucide-react";
 import type { JudgeId } from "@/lib/judges";
 import type { JudgePanel } from "@/lib/judges/persist-judgment";
+import { titleToSlug } from "@/lib/slug";
 
 // Final aggregate verdict band — appears after all three judges resolve.
 // Cinema-wide treatment: full-bleed letterboxing (black bars top/bottom)
@@ -24,12 +25,17 @@ export function AggregateBandClient({
   avg,
   panel,
   ideaId,
+  ideaTitle,
   canClaim = false,
   judgesMeta = [],
 }: {
   avg: number | null;
   panel: JudgePanel | null;
   ideaId?: string | null;
+  // Title is needed to build the slugged /idea/<uuid>/<slug> link.
+  // Optional so the "consensus unavailable" branch can render without
+  // any idea metadata at all.
+  ideaTitle?: string;
   canClaim?: boolean;
   judgesMeta?: { id: JudgeId; name: string }[];
 }) {
@@ -83,14 +89,23 @@ export function AggregateBandClient({
                   build queue
                 </span>
               )}
-              {ideaId && (
-                <Link
-                  href={`/idea/${ideaId}`}
-                  className="scene-display inline-flex h-11 items-center rounded-full border border-white/15 px-4 text-sm font-medium tracking-[0.02em] text-white/85 transition-all hover:border-[var(--scene-gold)]/55 hover:text-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
-                >
-                  Open idea page →
-                </Link>
-              )}
+              {ideaId && (() => {
+                // Derive the slug client-side from the title we were
+                // handed by the server component. Empty slug → bare
+                // /idea/<uuid> (page won't redirect-loop in that case).
+                const slug = ideaTitle ? titleToSlug(ideaTitle) : "";
+                const href = slug
+                  ? `/idea/${ideaId}/${slug}`
+                  : `/idea/${ideaId}`;
+                return (
+                  <Link
+                    href={href}
+                    className="scene-display inline-flex h-11 items-center rounded-full border border-white/15 px-4 text-sm font-medium tracking-[0.02em] text-white/85 transition-all hover:border-[var(--scene-gold)]/55 hover:text-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+                  >
+                    Open idea page →
+                  </Link>
+                );
+              })()}
               {canClaim && ideaId && <ClaimButton ideaId={ideaId} />}
             </div>
 

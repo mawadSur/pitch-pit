@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { titleToSlug } from "@/lib/slug";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
@@ -33,18 +34,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const supabase = createAdminClient();
     const { data } = await supabase
       .from("ideas")
-      .select("id,updated_at,status")
+      .select("id,title,updated_at,status")
       .in("status", ["scored", "queued", "building", "built"])
       .order("updated_at", { ascending: false })
       .limit(5000);
 
     if (data) {
-      ideaEntries = data.map((row) => ({
-        url: `${SITE_URL}/idea/${row.id}`,
-        lastModified: new Date(row.updated_at),
-        changeFrequency: "weekly",
-        priority: 0.5,
-      }));
+      ideaEntries = data.map((row) => {
+        // Emit the slugged URL when the title produces one; fall back
+        // to bare /idea/<uuid> for emoji-only / non-Latin titles. The
+        // page redirects between the two forms so either is crawlable,
+        // but the sitemap should declare the canonical target.
+        const slug = titleToSlug(row.title ?? "");
+        const path = slug ? `/idea/${row.id}/${slug}` : `/idea/${row.id}`;
+        return {
+          url: `${SITE_URL}${path}`,
+          lastModified: new Date(row.updated_at),
+          changeFrequency: "weekly",
+          priority: 0.5,
+        };
+      });
     }
   } catch (e) {
     console.warn("[sitemap] idea enumeration failed", e);

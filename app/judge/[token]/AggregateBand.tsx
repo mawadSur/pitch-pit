@@ -70,6 +70,7 @@ async function AggregateBand({
       avg={avg}
       panel={panel}
       ideaId={ideaId}
+      ideaTitle={draft.title}
       canClaim={canClaim}
       judgesMeta={JUDGES.map((j) => ({ id: j.id, name: j.name }))}
     />

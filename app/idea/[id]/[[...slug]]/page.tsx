@@ -1,9 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Reveal, type Idea } from "@/components/idea/Reveal";
 import type { Comment } from "@/components/idea/Comments";
+import { titleToSlug } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,14 @@ const UNDEFINED_COLUMN = "42703";
 
 const SELECT_FALLBACK =
   "id,user_id,title,pitch,handle,score,final_score,vote_count,verdict,strengths,concerns,reasoning,build_recommended,status,mvp_url,screenshot_url,created_at,judge_scores";
+
+// Build the canonical public URL for an idea. When the title yields
+// no usable slug (emoji-only, non-Latin script, whitespace), we keep
+// the URL slug-less rather than emit a trailing dangling segment.
+function ideaPath(id: string, title: string): string {
+  const slug = titleToSlug(title);
+  return slug ? `/idea/${id}/${slug}` : `/idea/${id}`;
+}
 
 // Joined comment shape — `users` table mirror provides display_name + avatar.
 // Older comments from users without metadata may have nulls; the client
@@ -90,7 +99,7 @@ async function fetchIdea(id: string): Promise<Idea | null> {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; slug?: string[] }>;
 }): Promise<Metadata> {
   const { id } = await params;
   const idea = await fetchIdea(id);
@@ -98,7 +107,10 @@ export async function generateMetadata({
 
   const title = `${idea.title} — scored ${idea.final_score ?? idea.score * 10}/100`;
   const description = `"${idea.verdict}" — pitch-pit`;
-  const url = `${SITE_URL}/idea/${idea.id}`;
+  // Canonical is always the slugged form (or bare UUID when slug
+  // would be empty). Search engines consolidate signals here even if
+  // a backlinked URL has a stale or wrong slug.
+  const url = `${SITE_URL}${ideaPath(idea.id, idea.title)}`;
 
   return {
     title,
@@ -121,9 +133,11 @@ export async function generateMetadata({
 export default async function IdeaPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  // [[...slug]] makes slug an optional catch-all — undefined when the
+  // visitor hits the bare /idea/<uuid>, otherwise the path segments.
+  params: Promise<{ id: string; slug?: string[] }>;
 }) {
-  const { id } = await params;
+  const { id, slug } = await params;
   const supabase = await createClient();
 
   const [idea, { data: { user } }] = await Promise.all([
@@ -132,6 +146,16 @@ export default async function IdeaPage({
   ]);
 
   if (!idea) notFound();
+
+  // Canonicalize the URL: if the visitor hit /idea/<uuid> with no
+  // slug or a wrong slug, 301 to the canonical slugged form. Skip
+  // when the derived slug is empty (emoji-only / non-Latin titles)
+  // — otherwise we'd 301-loop the bare /idea/<uuid> back to itself.
+  const desired = titleToSlug(idea.title);
+  const provided = slug && slug.length > 0 ? slug.join("/") : "";
+  if (desired && provided !== desired) {
+    permanentRedirect(`/idea/${idea.id}/${desired}`);
+  }
 
   const comments = await fetchComments(idea.id);
 
@@ -144,7 +168,7 @@ export default async function IdeaPage({
     name: idea.title,
     description: idea.verdict,
     text: idea.pitch,
-    url: `${SITE_URL}/idea/${idea.id}`,
+    url: `${SITE_URL}${ideaPath(idea.id, idea.title)}`,
     datePublished: idea.created_at,
     aggregateRating: {
       "@type": "AggregateRating",

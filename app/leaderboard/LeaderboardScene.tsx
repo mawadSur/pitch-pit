@@ -12,6 +12,15 @@ import { JUDGES } from "@/lib/judges";
 import { createClient } from "@/lib/supabase/client";
 import { formatVoteCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { titleToSlug } from "@/lib/slug";
+
+// Build a slug-friendly path for an idea page. Title-derived slug is
+// purely informational; the UUID remains the source of truth and the
+// page canonicalizes mismatched slugs server-side.
+function ideaPath(id: string, title: string): string {
+  const slug = titleToSlug(title);
+  return slug ? `/idea/${id}/${slug}` : `/idea/${id}`;
+}
 
 type Tab = "alltime" | "week";
 
@@ -571,7 +580,7 @@ function PodiumSlot({
 
   return (
     <Link
-      href={`/idea/${idea.id}`}
+      href={ideaPath(idea.id, idea.title)}
       aria-label={`Rank ${rank}: ${idea.title}`}
       className={cn(
         "group relative flex flex-col items-center rounded-2xl px-6 py-8 text-center",
@@ -676,7 +685,7 @@ function LedgerRow({
       )}
     >
       <Link
-        href={`/idea/${idea.id}`}
+        href={ideaPath(idea.id, idea.title)}
         aria-label={`Rank ${rank}: ${idea.title}`}
         className={cn(
           "group flex items-stretch gap-4 px-3 py-4 transition-colors sm:gap-6 sm:px-5",

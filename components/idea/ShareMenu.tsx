@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { titleToSlug } from "@/lib/slug";
 
 // Subset of fields needed to produce share copy. Pages render this menu
 // with whatever's loaded — leaderboard rows have less detail than the
@@ -32,11 +33,16 @@ const LINKEDIN_FEED = "https://www.linkedin.com/feed/";
 const FACEBOOK_SHARE = "https://www.facebook.com/sharer/sharer.php";
 const REDDIT_SUBMIT = "https://reddit.com/submit";
 
-function buildAbsoluteUrl(ideaId: string): string {
+function buildAbsoluteUrl(ideaId: string, title: string): string {
+  // Slug is derived at link time from the title currently in scope.
+  // Empty slug (emoji-only / non-Latin titles) falls back to the bare
+  // /idea/<uuid>, which the page itself won't redirect to a slug.
+  const slug = titleToSlug(title);
+  const path = slug ? `/idea/${ideaId}/${slug}` : `/idea/${ideaId}`;
   if (typeof window !== "undefined") {
-    return `${window.location.origin}/idea/${ideaId}`;
+    return `${window.location.origin}${path}`;
   }
-  return `/idea/${ideaId}`;
+  return path;
 }
 
 function buildTwitterText(d: ShareableIdea): string {
@@ -144,7 +150,7 @@ export function ShareMenu({
     };
   }, [open]);
 
-  const url = buildAbsoluteUrl(idea.id);
+  const url = buildAbsoluteUrl(idea.id, idea.title);
 
   async function handle(target: ShareTarget) {
     setCopied(null);

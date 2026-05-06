@@ -6,6 +6,7 @@ import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
 import { ShareMenu } from "@/components/idea/ShareMenu";
 import { cn } from "@/lib/utils";
+import { titleToSlug } from "@/lib/slug";
 
 export type BuiltIdea = {
   id: string;
@@ -150,7 +151,7 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
             </a>
           )}
           <Link
-            href={`/idea/${idea.id}`}
+            href={`/idea/${idea.id}${titleToSlug(idea.title) ? `/${titleToSlug(idea.title)}` : ""}`}
             className="scene-mono text-[0.55rem] uppercase tracking-[0.32em] text-white/55 transition-colors hover:text-white"
           >
             Read the judgment →

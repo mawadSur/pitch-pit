@@ -51,6 +51,9 @@ export default async function JudgeRoute({
     // Draft TTL elapsed (24h). If it had already resolved into an ideas
     // row, the user can still see their judgment at /idea/[id]. Otherwise
     // the deliberation never completed and the link is dead — 404.
+    // Note: we don't append the SEO slug here because the title isn't in
+    // scope for an expired draft. The idea page will 301 to the slugged
+    // canonical on the next request.
     if (lookup.resolvedIdeaId) redirect(`/idea/${lookup.resolvedIdeaId}`);
     notFound();
   }

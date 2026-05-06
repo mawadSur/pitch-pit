@@ -7,6 +7,7 @@ import { Particles } from "@/components/scene/Particles";
 import { ShareMenu } from "@/components/idea/ShareMenu";
 import { timeAgo, truncate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { titleToSlug } from "@/lib/slug";
 
 export type Submission = {
   id: string;
@@ -230,7 +231,7 @@ function SubmissionCard({
 
           <div className="flex flex-wrap items-center gap-4">
             <Link
-              href={`/idea/${submission.id}`}
+              href={`/idea/${submission.id}${titleToSlug(submission.title) ? `/${titleToSlug(submission.title)}` : ""}`}
               className="scene-mono inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/65 transition-colors hover:text-[var(--scene-gold-bright)]"
             >
               Full judgment

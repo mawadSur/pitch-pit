@@ -6,6 +6,7 @@ import { type FeedIdea } from "@/lib/idea-types";
 import { timeAgo, truncate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ShareMenu } from "@/components/idea/ShareMenu";
+import { titleToSlug } from "@/lib/slug";
 
 // Final-score tiers for the accent treatment. Status takes precedence
 // over score: a built idea reads as "verdigris" (final state of the
@@ -147,7 +148,7 @@ export function IdeaCard({
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <Link
-              href={`/idea/${idea.id}`}
+              href={`/idea/${idea.id}${titleToSlug(idea.title) ? `/${titleToSlug(idea.title)}` : ""}`}
               className={cn(
                 "scene-mono inline-flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.3em] transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-black",

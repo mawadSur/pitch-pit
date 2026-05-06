@@ -10,6 +10,14 @@ import {
   markBuilt,
 } from "@/app/admin/actions";
 import { cn } from "@/lib/utils";
+import { titleToSlug } from "@/lib/slug";
+
+// Idea page link with the SEO-friendly slug appended when derivable.
+// Falls back to a slug-less /idea/<uuid> for emoji/non-Latin titles.
+function ideaPath(id: string, title: string): string {
+  const slug = titleToSlug(title);
+  return slug ? `/idea/${id}/${slug}` : `/idea/${id}`;
+}
 
 export type AdminIdea = {
   id: string;
@@ -207,7 +215,7 @@ function PendingRow({ idea }: { idea: AdminIdea }) {
         </span>
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/idea/${idea.id}`}
+            href={ideaPath(idea.id, idea.title)}
             target="_blank"
             className="scene-mono rounded-full border border-white/12 px-3.5 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/75 transition-colors hover:border-[var(--scene-gold)]/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
           >
@@ -303,7 +311,7 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
           </p>
         </div>
         <Link
-          href={`/idea/${idea.id}`}
+          href={ideaPath(idea.id, idea.title)}
           target="_blank"
           className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-[var(--scene-gold)]/80 transition-colors hover:text-[var(--scene-gold-bright)]"
         >
@@ -397,7 +405,7 @@ function CompletedTable({ rows }: { rows: AdminIdea[] }) {
               </td>
               <td className="border-b border-white/4 px-4 py-3">
                 <Link
-                  href={`/idea/${r.id}`}
+                  href={ideaPath(r.id, r.title)}
                   className="text-white transition-colors hover:text-[var(--scene-gold-bright)]"
                 >
                   {r.title}

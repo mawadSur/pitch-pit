@@ -7,7 +7,11 @@ const ADMIN_PATHS = ["/admin", "/feed", "/leaderboard", "/built"] as const;
 
 function revalidateAll(ideaId?: string) {
   for (const p of ADMIN_PATHS) revalidatePath(p);
-  if (ideaId) revalidatePath(`/idea/${ideaId}`);
+  if (ideaId) {
+    // Revalidate every variant under /idea/<id>: bare and slugged.
+    // "layout" matches the segment + all nested catch-all paths.
+    revalidatePath(`/idea/${ideaId}`, "layout");
+  }
 }
 
 export async function greenlightIdea(ideaId: string) {
