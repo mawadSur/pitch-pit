@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PageTransition } from "@/components/PageTransition";
 import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
@@ -57,6 +58,10 @@ export default function RootLayout({
         {/* Vercel Analytics — only ships data when deployed to Vercel.
             Tracks page views + Web Vitals. Configure in your Vercel dashboard. */}
         <Analytics />
+        {/* Vercel Speed Insights — Real Experience Score (LCP, FID, CLS,
+            FCP, TTFB) on real visitor sessions. Same Vercel-only behavior
+            as Analytics; complements it with per-route perf attribution. */}
+        <SpeedInsights />
       </body>
     </html>
   );
