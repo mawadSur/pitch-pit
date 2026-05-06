@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { jetbrains } from "@/lib/fonts/geist-mono";
 import { fraunces } from "@/lib/fonts/fraunces";
@@ -7,8 +8,12 @@ import {
   type LeaderboardIdea,
   VISIBLE_STATUSES,
 } from "@/lib/idea-types";
+import { JsonLd, type JsonLdData } from "@/components/seo/JsonLd";
 import { LeaderboardScene } from "./LeaderboardScene";
 import "../scene.css";
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,8 +26,24 @@ const inter = Inter({
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export const metadata = {
+const LEADERBOARD_DESCRIPTION =
+  "The standings, live. Every scored pitch ranked by final score — half AI, half crowd — recomputed every vote, frozen Monday at midnight EST.";
+
+export const metadata: Metadata = {
   title: "Leaderboard — pitch-pit",
+  description: LEADERBOARD_DESCRIPTION,
+  alternates: { canonical: `${SITE_URL}/leaderboard` },
+  openGraph: {
+    title: "Leaderboard — pitch-pit",
+    description: LEADERBOARD_DESCRIPTION,
+    url: `${SITE_URL}/leaderboard`,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Leaderboard — pitch-pit",
+    description: LEADERBOARD_DESCRIPTION,
+  },
 };
 
 // Escape PostgREST `ilike` special chars (`%` and `_`). Anything else can
@@ -123,11 +144,43 @@ export default async function LeaderboardRoute({
   const { q } = await searchParams;
   const query = q ?? null;
   const { alltime, week, weekNumber } = await fetchBoards(query);
+
+  // ItemList structured data — top 10 by final score. Search engines
+  // can render this as a "list of N" rich result. We pull from the
+  // alltime board (already sorted final_score desc) so unfiltered
+  // requests get the most authoritative ranking.
+  const top10 = alltime.slice(0, 10);
+  const jsonLd: JsonLdData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "pitch-pit · leaderboard",
+    url: `${SITE_URL}/leaderboard`,
+    numberOfItems: top10.length,
+    itemListElement: top10.map((idea, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: idea.title,
+      url: `${SITE_URL}/idea/${idea.id}`,
+      // final_score is 0–100; fall back to score×10 when only AI side
+      // has settled (mirrors the rendering logic in the leaderboard UI).
+      ...(idea.final_score != null || idea.score != null
+        ? {
+            additionalProperty: {
+              "@type": "PropertyValue",
+              name: "final_score",
+              value: idea.final_score ?? idea.score * 10,
+            },
+          }
+        : {}),
+    })),
+  };
+
   return (
     <div
       className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}
       style={{ display: "contents" }}
     >
+      <JsonLd data={jsonLd} />
       <LeaderboardScene
         alltime={alltime}
         week={week}

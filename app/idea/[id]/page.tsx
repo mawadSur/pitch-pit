@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Reveal, type Idea } from "@/components/idea/Reveal";
 import type { Comment } from "@/components/idea/Comments";
+import { JsonLd, type JsonLdData } from "@/components/seo/JsonLd";
 
 export const dynamic = "force-dynamic";
 
@@ -138,7 +139,7 @@ export default async function IdeaPage({
   // JSON-LD structured data — search engines render this as a rich result.
   // Schema.org "CreativeWork" is the closest fit for a public-facing pitch
   // submission; aggregateRating exposes both the AI score and community vote.
-  const jsonLd = {
+  const jsonLd: JsonLdData = {
     "@context": "https://schema.org",
     "@type": "CreativeWork",
     name: idea.title,
@@ -157,10 +158,7 @@ export default async function IdeaPage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd data={jsonLd} />
       <Reveal
         idea={idea}
         currentUserId={user?.id ?? null}
