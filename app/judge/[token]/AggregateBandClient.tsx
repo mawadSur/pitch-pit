@@ -208,7 +208,7 @@ function ScoreCounter({ avg }: { avg: number }) {
         // 220px doesn't blow past the viewport. Tabular-nums in
         // `.scene-numeral` keeps width steady through the 0→avg
         // transition so the surrounding layout doesn't reflow per tick.
-        className="scene-numeral text-[120px] text-[var(--scene-gold)] sm:text-[180px] lg:text-[220px]"
+        className="scene-numeral scene-foil text-[120px] text-[var(--scene-gold)] sm:text-[180px] lg:text-[220px]"
         style={{ textShadow: "0 0 48px rgba(255, 184, 0, 0.35)" }}
       >
         {display}

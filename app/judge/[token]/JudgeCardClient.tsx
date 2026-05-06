@@ -214,7 +214,7 @@ function ScoreNumber({
   return (
     <div className="flex items-baseline">
       <motion.span
-        className={`scene-numeral text-[88px] sm:text-[112px] ${textClass}`}
+        className={`scene-numeral scene-foil text-[88px] sm:text-[112px] ${textClass}`}
         style={{ textShadow: shadow }}
       >
         {display}
