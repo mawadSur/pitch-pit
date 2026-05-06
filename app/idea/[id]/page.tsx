@@ -57,7 +57,7 @@ async function fetchComments(ideaId: string): Promise<Comment[]> {
 }
 
 async function fetchIdea(id: string): Promise<Idea | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const first = await supabase
     .from("ideas")
     .select(SELECT)
@@ -90,9 +90,10 @@ async function fetchIdea(id: string): Promise<Idea | null> {
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const idea = await fetchIdea(params.id);
+  const { id } = await params;
+  const idea = await fetchIdea(id);
   if (!idea) return { title: "Idea not found" };
 
   const title = `${idea.title} — scored ${idea.final_score ?? idea.score * 10}/100`;
@@ -120,12 +121,13 @@ export async function generateMetadata({
 export default async function IdeaPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const supabase = createClient();
+  const { id } = await params;
+  const supabase = await createClient();
 
   const [idea, { data: { user } }] = await Promise.all([
-    fetchIdea(params.id),
+    fetchIdea(id),
     supabase.auth.getUser(),
   ]);
 

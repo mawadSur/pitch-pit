@@ -42,9 +42,10 @@ export const metadata = {
 export default async function JudgeRoute({
   params,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }) {
-  const lookup = await loadDraftByToken(params.token);
+  const { token } = await params;
+  const lookup = await loadDraftByToken(token);
   if (lookup.status === "missing") notFound();
   if (lookup.status === "expired") {
     // Draft TTL elapsed (24h). If it had already resolved into an ideas
@@ -58,7 +59,7 @@ export default async function JudgeRoute({
   // Detect signed-in state up front so the soft-gate can render server-side.
   let userId: string | null = null;
   try {
-    const cookieClient = createCookieClient();
+    const cookieClient = await createCookieClient();
     const {
       data: { user },
     } = await cookieClient.auth.getUser();
@@ -141,7 +142,7 @@ export default async function JudgeRoute({
                     index={idx}
                     promise={promises[j.id]}
                     isSignedIn={isSignedIn}
-                    token={params.token}
+                    token={token}
                   />
                 </Suspense>
               ))}
@@ -150,7 +151,7 @@ export default async function JudgeRoute({
 
           {!isSignedIn && (
             <div className="mt-10">
-              <SoftGateCTA token={params.token} />
+              <SoftGateCTA token={token} />
             </div>
           )}
         </main>

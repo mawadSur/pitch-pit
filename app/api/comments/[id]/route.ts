@@ -18,9 +18,10 @@ const patchBodySchema = z.object({
 // 401/400 responses instead of silent zero-row updates.
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const idCheck = idSchema.safeParse(params.id);
+  const { id } = await params;
+  const idCheck = idSchema.safeParse(id);
   if (!idCheck.success) {
     return NextResponse.json({ error: "Invalid comment id." }, { status: 400 });
   }
@@ -54,7 +55,7 @@ export async function PATCH(
     );
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -93,14 +94,15 @@ export async function PATCH(
 // Owner-only. RLS rejects others; cookie-client carries auth.
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const idCheck = idSchema.safeParse(params.id);
+  const { id } = await params;
+  const idCheck = idSchema.safeParse(id);
   if (!idCheck.success) {
     return NextResponse.json({ error: "Invalid comment id." }, { status: 400 });
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

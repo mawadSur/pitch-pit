@@ -25,7 +25,7 @@ const SUBMISSION_SELECT =
   "id,title,pitch,handle,score,final_score,vote_count,verdict,strengths,concerns,reasoning,build_recommended,status,mvp_url,created_at";
 
 export default async function SubmissionsRoute() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

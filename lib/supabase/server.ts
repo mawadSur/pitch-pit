@@ -1,8 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export function createClient() {
-  const cookieStore = cookies();
+// Async because Next 16's cookies() now returns a Promise. Every call
+// site must await createClient(). The supabase ssr client itself is
+// constructed synchronously after the cookie store resolves; only
+// initialization is async.
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

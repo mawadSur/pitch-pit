@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   // /login transparently.
   let userId: string | null = null;
   try {
-    const cookieClient = createCookieClient();
+    const cookieClient = await createCookieClient();
     const {
       data: { user },
     } = await cookieClient.auth.getUser();

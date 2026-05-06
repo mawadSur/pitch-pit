@@ -38,7 +38,7 @@ async function fetchBoards(query: string | null): Promise<{
   weekNumber: number | null;
 }> {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Find the current open week (or fall back to the most recent week)
     const { data: openWeek } = await supabase
@@ -118,9 +118,10 @@ async function fetchBoards(query: string | null): Promise<{
 export default async function LeaderboardRoute({
   searchParams,
 }: {
-  searchParams: { q?: string };
+  searchParams: Promise<{ q?: string }>;
 }) {
-  const query = searchParams?.q ?? null;
+  const { q } = await searchParams;
+  const query = q ?? null;
   const { alltime, week, weekNumber } = await fetchBoards(query);
   return (
     <div

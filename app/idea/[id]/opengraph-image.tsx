@@ -49,9 +49,10 @@ function truncate(s: string, max: number): string {
 export default async function OpengraphImage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const idea = await fetchIdea(params.id);
+  const { id } = await params;
+  const idea = await fetchIdea(id);
 
   // Final score is 0–100 (50% AI + 50% community). Fallback chain
   // lets us still render something useful for ideas where the

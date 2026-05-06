@@ -29,7 +29,7 @@ export const metadata = {
 export default async function FeedRoute() {
   let ideas: FeedIdea[] = [];
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("ideas")
       .select(FEED_SELECT)

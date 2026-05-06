@@ -25,7 +25,7 @@ const SELECT =
 
 async function fetchBuilt(): Promise<BuiltIdea[]> {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("ideas")
       .select(SELECT)

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
   const { ideaId } = parsed.data;
 
-  const cookieClient = createCookieClient();
+  const cookieClient = await createCookieClient();
   const {
     data: { user },
   } = await cookieClient.auth.getUser();
