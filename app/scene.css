@@ -592,6 +592,13 @@
   position: relative;
   display: inline-block;
   width: 1ch;
+  /* Explicit height — the static halves are position:absolute, so they
+     don't contribute to intrinsic sizing. Without this, the inline-block
+     collapses to 0px tall and the digit never renders (which manifested
+     as empty pill outlines on the homepage countdown). 1em pins the
+     box to the inherited font-size, and combined with line-height: 1
+     below, the seam sits exactly at the digit's vertical midpoint. */
+  height: 1em;
   /* Lock vertical sizing to the surrounding line-height so the seam sits
      at a stable midpoint regardless of font metrics. */
   line-height: 1;

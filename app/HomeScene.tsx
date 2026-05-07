@@ -516,23 +516,10 @@ function Panel1() {
         </div>
 
         {/* Template chips removed — they were colliding with the bottom
-            counter on shorter viewports, and the express-lane below
-            already gives users a low-friction starter helper. PITCH_TEMPLATES
-            remains exported in case we re-introduce the chips inside the
-            PitchCoach empty-state in a future pass. */}
-
-        {/* Express-lane: "describe in one sentence and I'll draft it →".
-            Click reveals a small secondary input. Submit calls
-            /api/pitch-coach action=expand and fills the main textarea
-            on success. Hidden when a polish/diff is open or while
-            submitting to keep the surface calm. */}
-        <ExpressLane
-          disabled={pending}
-          onDraftReady={(draft) => {
-            setText(draft);
-            pitchRef.current?.focus();
-          }}
-        />
+            counter on shorter viewports. ExpressLane was also relocated
+            out of the form (see below the bottom counter) to keep the
+            form's vertical extent short enough that the counter doesn't
+            crash into form-internal helpers on portrait viewports. */}
       </motion.form>
 
       {/* Full-screen overlay during submit. Bridges the ~600ms window
@@ -571,6 +558,19 @@ function Panel1() {
                   ? `${SUBMIT_LIMITS.pitchMin - length} more to enter the pit · ${length}/${SUBMIT_LIMITS.pitchMax}`
                   : `${length}/${SUBMIT_LIMITS.pitchMax} · enter to enter the pit`}
         </p>
+        {/* Express-lane secondary CTA — lives next to the primary
+            counter line so it reads as an alternative entry path
+            (subordinated, not competing). Hides while submitting; the
+            counter line above carries the loading copy in that state. */}
+        {!pending && (
+          <ExpressLane
+            disabled={pending}
+            onDraftReady={(draft) => {
+              setText(draft);
+              pitchRef.current?.focus();
+            }}
+          />
+        )}
         <ScrollCue />
       </motion.div>
     </div>
