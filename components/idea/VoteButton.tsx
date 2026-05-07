@@ -129,7 +129,7 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
         });
         if (!res.ok) {
           const err = (await res.json().catch(() => ({}))) as { error?: string };
-          throw new Error(err.error ?? "Vote failed.");
+          throw new Error(err.error ?? "Token failed to cast.");
         }
         const data = await res.json();
         setUserHasVoted(!!data.voted);
@@ -138,7 +138,7 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
         // rollback
         setUserHasVoted(prevVoted);
         setVoteCount(prevCount);
-        setError(e instanceof Error ? e.message : "Vote failed.");
+        setError(e instanceof Error ? e.message : "Token failed to cast.");
       }
     });
   }
@@ -166,7 +166,7 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
               flash ? "text-[var(--scene-gold-bright)]" : ""
             }`}
             aria-live="polite"
-            aria-label={`${display} votes`}
+            aria-label={`${display} tokens`}
           >
             {display}
           </span>
@@ -183,7 +183,7 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
               flash ? "text-[var(--scene-gold-bright)]" : "text-white/65"
             }`}
             aria-live="polite"
-            aria-label={`${display} votes`}
+            aria-label={`${display} tokens`}
           >
             {display}
           </span>
