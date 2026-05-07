@@ -411,7 +411,14 @@
   }
 }
 
-/* ───── header ───── */
+/* ───── header ─────
+ * The header is meant to read as a permanent contest fixture, not a
+ * floating panel. It carries: the gold hairline at the bottom edge
+ * (always visible), a soft gold underglow (always visible), and a
+ * stronger frosted glass + saturated hairline once the user scrolls.
+ * The pseudo-elements live inside the header so the hairline + glow
+ * cross-fade in unison with the bg without a second wrapper element.
+ */
 .scene-header {
   position: fixed;
   top: 0;
@@ -424,18 +431,67 @@
     border-color 0.35s ease;
   background: linear-gradient(
     180deg,
-    rgba(10, 10, 10, 0.55) 0%,
-    rgba(10, 10, 10, 0.25) 70%,
+    rgba(10, 10, 10, 0.62) 0%,
+    rgba(10, 10, 10, 0.32) 70%,
     transparent 100%
   );
   border-bottom: 1px solid transparent;
 }
 
+/* Always-visible gold hairline — sits at the very bottom edge. */
+.scene-header::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 184, 0, 0) 0%,
+    rgba(255, 184, 0, 0.32) 18%,
+    rgba(255, 184, 0, 0.55) 50%,
+    rgba(255, 184, 0, 0.32) 82%,
+    rgba(255, 184, 0, 0) 100%
+  );
+  opacity: 0.7;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+/* Soft gold underglow — sits below the hairline, fades into the page.
+ * Gives the header presence without competing with the hero content. */
+.scene-header::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -36px;
+  height: 36px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 184, 0, 0.07) 0%,
+    rgba(255, 184, 0, 0) 100%
+  );
+  opacity: 0.6;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
 .scene-header[data-scrolled="true"] {
-  background: rgba(10, 10, 10, 0.78);
+  background: rgba(10, 10, 10, 0.82);
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  border-bottom-color: rgba(255, 184, 0, 0.18);
+}
+
+/* Hairline + underglow intensify slightly once scrolled — the header
+ * already has more bg contrast at that point, so the gold reads as
+ * a contest accent rather than a stray decoration. */
+.scene-header[data-scrolled="true"]::after {
+  opacity: 1;
+}
+.scene-header[data-scrolled="true"]::before {
+  opacity: 0.85;
 }
 
 /* ───── CTA buttons ───── */

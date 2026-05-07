@@ -46,36 +46,6 @@ type HomeSceneProps = {
   latestIdeas: TickerEntry[];
 };
 
-// Rubric-aware skeletons for the template chips below the input.
-// Each click prefills the textarea (replacing whatever's there if
-// effectively empty, preserving content otherwise — see Panel1).
-const PITCH_TEMPLATES = [
-  {
-    id: "b2b-saas",
-    label: "B2B SaaS",
-    body:
-      "The problem: \nWho hurts: \nMy edge: \nWedge: \nDistribution: ",
-  },
-  {
-    id: "consumer-mobile",
-    label: "Consumer mobile",
-    body:
-      "The moment: \nWho opens it: \nWhy now: \nWedge (one screen): \nDistribution (channel): ",
-  },
-  {
-    id: "ai-dev-tool",
-    label: "AI / dev tool",
-    body:
-      "The painful workflow: \nWho hits it: \nMy edge (built X for Y): \nWedge (one IDE / repo / framework): \nDistribution (HN, dev twitter, GitHub): ",
-  },
-  {
-    id: "marketplace",
-    label: "Marketplace",
-    body:
-      "The mismatch: \nSupply side: \nDemand side: \nWedge (city / niche / vertical): \nDistribution (cold start): ",
-  },
-] as const;
-
 export function HomeScene({
   pitchedThisSeason,
   built,
@@ -545,49 +515,11 @@ function Panel1() {
           />
         </div>
 
-        {/* Template chips — rubric-aware skeletons. Click prefills the
-            textarea when it's effectively empty; otherwise asks for
-            confirm so we don't blow away in-progress drafts. Staggered
-            after the form's reveal (delay ~0.5s) so they don't compete
-            with the input on first paint. */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="mt-3 flex flex-wrap items-center gap-2"
-        >
-          <span
-            className="scene-mono text-[0.55rem] uppercase tracking-[0.32em] text-white/45"
-            aria-hidden
-          >
-            Start from
-          </span>
-          {PITCH_TEMPLATES.map((tpl) => (
-            <button
-              key={tpl.id}
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                const current = text.trim();
-                // "Effectively empty" — under 20 chars worth of real
-                // content gets overwritten silently. Past that, ask
-                // before nuking the user's draft.
-                if (current.length >= 20) {
-                  const ok = window.confirm(
-                    "Replace what you've typed with this template?",
-                  );
-                  if (!ok) return;
-                }
-                setText(tpl.body);
-                if (error) setError(null);
-                pitchRef.current?.focus();
-              }}
-              className="scene-mono inline-flex h-7 items-center rounded-full border border-white/15 bg-white/[0.03] px-3 text-[0.55rem] uppercase tracking-[0.32em] text-white/75 transition-colors hover:border-[var(--scene-gold)] hover:text-[var(--scene-gold-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)] disabled:opacity-60"
-            >
-              {tpl.label}
-            </button>
-          ))}
-        </motion.div>
+        {/* Template chips removed — they were colliding with the bottom
+            counter on shorter viewports, and the express-lane below
+            already gives users a low-friction starter helper. PITCH_TEMPLATES
+            remains exported in case we re-introduce the chips inside the
+            PitchCoach empty-state in a future pass. */}
 
         {/* Express-lane: "describe in one sentence and I'll draft it →".
             Click reveals a small secondary input. Submit calls
