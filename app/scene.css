@@ -401,6 +401,14 @@
   .scene-input-shell {
     animation: none !important;
   }
+  /* Milestone pulse is a single short box-shadow tween (no scaling, no
+     translation) — per spec we still fire it for reduced-motion users
+     so they get the feedback that they crossed a threshold. The
+     blanket `animation: none` above would kill it, so re-enable it
+     when the data-pulse attribute is set. */
+  .scene-input-shell[data-pulse="1"] {
+    animation: scene-input-shell-pulse 600ms cubic-bezier(0.16, 1, 0.3, 1) 1 !important;
+  }
 }
 
 /* ───── header ───── */
@@ -594,6 +602,215 @@
     animation: none !important;
     opacity: 0;
   }
+}
+
+/* ───── milestone pulse on input shell ─────
+   One-shot gold-glow boost on the existing .scene-input-shell when the
+   pitch length crosses a character milestone (60 / 300 / 1500). The
+   `data-pulse="1"` attribute triggers the keyframe; setTimeout removes
+   the attribute ~620ms later so a subsequent crossing can re-fire it.
+   Reduced-motion users still get the pulse but as opacity-only (the
+   keyframe transitions a single box-shadow with the same final value
+   either way, so motion-sensitive folks see only a soft brightness
+   bump and no scaling). */
+@keyframes scene-input-shell-pulse {
+  0% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 0 24px rgba(255, 184, 0, 0.08),
+      0 0 0 1px rgba(255, 184, 0, 0.18),
+      0 18px 48px -12px rgba(255, 184, 0, 0.35),
+      0 0 64px rgba(255, 184, 0, 0.18);
+  }
+  45% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 0 56px rgba(255, 184, 0, 0.22),
+      0 0 0 1px rgba(255, 184, 0, 0.65),
+      0 28px 84px -8px rgba(255, 184, 0, 0.85),
+      0 0 132px rgba(255, 184, 0, 0.5);
+  }
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 0 24px rgba(255, 184, 0, 0.08),
+      0 0 0 1px rgba(255, 184, 0, 0.18),
+      0 18px 48px -12px rgba(255, 184, 0, 0.35),
+      0 0 64px rgba(255, 184, 0, 0.18);
+  }
+}
+.scene-input-shell[data-pulse="1"] {
+  /* Override the breathing pulse for the duration of the one-shot. */
+  animation: scene-input-shell-pulse 600ms cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+
+/* Spark that emits from the bottom-right of the shell on milestone. */
+@keyframes scene-spark-rise {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, -12px, 0);
+    opacity: 0;
+  }
+}
+.scene-spark {
+  pointer-events: none;
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 245, 200, 1) 0%,
+    rgba(255, 184, 0, 0.85) 55%,
+    transparent 80%
+  );
+  box-shadow:
+    0 0 8px rgba(255, 209, 122, 0.9),
+    0 0 16px rgba(255, 184, 0, 0.55);
+  animation: scene-spark-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-spark {
+    display: none !important;
+  }
+}
+
+/* ───── headline foil sweep (one-shot on viewport entry) ─────
+   Mirrors .scene-foil but only applies the sweep when the
+   `data-foil-sweep="1"` attribute is set by the IntersectionObserver
+   on the hero headline word. Without the attribute the wrapper is a
+   no-op so nothing renders pre-intersection. */
+.scene-foil-sweep {
+  position: relative;
+  display: inline-block;
+}
+.scene-foil-sweep[data-foil-sweep="1"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255, 245, 200, 0.55) 50%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 250% 100%;
+  background-position: -150% 0;
+  mix-blend-mode: overlay;
+  animation: scene-foil-sweep 1200ms cubic-bezier(0.16, 1, 0.3, 1) 1 forwards;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-foil-sweep[data-foil-sweep="1"]::after {
+    animation: none !important;
+    opacity: 0;
+    display: none;
+  }
+}
+
+/* ───── hourglass sand drift ─────
+   Small DOM dots in components/scene/HourglassSand.tsx are recycled
+   via JS — the keyframe handles the fall + fade. transform/opacity
+   only. Reduced-motion users see nothing (the component bails). */
+@keyframes scene-sand-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate3d(var(--sand-jitter, 0px), var(--sand-fall, 70px), 0);
+    opacity: 0;
+  }
+}
+.scene-sand-dot {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 245, 200, 1) 0%,
+    rgba(255, 184, 0, 0.85) 55%,
+    transparent 85%
+  );
+  box-shadow: 0 0 4px rgba(255, 209, 122, 0.85);
+  animation: scene-sand-drift var(--sand-dur, 2500ms) linear 1 forwards;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ───── wandering spotlight ─────
+   Single big soft gold blob that drifts via JS (framer-motion).
+   transform-only; the background and blur are static. Reduced-motion
+   pins it center. */
+.scene-spotlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50vw;
+  height: 50vw;
+  max-width: 600px;
+  max-height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 184, 0, 0.06) 0%,
+    rgba(255, 184, 0, 0.02) 45%,
+    transparent 70%
+  );
+  filter: blur(60px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* ───── cursor trail particle ─────
+   Small gold dot, transform/opacity only. Pool lives in
+   components/scene/CursorTrail.tsx. */
+@keyframes scene-cursor-trail {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(-50%, -20px, 0);
+    opacity: 0;
+  }
+}
+.scene-cursor-trail-dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 245, 200, 1) 0%,
+    rgba(255, 184, 0, 0.85) 55%,
+    transparent 85%
+  );
+  box-shadow: 0 0 6px rgba(255, 209, 122, 0.85);
+  pointer-events: none;
+  opacity: 0;
+  animation: scene-cursor-trail 600ms cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
+  /* Centered horizontally on cursor; rises from there. */
+  transform: translate3d(-50%, 0, 0);
 }
 
 /* ───── scroll cue ───── */

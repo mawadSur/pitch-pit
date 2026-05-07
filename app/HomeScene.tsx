@@ -10,6 +10,12 @@ import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { HeroPanel } from "@/components/scene/HeroPanel";
 import { CountdownClock } from "@/components/scene/CountdownClock";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
+import { InputMilestoneFX } from "@/components/scene/InputMilestoneFX";
+import { FoilSweep } from "@/components/scene/FoilSweep";
+import { HourglassSand } from "@/components/scene/HourglassSand";
+import { WanderingSpotlight } from "@/components/scene/WanderingSpotlight";
+import { CursorTrail } from "@/components/scene/CursorTrail";
+import { LiveTicker, type TickerEntry } from "@/components/scene/LiveTicker";
 import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
 import { SubmittingOverlay } from "./SubmittingOverlay";
 import { PitchCoach } from "./PitchCoach";
@@ -35,6 +41,9 @@ type HomeSceneProps = {
   pitchedThisSeason: number;
   built: number;
   verdicts: VerdictCard[];
+  /** Recent scored submissions for the bottom "Latest tributes" row. Pre-
+      filtered by the server to entries created within the last 7 days. */
+  latestIdeas: TickerEntry[];
 };
 
 // Rubric-aware skeletons for the template chips below the input.
@@ -71,6 +80,7 @@ export function HomeScene({
   pitchedThisSeason,
   built,
   verdicts,
+  latestIdeas,
 }: HomeSceneProps) {
   return (
     <MotionConfig reducedMotion="user">
@@ -141,6 +151,10 @@ export function HomeScene({
         />
         <AntiAbusePromise />
         <FinalCTA />
+        {/* "Latest tributes" — recent scored ideas with relative
+            timestamps. Server-filtered to ≤7 days old, so a slow week
+            silently hides this section instead of reading stale. */}
+        <LiveTicker entries={latestIdeas} />
 
         {/* persistent corner sparkle */}
         <div className="pointer-events-none fixed bottom-6 right-6 z-40 sm:bottom-8 sm:right-8">
@@ -345,25 +359,46 @@ function Panel1() {
 
   const length = text.trim().length;
 
+  // Refs for atmospheric flair effects. Panel1 is the only panel that
+  // gets the ambient layer (spotlight + cursor trail + sand drift +
+  // milestone pulse on input). The cursor trail listens on `panelRef`,
+  // milestone pulse mutates the data attribute on `inputShellRef`.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const inputShellRef = useRef<HTMLDivElement | null>(null);
+
   return (
     // Layout-1: floor at 640px tall so the kicker / countdown / input
     // never overlap on iPhone SE-class viewports (568px height with the
     // address bar shown). Above that, the absolute % offsets fan out
     // naturally to the section height.
-    <div className="relative h-full min-h-[640px] w-full">
+    <div ref={panelRef} className="relative h-full min-h-[640px] w-full">
+      {/* Atmospheric flair layer — diffuse drifting gold spotlight, slow
+          gold-sand drift over the painted hourglass, and a tiny cursor
+          trail. All pointer-events-none, all aria-hidden, all live
+          behind the cinematic content (z-5..z-8). Reduced-motion pins
+          spotlight to centered glow and skips sand + trail entirely. */}
+      <WanderingSpotlight />
+      <HourglassSand />
+      <CursorTrail panelRef={panelRef} />
+
       {/* TOP — kicker + headline (above the image's hourglass) */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7 }}
         className="absolute inset-x-0 top-[7%] flex flex-col items-center px-6 text-center"
+        style={{ zIndex: 10 }}
       >
         <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-white/55 sm:text-[0.92rem]">
           ↘ The pit closes Monday at midnight EST
         </p>
         <h1 className="mt-5 max-w-3xl text-balance text-[2rem] font-medium leading-[1.04] text-white sm:text-5xl lg:text-6xl">
           Pitch your idea. The{" "}
-          <span className="italic text-[var(--scene-gold-bright)]">winner</span>{" "}
+          <FoilSweep>
+            <span className="italic text-[var(--scene-gold-bright)]">
+              winner
+            </span>
+          </FoilSweep>{" "}
           gets built.
         </h1>
       </motion.div>
@@ -380,6 +415,7 @@ function Panel1() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.15 }}
         className="absolute inset-x-0 top-[32%] mx-auto flex max-w-md flex-col items-center px-6"
+        style={{ zIndex: 10 }}
       >
         <CountdownClock />
       </motion.div>
@@ -405,12 +441,15 @@ function Panel1() {
         // requested. Inner padding is also bumped 10% on the input
         // shell below.
         className="absolute inset-x-0 top-[52%] mx-auto w-full max-w-[740px] px-6"
+        style={{ zIndex: 10 }}
       >
         {/* Pitch coach — above the input. Quality checks, AI follow-ups,
             and an opt-in "polish my pitch" enhancer. Visible once the
             user starts typing; hidden otherwise so the at-rest layout
-            stays aligned with the bg image's input pill. */}
-        <div className="mb-4">
+            stays aligned with the bg image's input pill. The
+            data-pitch-coach attribute opts the whole subtree out of the
+            cursor-trail effect (the coach has its own gold treatment). */}
+        <div className="mb-4" data-pitch-coach>
           <PitchCoach text={text} setText={setText} />
         </div>
         {/* Two-piece input row to match the design ref:
@@ -420,7 +459,14 @@ function Panel1() {
               separated by a small gap so the two pieces read as
               discrete elements rather than a unified pill. */}
         <div className="flex items-stretch gap-3">
-          <div className="scene-input-shell flex flex-1 items-center px-[1.375rem] py-[0.875rem] sm:px-[1.625rem] sm:py-[1.125rem]">
+          <div
+            ref={inputShellRef}
+            className="scene-input-shell flex flex-1 items-center px-[1.375rem] py-[0.875rem] sm:px-[1.625rem] sm:py-[1.125rem]"
+          >
+            {/* Milestone FX: pulses the shell (data-pulse) + emits a
+                gold spark from the bottom-right corner whenever the
+                user crosses 60 / 300 / 1500 chars from below. */}
+            <InputMilestoneFX shellRef={inputShellRef} length={length} />
             <div className="relative flex flex-1 items-center">
               {length === 0 && (
                 <span
@@ -569,6 +615,7 @@ function Panel1() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.45 }}
         className="absolute inset-x-0 bottom-[8%] flex flex-col items-center gap-5 px-6 text-center"
+        style={{ zIndex: 10 }}
       >
         <p
           className={`scene-mono text-[0.65rem] uppercase tracking-[0.35em] sm:text-[0.65rem] ${
