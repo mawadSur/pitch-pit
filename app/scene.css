@@ -516,6 +516,174 @@
     0 12px 32px -12px rgba(0, 0, 0, 0.85);
 }
 
+/* ───── split-flap countdown digit ─────
+   Airport-departures flip-board for a single decimal digit. Two static
+   halves show the current digit; on change, two flaps animate over the
+   top — the "outgoing" top half folds DOWN, then the "incoming" bottom
+   half folds UP. A subtle gold seam at the midline plus a brief gold
+   edge-flash at the pivot midpoint sells the physical-card metaphor
+   without making the type itself glow. */
+
+.flip-digit {
+  position: relative;
+  display: inline-block;
+  width: 1ch;
+  /* Lock vertical sizing to the surrounding line-height so the seam sits
+     at a stable midpoint regardless of font metrics. */
+  line-height: 1;
+  perspective: 800px;
+  transform-style: preserve-3d;
+  /* Tabular figures for stable layout — even though we already pin width
+     to 1ch, this guards against caret/glyph fallback width drift. */
+  font-variant-numeric: tabular-nums lining-nums;
+  vertical-align: baseline;
+}
+
+/* Static halves: show the CURRENT digit. The top half is clipped to the
+   upper 50%, bottom to the lower 50%. The thin gold seam lives on the
+   bottom edge of the top half (and the top edge of the bottom half) at
+   the digit's vertical midpoint. */
+.flip-static {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+  /* Render the digit at the same baseline regardless of which half is shown,
+     so the two halves visually compose into a single character. */
+  text-align: center;
+}
+
+.flip-static-top {
+  clip-path: inset(0 0 50% 0);
+  /* Faint gold seam along the cut line. The pseudo-element is the cleanest
+     way to get a hairline without affecting layout. */
+}
+.flip-static-top::after {
+  content: "";
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: calc(50% - 0.5px);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 184, 0, 0.45) 25%,
+    rgba(255, 209, 122, 0.7) 50%,
+    rgba(255, 184, 0, 0.45) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+.flip-static-bottom {
+  clip-path: inset(50% 0 0 0);
+}
+
+/* Animated flaps. They overlay the static halves during transition only.
+   Each flap is a half-height block; we use clip-path to show only the
+   relevant half of the digit it contains, which lets us keep both halves
+   at the SAME line-height as the static digit underneath (so glyph
+   alignment is byte-identical at the moment of swap). */
+.flip-flap {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+  text-align: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* GPU layer hint. */
+  will-change: transform, box-shadow;
+}
+
+.flip-flap-top {
+  clip-path: inset(0 0 50% 0);
+  transform-origin: 50% 50%;
+  /* The "card folding down" — fast cinematic ease-out so it lands quickly. */
+  animation: flip-fold-down 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards,
+    flip-edge-flash 200ms ease-out forwards;
+}
+
+.flip-flap-bottom {
+  clip-path: inset(50% 0 0 0);
+  transform-origin: 50% 50%;
+  /* Starts upright (rotateX 90) and folds up. Delayed so it picks up
+     where the top flap ends — the visible "click" of the seam. */
+  animation: flip-fold-up 200ms cubic-bezier(0.6, 0, 0.4, 1) 100ms forwards,
+    flip-edge-flash 200ms ease-out 100ms forwards;
+  /* While waiting the 100ms delay, hold the start state so the incoming
+     digit isn't visible early. */
+  transform: rotateX(90deg);
+}
+
+@keyframes flip-fold-down {
+  0% {
+    transform: rotateX(0deg);
+  }
+  100% {
+    transform: rotateX(-90deg);
+  }
+}
+
+@keyframes flip-fold-up {
+  0% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+
+/* Gold edge-flash: a brief box-shadow pulse at the pivot midpoint that
+   reads as the seam catching light when the flap pivots through 90°. */
+@keyframes flip-edge-flash {
+  0%, 100% {
+    box-shadow: 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 12px var(--scene-gold, #ffb800),
+      0 0 4px rgba(255, 209, 122, 0.85);
+  }
+}
+
+/* Reduced-motion path: cross-fade only — same fixed-width footprint, no
+   rotation. The static face's `key` change (in React) re-mounts the span
+   so the CSS transition fires on each digit change. */
+.flip-digit-reduced .flip-reduced-face {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  animation: flip-reduced-fade 100ms linear forwards;
+}
+@keyframes flip-reduced-fade {
+  0% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-flap {
+    animation: none !important;
+    /* Park flaps invisible — the static halves carry the digit. */
+    opacity: 0 !important;
+  }
+}
+
+/* Header-scale variant: smaller, no seam highlight (it'd be visual
+   noise at this size), ticks only when minutes/hours roll over. */
+.flip-digit.header-flip {
+  width: 0.6em;
+  line-height: 1;
+}
+.flip-digit.header-flip .flip-static-top::after {
+  /* Hide the gold seam at small sizes — it reads as a smudge. The flap
+     animation itself is the texture. */
+  display: none;
+}
+
 /* ───── panel atmospheric overlay ───── */
 .panel-vignette {
   position: absolute;

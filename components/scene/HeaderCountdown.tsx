@@ -2,12 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { nextMondayMidnightET } from "@/lib/week-cycle";
+import { FlipDigit } from "@/components/scene/FlipDigit";
 
 // Slim live ticker rendered inline in the header. Reminds visitors on
 // every page that the contest is running — even if they're 4 routes
 // deep on /submissions. Resolution is per-minute (no second-by-second
 // pulse — that belongs to the cinematic CountdownClock on the homepage,
 // which has its own ambient role).
+//
+// Uses the same FlipDigit primitive as the homepage countdown but at a
+// much smaller scale and inheriting the header's Geist Mono. Because
+// minutes only tick at most once a minute (the ticker samples every 30s),
+// the flap reads as a quiet, occasional click rather than a constant
+// movement — which fits the chrome-level role of the header.
 
 export function HeaderCountdown() {
   const [target, setTarget] = useState<number | null>(null);
@@ -40,7 +47,11 @@ export function HeaderCountdown() {
   const minutes = Math.floor((remaining / 60_000) % 60);
 
   const closed = remaining <= 0;
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const padHoursTens = Math.floor(hours / 10);
+  const padHoursOnes = hours % 10;
+  const padMinutesTens = Math.floor(minutes / 10);
+  const padMinutesOnes = minutes % 10;
+  const padDays = String(days);
 
   return (
     <div
@@ -61,8 +72,21 @@ export function HeaderCountdown() {
       ) : (
         <>
           <span>pit closes</span>
-          <span className="text-white/85 tabular-nums">
-            {days}d {pad(hours)}h {pad(minutes)}m
+          <span
+            aria-hidden
+            className="text-white/85 tabular-nums inline-flex items-baseline"
+          >
+            {padDays}d{" "}
+            <FlipDigit value={padHoursTens} className="header-flip" />
+            <FlipDigit value={padHoursOnes} className="header-flip" />h{" "}
+            <FlipDigit value={padMinutesTens} className="header-flip" />
+            <FlipDigit value={padMinutesOnes} className="header-flip" />m
+          </span>
+          {/* Mirror the resolved time for AT in plain text — the FlipDigits
+              themselves are aria-hidden because their absolute-positioned
+              flap layers can confuse assistive tech mid-animation. */}
+          <span className="sr-only">
+            {days}d {hours}h {minutes}m
           </span>
         </>
       )}
