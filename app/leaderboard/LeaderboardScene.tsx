@@ -628,7 +628,11 @@ function PodiumSlot({
       </div>
 
       <p className="scene-mono mt-3 text-[0.65rem] uppercase tracking-[0.16em] text-white/55">
-        {formatVoteCount(idea.vote_count)} votes
+        {idea.vote_count === 0 ? (
+          <span className="text-white/55">AI-only · awaiting votes</span>
+        ) : (
+          <>{formatVoteCount(idea.vote_count)} votes</>
+        )}
       </p>
 
       <div
@@ -713,7 +717,9 @@ function LedgerRow({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <JudgeBreakdown scores={idea.judge_scores} />
             <span className="scene-mono text-[0.6rem] uppercase tracking-[0.16em] tabular-nums text-white/45 sm:hidden">
-              {formatVoteCount(idea.vote_count)} votes
+              {idea.vote_count === 0
+                ? "AI-only"
+                : `${formatVoteCount(idea.vote_count)} votes`}
             </span>
             {/* mobile-only inline score so the row is scannable */}
             <span
@@ -726,9 +732,12 @@ function LedgerRow({
           </div>
         </div>
 
-        {/* Vote count — desktop only, in the gutter */}
+        {/* Vote count — desktop only, in the gutter. Shows "AI-only" when
+            no votes yet so the score is read as provisional, not blended. */}
         <span className="scene-mono hidden self-center text-[0.65rem] uppercase tracking-[0.16em] tabular-nums text-white/55 sm:inline">
-          {formatVoteCount(idea.vote_count)} votes
+          {idea.vote_count === 0
+            ? "AI-only"
+            : `${formatVoteCount(idea.vote_count)} votes`}
         </span>
 
         {/* Final score — the marquee number on desktop */}
