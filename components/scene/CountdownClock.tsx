@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { nextMondayMidnightET } from "@/lib/week-cycle";
+import { FlipDigit } from "@/components/scene/FlipDigit";
 
 export function CountdownClock() {
   const [target, setTarget] = useState<number | null>(null);
@@ -63,19 +64,38 @@ function Unit({
   label: string;
   pulse?: boolean;
 }) {
+  // Padded two-digit value, split into individual decimal slots so each
+  // digit gets its own flap animation. Tens digit flips much less often
+  // than ones (e.g., minutes tens flips every 10 minutes).
+  const padded = String(value).padStart(2, "0");
+  const tens = Number(padded[0]);
+  const ones = Number(padded[1]);
+
+  // Big-version typography: Fraunces serif (display var), tabular
+  // numerals, with the gold-glow textShadow preserved from the previous
+  // plain-text rendering. The `pulse` slot is the seconds — it gets the
+  // bright gold and a stronger glow.
+  const digitStyle: React.CSSProperties = {
+    color: pulse ? "var(--scene-gold-bright)" : "white",
+    textShadow: pulse
+      ? "0 0 18px rgba(255, 209, 122, 0.6), 0 0 36px rgba(255, 184, 0, 0.35)"
+      : "0 0 14px rgba(255, 184, 0, 0.18)",
+  };
+
   return (
     <div className="countdown-unit">
       <span
-        className="scene-mono leading-none tabular-nums text-[2.6rem] font-semibold sm:text-[3.5rem]"
-        style={{
-          color: pulse ? "var(--scene-gold-bright)" : "white",
-          textShadow: pulse
-            ? "0 0 18px rgba(255, 209, 122, 0.6), 0 0 36px rgba(255, 184, 0, 0.35)"
-            : "0 0 14px rgba(255, 184, 0, 0.18)",
-        }}
+        className="scene-numeral leading-none text-[2.6rem] font-semibold sm:text-[3.5rem]"
+        style={{ display: "inline-flex", gap: 0 }}
       >
-        {String(value).padStart(2, "0")}
+        <FlipDigit value={tens} style={digitStyle} />
+        <FlipDigit value={ones} style={digitStyle} />
       </span>
+      {/* Visually-hidden numeric mirror — keeps the timer readable to
+          screen readers / copy-paste even though the FlipDigit spans are
+          aria-hidden (their visual reordering during animation could
+          confuse assistive tech). */}
+      <span className="sr-only">{padded}</span>
       <span className="scene-mono mt-2 text-[0.55rem] uppercase tracking-[0.4em] text-white/45 sm:text-[0.65rem]">
         {label}
       </span>
