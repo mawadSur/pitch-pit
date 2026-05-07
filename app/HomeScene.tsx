@@ -14,7 +14,6 @@ import { SubmittingOverlay } from "./SubmittingOverlay";
 import { PitchCoach } from "./PitchCoach";
 import { PitchAttachments, type Attachment } from "./PitchAttachments";
 import { SUBMIT_LIMITS } from "@/lib/score-schema";
-import { createClient as createSupabaseBrowser } from "@/lib/supabase/client";
 
 const FRAMES_1_COUNT = 91;
 const FRAMES_2_COUNT = 90;
@@ -180,30 +179,18 @@ function Panel1() {
     }
     setError(null);
 
-    // ─── auth wall ─────────────────────────────────────────────
-    // Submissions require a signed-in user. Sidesteps Turnstile entirely
-    // (login is itself a bot-check) and lets every pitch be credited to
-    // an account so the leaderboard, claim flow, and weekly quota all
-    // work without an "anonymous" branch. The draft is already mirrored
-    // to localStorage on every keystroke, so bouncing through /login
-    // costs the user nothing — they return with ?resume=1, the mount
-    // effect below restores the text and fires submit() automatically.
-    //
-    // We use getSession() (reads cookie locally) instead of getUser()
-    // (network round-trip) because the latter can briefly return null
-    // immediately after a recent navigation while Supabase's auth
-    // refresh is in flight — symptom: a signed-in user trying to submit
-    // a second pitch gets bounced to /login spuriously. The server-side
-    // /api/draft does the real verification; if the local session is
-    // invalid, the route returns 401 and we redirect there too.
-    const supabase = createSupabaseBrowser();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      router.push(`/login?next=${encodeURIComponent("/?resume=1")}`);
-      return;
-    }
+    // ─── anonymous-first submit path ───────────────────────────
+    // The auth wall used to live here: a getSession() check that
+    // bounced logged-out users to /login before they ever saw the
+    // judges. We deliberately removed it. The server (/api/draft)
+    // is authoritative — it allows anonymous drafts, sets an
+    // HttpOnly claim cookie, and only the eventual /api/claim-idea
+    // call requires auth. The localStorage draft + ?resume=1 flow
+    // remains in the mount effect above as a safety net (e.g. when
+    // the user proactively signs in BEFORE pitching, gets bounced
+    // through OAuth, and we want their typed text restored on
+    // return) — it's redundant for the success path but does no
+    // harm.
     // Mint ONE idempotency key per submit attempt. The same uuid travels
     // with this fetch even if React's startTransition or a network blip
     // re-fires the inner async — the server will return the existing
@@ -256,11 +243,12 @@ function Panel1() {
           const err = (await res.json().catch(() => ({}))) as {
             error?: string;
             redirect_to?: string;
+            category?: string;
           };
           turnstileRef.current?.reset();
-          // Server-side auth check disagrees with the client wall —
-          // session cookie is missing or expired. Redirect to login
-          // and let the resume effect re-fire after auth.
+          // Server still emits redirect_to in legacy auth scenarios
+          // (e.g. a future re-introduction of the auth wall). Honor it
+          // when present so the client doesn't have to know the rules.
           if (res.status === 401 && err.redirect_to) {
             router.push(err.redirect_to);
             return;

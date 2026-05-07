@@ -24,6 +24,12 @@ type Draft = {
   // Up to 3 image URLs from the pitch-images bucket. Empty array when
   // no images. Carried across to the ideas row so /idea/[id] can render.
   image_urls?: string[];
+  // Set on anonymous drafts (migration 018). The matching cookie is
+  // pp_claim_<draft.id>; we copy this onto the resulting ideas row so
+  // /api/claim-idea can verify the cookie without re-reading the draft
+  // (drafts have a 24h TTL and may already be GC'd at claim time). null
+  // for signed-in submissions and pre-018 environments.
+  claim_token?: string | null;
 };
 
 // Idempotently persist the ideas row for this draft. If the draft already
@@ -55,30 +61,70 @@ export async function persistJudgment(
   // Pick the first available judge by priority for the top-level summary.
   const summary = presentResults[0];
 
-  const { data: row, error: dbErr } = await supabase
-    .from("ideas")
-    .insert({
-      title: draft.title,
-      pitch: draft.pitch,
-      handle: draft.handle,
-      user_id: draft.user_id,
-      score: avg,
-      verdict: summary.verdict,
-      strengths: summary.strengths,
-      concerns: summary.concerns,
-      reasoning: summary.reasoning,
-      build_recommended: buildRecommended,
-      judge_scores: panel,
-      status: "scored",
-      // Carry images over only when present + the column exists. Same
-      // spread-guard pattern /api/draft uses to stay compatible with
-      // pre-migration-015 environments.
-      ...(draft.image_urls && draft.image_urls.length > 0
-        ? { image_urls: draft.image_urls }
-        : {}),
-    })
-    .select("id")
-    .single();
+  const baseInsert = {
+    title: draft.title,
+    pitch: draft.pitch,
+    handle: draft.handle,
+    user_id: draft.user_id,
+    score: avg,
+    verdict: summary.verdict,
+    strengths: summary.strengths,
+    concerns: summary.concerns,
+    reasoning: summary.reasoning,
+    build_recommended: buildRecommended,
+    judge_scores: panel,
+    status: "scored",
+    // Carry images over only when present + the column exists. Same
+    // spread-guard pattern /api/draft uses to stay compatible with
+    // pre-migration-015 environments.
+    ...(draft.image_urls && draft.image_urls.length > 0
+      ? { image_urls: draft.image_urls }
+      : {}),
+    // Carry the anonymous claim_token across (migration 018). Spread
+    // guard so a pre-018 ideas table doesn't reject the insert.
+    ...(draft.claim_token ? { claim_token: draft.claim_token } : {}),
+  };
+
+  let row: { id: string } | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let dbErr: any = null;
+
+  {
+    const insert = await supabase
+      .from("ideas")
+      .insert(baseInsert)
+      .select("id")
+      .single();
+    row = insert.data ?? null;
+    dbErr = insert.error ?? null;
+  }
+
+  // Pre-migration-018 fallback: if the ideas table doesn't yet have
+  // claim_token, retry without it. The resulting idea is unclaimable
+  // by anonymous flow on that environment, but submission still works.
+  if (dbErr?.code === "42703" && draft.claim_token) {
+    const { claim_token: _drop, ...without } = baseInsert as {
+      claim_token?: string;
+      [k: string]: unknown;
+    };
+    void _drop;
+    const retry = await supabase
+      .from("ideas")
+      .insert(without)
+      .select("id")
+      .single();
+    if (!retry.error && retry.data) {
+      row = retry.data;
+      dbErr = null;
+      Sentry.captureMessage(
+        "[judgment] claim_token column missing on ideas",
+        {
+          level: "warning",
+          tags: { route: "judgment", phase: "schema-drift-018" },
+        },
+      );
+    }
+  }
 
   if (dbErr || !row) {
     console.error("[judgment] insert failure", dbErr);
@@ -170,15 +216,10 @@ const UNDEFINED_COLUMN = "42703";
 export async function loadDraftByToken(token: string): Promise<DraftLookup> {
   const supabase = createAdminClient();
 
-  // Try the rich SELECT first (with image_urls). If the column doesn't
-  // exist, retry without it so a pre-migration-015 prod still serves the
-  // judge dashboard. ANY other PostgREST error is captured to Sentry —
-  // returning {missing} on a real DB failure used to make this look like
-  // a token-not-found bug, which is what just bit us in prod.
-  // Two-step SELECT to stay tolerant of pre-migration-015 environments
-  // where the `image_urls` column doesn't exist yet. The richer SELECT's
-  // typed return shape is the union; the narrower fallback is widened to
-  // it on assignment.
+  // Three-tier SELECT to stay tolerant of pre-migration-015 (no
+  // image_urls) AND pre-migration-018 (no claim_token) environments.
+  // The richer SELECT's typed return shape is the union; the narrower
+  // fallbacks are widened to it on assignment.
   type DraftRow = {
     id: string;
     user_id: string | null;
@@ -189,6 +230,7 @@ export async function loadDraftByToken(token: string): Promise<DraftLookup> {
     resolved_idea_id: string | null;
     expires_at: string;
     image_urls?: string[] | null;
+    claim_token?: string | null;
   };
 
   let data: DraftRow | null = null;
@@ -197,26 +239,38 @@ export async function loadDraftByToken(token: string): Promise<DraftLookup> {
 
   const rich = await supabase
     .from("draft_pitches")
-    .select(`${DRAFT_BASE_COLUMNS}, image_urls`)
+    .select(`${DRAFT_BASE_COLUMNS}, image_urls, claim_token`)
     .eq("access_token", token)
     .maybeSingle();
   data = rich.data as DraftRow | null;
   error = rich.error;
 
   if (error && error.code === UNDEFINED_COLUMN) {
-    // Migration 015 hasn't been applied yet. Tell ops loudly via Sentry
-    // (one event, not per-request — this is a deploy/migration drift) and
-    // fall back to the schema we know works.
+    // Either claim_token (018) or image_urls (015) is missing. Try the
+    // image_urls-only shape first, then fall back to the bare base columns.
     Sentry.captureException(error, {
-      tags: { route: "loadDraftByToken", phase: "select-image-urls-missing" },
+      tags: {
+        route: "loadDraftByToken",
+        phase: "select-extended-columns-missing",
+      },
     });
-    const fallback = await supabase
+    const midTier = await supabase
       .from("draft_pitches")
-      .select(DRAFT_BASE_COLUMNS)
+      .select(`${DRAFT_BASE_COLUMNS}, image_urls`)
       .eq("access_token", token)
       .maybeSingle();
-    data = fallback.data as DraftRow | null;
-    error = fallback.error;
+    data = midTier.data as DraftRow | null;
+    error = midTier.error;
+
+    if (error && error.code === UNDEFINED_COLUMN) {
+      const fallback = await supabase
+        .from("draft_pitches")
+        .select(DRAFT_BASE_COLUMNS)
+        .eq("access_token", token)
+        .maybeSingle();
+      data = fallback.data as DraftRow | null;
+      error = fallback.error;
+    }
   }
 
   if (error) {
@@ -238,10 +292,13 @@ export async function loadDraftByToken(token: string): Promise<DraftLookup> {
   void _expires_at;
   // image_urls may be undefined on pre-migration-015 environments —
   // normalize to an empty array so the persist-judgment insert spread
-  // guard works without a TS or PostgREST surprise.
+  // guard works without a TS or PostgREST surprise. claim_token falls
+  // through as null when the column is missing or the draft is signed-in.
   const draft: Draft = {
-    ...(rest as Omit<Draft, "image_urls">),
+    ...(rest as Omit<Draft, "image_urls" | "claim_token">),
     image_urls: (rest as { image_urls?: string[] | null }).image_urls ?? [],
+    claim_token:
+      (rest as { claim_token?: string | null }).claim_token ?? null,
   };
   return { status: "ok", draft };
 }

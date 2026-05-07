@@ -12,6 +12,11 @@ type Draft = {
   pitch: string;
   handle: string | null;
   resolved_idea_id: string | null;
+  // Forwarded into persistJudgment so the resulting ideas row carries
+  // the same claim_token (anonymous-flow only). Optional for pre-018
+  // environments and signed-in submissions.
+  claim_token?: string | null;
+  image_urls?: string[];
 };
 
 // Awaits all three judge promises in parallel, persists the ideas row,

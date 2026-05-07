@@ -1,4 +1,5 @@
 import { notFound, permanentRedirect } from "next/navigation";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -12,6 +13,12 @@ export const dynamic = "force-dynamic";
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
 
+// Note: claim_token is selected via the admin client below (see fetchClaimToken)
+// rather than the cookie-aware client here. RLS on `ideas` doesn't expose
+// claim_token to anonymous readers, and we don't want to broaden the public
+// SELECT to include it. The `Idea` type the page renders therefore stays free
+// of claim_token; the cookie-match signal is computed server-side and passed
+// to Reveal as a prop.
 const SELECT =
   "id,user_id,title,pitch,handle,score,final_score,vote_count,verdict,strengths,concerns,reasoning,build_recommended,status,mvp_url,screenshot_url,created_at,judge_scores,image_urls";
 
@@ -64,6 +71,27 @@ async function fetchComments(ideaId: string): Promise<Comment[]> {
       avatar_url: u?.avatar_url ?? null,
     };
   });
+}
+
+// Read the idea's claim_token via the admin client. Returns null when:
+//   - the idea is signed-in / already claimed (claim_token never set)
+//   - migration 018 hasn't been applied (column doesn't exist)
+//   - the idea row is missing (we fail-soft; the main fetchIdea handles 404)
+//
+// Never throws; the worst case is "no claim CTA renders." We don't want
+// a flaky claim_token lookup to take the whole idea page offline.
+async function fetchClaimToken(id: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("ideas")
+    .select("claim_token")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    if (error.code === UNDEFINED_COLUMN) return null;
+    return null;
+  }
+  return (data as { claim_token?: string | null } | null)?.claim_token ?? null;
 }
 
 async function fetchIdea(id: string): Promise<Idea | null> {
@@ -133,18 +161,28 @@ export async function generateMetadata({
 
 export default async function IdeaPage({
   params,
+  searchParams,
 }: {
   // [[...slug]] makes slug an optional catch-all — undefined when the
   // visitor hits the bare /idea/<uuid>, otherwise the path segments.
   params: Promise<{ id: string; slug?: string[] }>;
+  // ?claim=1 is the post-login signal — the user clicked "Sign in to
+  // claim" on /idea/[id], authenticated, and was redirected back here.
+  // We pass `autoPromptClaim` to <Reveal /> so the client can pop a
+  // confirmation modal without an extra click.
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id, slug } = await params;
+  const sp = await searchParams;
   const supabase = await createClient();
 
-  const [idea, { data: { user } }] = await Promise.all([
-    fetchIdea(id),
-    supabase.auth.getUser(),
-  ]);
+  const [idea, { data: { user } }, claimTokenForIdea, cookieStore] =
+    await Promise.all([
+      fetchIdea(id),
+      supabase.auth.getUser(),
+      fetchClaimToken(id),
+      cookies(),
+    ]);
 
   if (!idea) notFound();
 
@@ -157,6 +195,34 @@ export default async function IdeaPage({
   if (desired && provided !== desired) {
     permanentRedirect(`/idea/${idea.id}/${desired}`);
   }
+
+  // Cookie integrity check: if the idea is anonymous AND has a
+  // claim_token from migration 018, see if any pp_claim_* cookie on the
+  // request matches. We compare values directly because the cookie name
+  // embeds the originating draft.id, which we don't track on ideas.
+  // hasClaimCookie === true means "this browser submitted this idea";
+  // we surface that to the client so it can render the right CTA.
+  let hasClaimCookie = false;
+  if (idea.user_id === null && claimTokenForIdea) {
+    hasClaimCookie = cookieStore
+      .getAll()
+      .some(
+        (c) => c.name.startsWith("pp_claim_") && c.value === claimTokenForIdea,
+      );
+  }
+
+  // ?claim=1 was set by the "Sign in to claim" CTA before redirecting
+  // through /login. We only honor it when:
+  //   1. the idea is still anonymous (user_id IS NULL)
+  //   2. the requester is signed in (you can't claim while anon)
+  //   3. the cookie still matches the row's claim_token
+  // Anything else and we silently ignore the param so a hostile share
+  // link can't trick a logged-in user into claiming someone else's idea.
+  const autoPromptClaim =
+    sp.claim === "1" &&
+    idea.user_id === null &&
+    !!user &&
+    hasClaimCookie;
 
   const comments = await fetchComments(idea.id);
 
@@ -188,6 +254,8 @@ export default async function IdeaPage({
         currentUserId={user?.id ?? null}
         currentUser={user}
         initialComments={comments}
+        hasClaimCookie={hasClaimCookie}
+        autoPromptClaim={autoPromptClaim}
       />
     </>
   );

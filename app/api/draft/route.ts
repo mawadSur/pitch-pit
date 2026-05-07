@@ -7,17 +7,20 @@ import { submitSchema } from "@/lib/score-schema";
 import { checkContent } from "@/lib/content-filter";
 import { checkUserQuota, WEEKLY_LIMIT } from "@/lib/user-quota";
 import { verifyTurnstile, turnstileEnabled } from "@/lib/turnstile";
+import { limitAnonDrafts } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // Draft creation is fast (no Anthropic call). 10s is plenty.
 export const maxDuration = 10;
 
-// All the pre-flight gates that used to live in /api/score: Turnstile,
-// content-filter, weekly quota, capture session. The actual Anthropic
-// fan-out happens later inside /judge/[token] as Suspense-streamed
-// async server components — this route just persists the pitch and
-// hands back a token the client can redirect to.
+// Anonymous-first: the auth gate that used to live here was moved to
+// /api/claim-idea. Logged-out visitors can stage a draft, watch the
+// three judges deliberate, and reach a public idea page — they only
+// hit the auth wall when they want to claim the resulting idea on
+// their account. Bot protection (Turnstile + content filter + IP
+// throttle on the anon path) and per-user weekly quota for signed-in
+// users still apply.
 export async function POST(req: NextRequest) {
   // ─── body validation ──────────────────────────────────────
   let body: unknown;
@@ -55,12 +58,16 @@ export async function POST(req: NextRequest) {
   const { title, pitch, handle, turnstile_token, request_id, image_urls } =
     parsed.data;
 
+  // Capture the requester IP up front — we use it for both Turnstile
+  // and (when no session) the anonymous IP throttle. Strip x-forwarded-for
+  // to its first entry; behind Vercel that's the real client IP.
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    req.headers.get("x-real-ip") ??
+    undefined;
+
   // ─── captcha ──────────────────────────────────────────────
   if (turnstileEnabled) {
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-      req.headers.get("x-real-ip") ??
-      undefined;
     const captcha = await verifyTurnstile(turnstile_token, ip);
     if (!captcha.ok) {
       return NextResponse.json(
@@ -82,13 +89,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ─── auth gate ────────────────────────────────────────────
-  // Submissions require a signed-in user. The client-side wall in
-  // HomeScene also checks this (getSession), but we re-verify here
-  // because that local check is cookie-state only — network failures,
-  // expired tokens, or someone hitting the API directly all need a
-  // real server-side check. Returns 401 with redirect_to so the
-  // client knows to bounce to /login.
+  // ─── session detection (no longer a gate) ────────────────
+  // We resolve the user up front so the downstream code can treat
+  // signed-in vs anonymous as data, not control flow. Failure to
+  // read the session is treated as anonymous — the actual claim
+  // step is gated server-side anyway.
   let userId: string | null = null;
   try {
     const cookieClient = await createCookieClient();
@@ -97,46 +102,64 @@ export async function POST(req: NextRequest) {
     } = await cookieClient.auth.getUser();
     userId = user?.id ?? null;
   } catch {
-    /* fall through to 401 below */
-  }
-  if (!userId) {
-    return NextResponse.json(
-      {
-        error: "Sign in to submit a pitch.",
-        category: "auth",
-        redirect_to: `/login?next=${encodeURIComponent("/?resume=1")}`,
-      },
-      { status: 401 },
-    );
+    /* anonymous */
   }
 
-  // ─── per-user weekly quota ────────────────────────────────
-  // userId is guaranteed non-null here (auth gate above).
-  const quota = await checkUserQuota(userId);
-  if (!quota.ok) {
-    return NextResponse.json(
-      {
-        error: quota.reason,
-        category: "quota",
-        used: quota.used,
-        limit: quota.limit,
-        resetAt: quota.resetAt?.toISOString() ?? null,
-      },
-      {
-        status: 429,
-        headers: {
-          "X-RateLimit-Limit": String(WEEKLY_LIMIT),
-          "X-RateLimit-Remaining": "0",
-          ...(quota.resetAt
-            ? {
-                "X-RateLimit-Reset": String(
-                  Math.floor(quota.resetAt.getTime() / 1000),
-                ),
-              }
-            : {}),
+  // ─── per-IP throttle for anonymous submissions ────────────
+  // Signed-in users skip this — they get the per-user weekly quota
+  // below instead. Anonymous users are bounded to 3 drafts / 24h /
+  // IP. When we can't determine the IP (rare; misconfigured proxy)
+  // we let the request through rather than block legitimate traffic.
+  if (!userId && ip) {
+    const verdict = await limitAnonDrafts(ip);
+    if (!verdict.success) {
+      return NextResponse.json(
+        {
+          error:
+            "Too many anonymous submissions from this network. Sign in to keep going.",
+          category: "anon-throttle",
+          resetAt: new Date(verdict.reset).toISOString(),
         },
-      },
-    );
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(verdict.limit),
+            "X-RateLimit-Remaining": String(verdict.remaining),
+            "X-RateLimit-Reset": String(Math.floor(verdict.reset / 1000)),
+          },
+        },
+      );
+    }
+  }
+
+  // ─── per-user weekly quota (signed-in only) ──────────────
+  if (userId) {
+    const quota = await checkUserQuota(userId);
+    if (!quota.ok) {
+      return NextResponse.json(
+        {
+          error: quota.reason,
+          category: "quota",
+          used: quota.used,
+          limit: quota.limit,
+          resetAt: quota.resetAt?.toISOString() ?? null,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(WEEKLY_LIMIT),
+            "X-RateLimit-Remaining": "0",
+            ...(quota.resetAt
+              ? {
+                  "X-RateLimit-Reset": String(
+                    Math.floor(quota.resetAt.getTime() / 1000),
+                  ),
+                }
+              : {}),
+          },
+        },
+      );
+    }
   }
 
   // ─── persist draft ────────────────────────────────────────
@@ -190,25 +213,69 @@ export async function POST(req: NextRequest) {
   // is fine — they're loading their own pitch on the way to evaluation).
   const accessToken = randomBytes(16).toString("hex");
 
+  // Anonymous drafts get a separate claim_token: a second 32-hex secret
+  // that travels in an HttpOnly cookie keyed by draft.id. The /idea/[id]
+  // page checks that cookie to decide whether to show the "claim" CTA;
+  // /api/claim-idea verifies it before flipping ideas.user_id. Signed-in
+  // submissions don't need it — auth itself proves ownership.
+  const claimToken = userId ? null : randomBytes(16).toString("hex");
+
   // Spread request_id only when present so the insert stays compatible
   // with environments that haven't yet applied migration 012 (the column
   // was added after 010). PostgREST rejects unknown keys even when null.
-  const { data: row, error: dbErr } = await supabase
-    .from("draft_pitches")
-    .insert({
-      user_id: userId,
-      access_token: accessToken,
-      title,
-      pitch,
-      handle: handle && handle.length > 0 ? handle : null,
-      ...(request_id ? { request_id } : {}),
-      // Only include image_urls when the column has actually been added
-      // (migration 015). Spread guard mirrors the request_id pattern so
-      // a deploy without the migration still accepts text-only pitches.
-      ...(image_urls.length > 0 ? { image_urls } : {}),
-    })
-    .select("id, access_token")
-    .single();
+  const insertPayload = {
+    user_id: userId,
+    access_token: accessToken,
+    title,
+    pitch,
+    handle: handle && handle.length > 0 ? handle : null,
+    ...(request_id ? { request_id } : {}),
+    // Only include image_urls when the column has actually been added
+    // (migration 015). Spread guard mirrors the request_id pattern so
+    // a deploy without the migration still accepts text-only pitches.
+    ...(image_urls.length > 0 ? { image_urls } : {}),
+    // Carry the anon claim secret only when minted. Spread-guarded for
+    // pre-migration-018 environments — see the retry path on
+    // undefined_column below.
+    ...(claimToken ? { claim_token: claimToken } : {}),
+  };
+
+  let row: { id: string; access_token: string } | null = null;
+  let dbErr: { code?: string; message?: string } | null = null;
+
+  {
+    const insert = await supabase
+      .from("draft_pitches")
+      .insert(insertPayload)
+      .select("id, access_token")
+      .single();
+    row = insert.data ?? null;
+    dbErr = insert.error ?? null;
+  }
+
+  // Migration 018 hasn't been applied yet — claim_token column missing.
+  // Retry once without it so the route degrades gracefully (no claim
+  // CTA on the resulting idea, but submission still completes).
+  if ((dbErr?.code === "42703" || (dbErr && !row)) && claimToken) {
+    const { claim_token: _drop, ...payloadWithoutClaim } = insertPayload as {
+      claim_token?: string;
+      [k: string]: unknown;
+    };
+    void _drop;
+    const retry = await supabase
+      .from("draft_pitches")
+      .insert(payloadWithoutClaim)
+      .select("id, access_token")
+      .single();
+    if (!retry.error && retry.data) {
+      row = retry.data;
+      dbErr = null;
+      Sentry.captureMessage("[draft] claim_token column missing", {
+        level: "warning",
+        tags: { route: "draft", phase: "schema-drift-018" },
+      });
+    }
+  }
 
   if (dbErr || !row) {
     console.error("[draft] insert failure", dbErr);
@@ -221,5 +288,37 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ token: row.access_token });
+  // Funnel telemetry — one info-level event per draft create with the
+  // auth tag. Cheap enough to do unconditionally; gives ops anonymous
+  // vs signed-in submission rates in Sentry without instrumenting the
+  // homepage client.
+  Sentry.captureMessage("[draft] created", {
+    level: "info",
+    tags: {
+      route: "draft",
+      auth: userId ? "signed-in" : "anon",
+    },
+  });
+
+  const response = NextResponse.json({ token: row.access_token });
+
+  // Mint the HttpOnly claim cookie only for anonymous drafts. The cookie
+  // name embeds the draft.id so a user who submits multiple anonymous
+  // drafts in the same browser doesn't lose earlier secrets to
+  // overwrites — each draft gets its own slot. Path=/ so the cookie is
+  // sent on /idea/[id] and /api/claim-idea regardless of route. SameSite
+  // Lax so a top-level navigation back from /login still includes it.
+  if (claimToken) {
+    response.cookies.set({
+      name: `pp_claim_${row.id}`,
+      value: claimToken,
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24, // 24h — matches the draft TTL
+    });
+  }
+
+  return response;
 }

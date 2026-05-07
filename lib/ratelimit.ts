@@ -42,6 +42,20 @@ const upstashCoachLimiter = hasUpstash
     })
   : null;
 
+// Anonymous draft submissions — per-IP, 3 per 24 hours. The signed-in
+// path uses lib/user-quota's per-user weekly cap; this is the equivalent
+// guardrail for users who haven't auth'd yet. Loose enough that a real
+// human exploring the product can submit a few anonymous pitches before
+// hitting the wall, tight enough that a single IP can't flood the feed.
+const upstashAnonDraftLimiter = hasUpstash
+  ? new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(3, "1 d"),
+      analytics: true,
+      prefix: "rl:anon-draft",
+    })
+  : null;
+
 // In-memory fallback — single-worker only. Same algorithm shape as the Upstash
 // limiter so the call site doesn't care which path it took.
 type Bucket = { count: number; reset: number };
@@ -79,6 +93,8 @@ function memLimitWith(
 const SCORE_LIMIT = 5;
 const COACH_LIMIT = 20;
 const WINDOW_MS = 10 * 60 * 1000;
+const ANON_DRAFT_LIMIT = 3;
+const ANON_DRAFT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export async function limitScoreSubmission(
   ip: string,
@@ -111,6 +127,29 @@ export async function limitCoachCalls(
     };
   }
   return memLimitWith("coach", userId, WINDOW_MS, COACH_LIMIT);
+}
+
+// Per-IP anonymous draft cap. Only consulted in the /api/draft route
+// when the requester has no session. Signed-in submissions go through
+// the per-user weekly quota in lib/user-quota.ts instead.
+export async function limitAnonDrafts(
+  ip: string,
+): Promise<RateLimitVerdict> {
+  if (upstashAnonDraftLimiter) {
+    const r = await upstashAnonDraftLimiter.limit(ip);
+    return {
+      success: r.success,
+      remaining: r.remaining,
+      reset: r.reset,
+      limit: r.limit,
+    };
+  }
+  return memLimitWith(
+    "anon-draft",
+    ip,
+    ANON_DRAFT_WINDOW_MS,
+    ANON_DRAFT_LIMIT,
+  );
 }
 
 // Surfaced for diagnostics — useful when probing whether prod is using the

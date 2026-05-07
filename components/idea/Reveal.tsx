@@ -17,6 +17,7 @@ import type { JudgeId } from "@/lib/judges";
 import { ShareMenu } from "@/components/idea/ShareMenu";
 import { useRouter } from "next/navigation";
 import { formatVoteCount } from "@/lib/format";
+import { titleToSlug } from "@/lib/slug";
 import type { User } from "@supabase/supabase-js";
 
 export type Idea = {
@@ -54,14 +55,35 @@ export function Reveal({
   currentUserId,
   currentUser = null,
   initialComments = [],
+  hasClaimCookie = false,
+  autoPromptClaim = false,
 }: {
   idea: Idea;
   currentUserId: string | null;
   currentUser?: User | null;
   initialComments?: Comment[];
+  // Server-resolved: did the requester arrive with a pp_claim_* cookie
+  // whose value matches this idea's claim_token? Drives which claim CTA
+  // we surface:
+  //   - signed-in viewer + cookie match  → ClaimAnonymous (legacy CTA)
+  //   - anonymous viewer + cookie match  → ClaimYours (new CTA: sign in
+  //     to claim → auto-runs the claim on return)
+  //   - signed-in viewer + no cookie     → ClaimAnonymous (legacy)
+  //   - anonymous viewer + no cookie     → no CTA
+  hasClaimCookie?: boolean;
+  // The visitor arrived at /idea/<id>?claim=1 — they came back from /login
+  // after clicking "Sign in to claim". The page guards this server-side
+  // (must be signed in, idea still anon, cookie still matches). We pop a
+  // confirmation flow so they don't need to click again.
+  autoPromptClaim?: boolean;
 }) {
   const isAnonymousAndUserSignedIn =
     idea.user_id === null && currentUserId !== null;
+  // Anonymous viewer who has the pp_claim_<draft.id> cookie — i.e., the
+  // same browser that submitted this idea. They get the "sign in to claim"
+  // CTA which routes through /login and lands back here with ?claim=1.
+  const isAnonymousViewerWithCookie =
+    idea.user_id === null && currentUserId === null && hasClaimCookie;
   const dateLabel = new Date(idea.created_at).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -203,7 +225,10 @@ export function Reveal({
             />
           </motion.div>
 
-          {/* claim-anonymous CTA — only when signed in viewing an unclaimed idea */}
+          {/* claim-anonymous CTA — signed-in viewer on an unclaimed idea.
+              autoPromptClaim fires when they came back from /login via
+              ?claim=1, so we run the claim automatically without an extra
+              tap. */}
           {isAnonymousAndUserSignedIn && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -211,7 +236,28 @@ export function Reveal({
               transition={{ duration: 0.6, delay: 1.55 }}
               className="mt-8 flex justify-center"
             >
-              <ClaimAnonymous ideaId={idea.id} />
+              <ClaimAnonymous
+                ideaId={idea.id}
+                ideaTitle={idea.title}
+                autoStart={autoPromptClaim}
+              />
+            </motion.div>
+          )}
+
+          {/* "Claim yours" CTA — anonymous viewer who actually submitted
+              this idea (proven by the pp_claim_<draft.id> cookie matching
+              ideas.claim_token). They need to sign in to keep the idea on
+              their account; the CTA bounces them through /login with a
+              return URL of /idea/<id>/<slug>?claim=1, and the page above
+              auto-runs the claim once they're back. */}
+          {isAnonymousViewerWithCookie && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1.55 }}
+              className="mt-8 flex justify-center"
+            >
+              <ClaimYours ideaId={idea.id} ideaTitle={idea.title} />
             </motion.div>
           )}
 
@@ -394,7 +440,19 @@ export function Reveal({
   );
 }
 
-function ClaimAnonymous({ ideaId }: { ideaId: string }) {
+function ClaimAnonymous({
+  ideaId,
+  ideaTitle: _ideaTitle,
+  autoStart = false,
+}: {
+  ideaId: string;
+  ideaTitle?: string;
+  // When true, fire the claim automatically on mount. Used for the
+  // post-login return path (?claim=1) where the user already opted in
+  // before the redirect — re-prompting them feels redundant.
+  autoStart?: boolean;
+}) {
+  void _ideaTitle;
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [claimed, setClaimed] = useState(false);
@@ -421,6 +479,16 @@ function ClaimAnonymous({ ideaId }: { ideaId: string }) {
       setPending(false);
     }
   }
+
+  // Auto-fire from the post-login return path. Empty deps so it runs
+  // exactly once on mount; React's strict-mode double-invoke is safe
+  // because the server-side claim is idempotent (alreadyClaimed branch).
+  useEffect(() => {
+    if (autoStart && !claimed && !pending) {
+      void claim();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (claimed) {
     return (
@@ -458,6 +526,46 @@ function ClaimAnonymous({ ideaId }: { ideaId: string }) {
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+// Anonymous viewer who submitted this idea (proven server-side via the
+// pp_claim_<draft.id> cookie matching ideas.claim_token). They aren't
+// signed in yet, so the only thing this CTA does is route them through
+// /login with a return URL of /idea/<id>/<slug>?claim=1. The page
+// component reads ?claim=1 + the cookie + the auth state and either
+// auto-runs the claim (in <ClaimAnonymous autoStart />) or silently
+// drops the param if any condition fails.
+function ClaimYours({
+  ideaId,
+  ideaTitle,
+}: {
+  ideaId: string;
+  ideaTitle: string;
+}) {
+  const slug = titleToSlug(ideaTitle);
+  const ideaPath = slug ? `/idea/${ideaId}/${slug}` : `/idea/${ideaId}`;
+  const next = encodeURIComponent(`${ideaPath}?claim=1`);
+  const loginHref = `/login?next=${next}`;
+
+  return (
+    <div className="scene-card-gold flex max-w-xl flex-col items-center gap-4 px-7 py-6 text-center sm:flex-row sm:text-left">
+      <div className="flex-1 space-y-1.5">
+        <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--scene-gold-bright)]">
+          This is your pitch
+        </p>
+        <p className="text-sm text-white/85">
+          Sign in to claim this idea — keep it on your profile, get notified
+          when it&rsquo;s voted on, and stay eligible for the build queue.
+        </p>
+      </div>
+      <Link
+        href={loginHref}
+        className="cta-btn-primary shrink-0 text-sm"
+      >
+        Sign in to claim
+      </Link>
     </div>
   );
 }
