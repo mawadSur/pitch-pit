@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { motion, MotionConfig } from "framer-motion";
+import { motion, MotionConfig, AnimatePresence } from "framer-motion";
 import * as Sentry from "@sentry/nextjs";
+import { Loader2, Sparkles } from "lucide-react";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { HeroPanel } from "@/components/scene/HeroPanel";
 import { CountdownClock } from "@/components/scene/CountdownClock";
@@ -20,7 +21,58 @@ const FRAMES_1_COUNT = 91;
 const FRAMES_2_COUNT = 90;
 const FRAMES_3_COUNT = 90;
 
-export function HomeScene() {
+// Server-fed shape produced in app/page.tsx and threaded through. Kept
+// in HomeScene because all consumers below the cinematic frames live in
+// this client tree.
+export type VerdictCard = {
+  id: string;
+  title: string;
+  verdict: string;
+  finalScore: number;
+  href: string;
+};
+
+type HomeSceneProps = {
+  pitchedThisSeason: number;
+  built: number;
+  verdicts: VerdictCard[];
+};
+
+// Rubric-aware skeletons for the template chips below the input.
+// Each click prefills the textarea (replacing whatever's there if
+// effectively empty, preserving content otherwise — see Panel1).
+const PITCH_TEMPLATES = [
+  {
+    id: "b2b-saas",
+    label: "B2B SaaS",
+    body:
+      "The problem: \nWho hurts: \nMy edge: \nWedge: \nDistribution: ",
+  },
+  {
+    id: "consumer-mobile",
+    label: "Consumer mobile",
+    body:
+      "The moment: \nWho opens it: \nWhy now: \nWedge (one screen): \nDistribution (channel): ",
+  },
+  {
+    id: "ai-dev-tool",
+    label: "AI / dev tool",
+    body:
+      "The painful workflow: \nWho hits it: \nMy edge (built X for Y): \nWedge (one IDE / repo / framework): \nDistribution (HN, dev twitter, GitHub): ",
+  },
+  {
+    id: "marketplace",
+    label: "Marketplace",
+    body:
+      "The mismatch: \nSupply side: \nDemand side: \nWedge (city / niche / vertical): \nDistribution (cold start): ",
+  },
+] as const;
+
+export function HomeScene({
+  pitchedThisSeason,
+  built,
+  verdicts,
+}: HomeSceneProps) {
   return (
     <MotionConfig reducedMotion="user">
       <>
@@ -79,7 +131,15 @@ export function HomeScene() {
            sections use simpler reveal animations and stop pinning so
            founders can absorb the offer at their own pace. */}
         <HowItWorks />
-        <WeeklyStakes />
+        {/* Last week's verdicts — only renders when at least one
+            scored idea exists. Sits between HowItWorks and
+            WeeklyStakes so it reads as evidence after the explanation
+            and before the rules. */}
+        {verdicts.length > 0 && <LastWeekVerdicts verdicts={verdicts} />}
+        <WeeklyStakes
+          pitchedThisSeason={pitchedThisSeason}
+          built={built}
+        />
         <AntiAbusePromise />
         <FinalCTA />
 
@@ -450,6 +510,63 @@ function Panel1() {
             disabled={pending}
           />
         </div>
+
+        {/* Template chips — rubric-aware skeletons. Click prefills the
+            textarea when it's effectively empty; otherwise asks for
+            confirm so we don't blow away in-progress drafts. Staggered
+            after the form's reveal (delay ~0.5s) so they don't compete
+            with the input on first paint. */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
+          <span
+            className="scene-mono text-[0.55rem] uppercase tracking-[0.32em] text-white/45"
+            aria-hidden
+          >
+            Start from
+          </span>
+          {PITCH_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.id}
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                const current = text.trim();
+                // "Effectively empty" — under 20 chars worth of real
+                // content gets overwritten silently. Past that, ask
+                // before nuking the user's draft.
+                if (current.length >= 20) {
+                  const ok = window.confirm(
+                    "Replace what you've typed with this template?",
+                  );
+                  if (!ok) return;
+                }
+                setText(tpl.body);
+                if (error) setError(null);
+                pitchRef.current?.focus();
+              }}
+              className="scene-mono inline-flex h-7 items-center rounded-full border border-white/15 bg-white/[0.03] px-3 text-[0.55rem] uppercase tracking-[0.32em] text-white/75 transition-colors hover:border-[var(--scene-gold)] hover:text-[var(--scene-gold-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)] disabled:opacity-60"
+            >
+              {tpl.label}
+            </button>
+          ))}
+        </motion.div>
+
+        {/* Express-lane: "describe in one sentence and I'll draft it →".
+            Click reveals a small secondary input. Submit calls
+            /api/pitch-coach action=expand and fills the main textarea
+            on success. Hidden when a polish/diff is open or while
+            submitting to keep the surface calm. */}
+        <ExpressLane
+          disabled={pending}
+          onDraftReady={(draft) => {
+            setText(draft);
+            pitchRef.current?.focus();
+          }}
+        />
       </motion.form>
 
       {/* Full-screen overlay during submit. Bridges the ~600ms window
@@ -697,9 +814,18 @@ function HowItWorks() {
 
 /* ════════════════════════ Weekly stakes ═════════════════════════════
  * Compact stats row that reinforces the rules summary from Panel 3 with
- * more concrete numbers. Dense, scannable, pure data.
+ * more concrete numbers. Dense, scannable, pure data. The live counter
+ * strip at the top is fed from server-rendered Supabase counts so
+ * visitors see real activity (or honest "just opened" copy when the
+ * pit is brand-new).
  * ────────────────────────────────────────────────────────────────────── */
-function WeeklyStakes() {
+function WeeklyStakes({
+  pitchedThisSeason,
+  built,
+}: {
+  pitchedThisSeason: number;
+  built: number;
+}) {
   const stakes = [
     { label: "Submissions / week", value: "2", note: "per signed-in user" },
     { label: "Voting window", value: "7d", note: "Sat 00:00 → Fri 23:59 EDT" },
@@ -725,6 +851,14 @@ function WeeklyStakes() {
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/65 sm:text-lg">
           Plain rules, no fine print. Read them once and pitch.
         </p>
+
+        {/* Live counter strip — real numbers from Supabase, cached
+            for 60s. Honest fallback copy when the pit is empty so
+            we never lie with a "0 ideas pitched" line. */}
+        <LiveCounter
+          pitchedThisSeason={pitchedThisSeason}
+          built={built}
+        />
 
         <div className="mt-14 grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
           {stakes.map((s, i) => (
@@ -867,6 +1001,288 @@ function FinalCTA() {
         </div>
       </motion.div>
     </section>
+  );
+}
+
+/* ════════════════════════ Live counter strip ═══════════════════════
+ * Two real numbers from Supabase: pitched-this-season, built. Falls
+ * back to honest "just opened / waiting" copy when the pit is brand-new
+ * so we never emit "0 ideas pitched". Sits at the top of WeeklyStakes.
+ * ────────────────────────────────────────────────────────────────────── */
+function LiveCounter({
+  pitchedThisSeason,
+  built,
+}: {
+  pitchedThisSeason: number;
+  built: number;
+}) {
+  // Honest fallback. The mission says: "If counts are zero, use copy
+  // that doesn't lie ('Just opened' / 'Waiting for the first builds')
+  // rather than emit '0 ideas pitched.'"
+  const pitchedLabel =
+    pitchedThisSeason > 0
+      ? `${pitchedThisSeason.toLocaleString("en-US")} ${pitchedThisSeason === 1 ? "idea" : "ideas"} pitched this season`
+      : "Just opened";
+  const builtLabel =
+    built > 0
+      ? `${built.toLocaleString("en-US")} ${built === 1 ? "build" : "builds"} shipped`
+      : "Waiting for the first builds";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-10% 0px" }}
+      transition={{ duration: 0.5 }}
+      className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2"
+      aria-live="polite"
+    >
+      <span
+        aria-hidden
+        className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--scene-gold)] shadow-[0_0_10px_rgba(255,184,0,0.85)]"
+      />
+      <p className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/72">
+        {pitchedLabel}
+        <span aria-hidden className="mx-2 text-white/35">
+          ·
+        </span>
+        {builtLabel}
+      </p>
+    </motion.div>
+  );
+}
+
+/* ════════════════════════ Last week's verdicts ═════════════════════
+ * Up to 3 cards from scored+ ideas, ordered by final_score desc. Pulls
+ * the title, verdict (one-line quote), final_score, and a slugged link
+ * for SEO. Section omits itself entirely when no scored ideas exist
+ * (handled by the parent, see HomeScene).
+ * ────────────────────────────────────────────────────────────────────── */
+function LastWeekVerdicts({ verdicts }: { verdicts: VerdictCard[] }) {
+  return (
+    <section
+      aria-labelledby="last-week-heading"
+      className="relative border-t border-white/6 bg-[#0a0a0a] px-6 py-28 sm:px-10 sm:py-32"
+    >
+      <div className="mx-auto max-w-5xl">
+        <SectionKicker>Last week&rsquo;s verdicts</SectionKicker>
+        <h2
+          id="last-week-heading"
+          className="mt-4 text-balance text-3xl font-medium leading-tight text-white sm:text-4xl lg:text-5xl"
+        >
+          What the judges said.
+        </h2>
+        <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/65 sm:text-lg">
+          One-line takes from the highest-scoring pitches so far. Click
+          through for the full rubric and reasoning.
+        </p>
+
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+          {verdicts.map((v, i) => (
+            <motion.div
+              key={v.id}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-8% 0px" }}
+              transition={{ duration: 0.45, delay: 0.06 * i }}
+              className="scene-card group transition-colors hover:border-[var(--scene-gold)]/45"
+            >
+              <Link
+                href={v.href}
+                className="block px-6 py-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="text-base font-medium leading-snug text-white group-hover:text-[var(--scene-gold-bright)] sm:text-lg">
+                    {v.title}
+                  </h3>
+                  <span
+                    className="scene-mono flex-shrink-0 text-2xl font-semibold tabular-nums leading-none text-[var(--scene-gold-bright)]"
+                    aria-label={`Final score ${v.finalScore} of 100`}
+                  >
+                    {v.finalScore}
+                  </span>
+                </div>
+                {v.verdict && (
+                  <p className="mt-4 text-sm leading-relaxed text-white/72">
+                    &ldquo;{v.verdict}&rdquo;
+                  </p>
+                )}
+                <p className="scene-mono mt-5 inline-flex items-center gap-1 text-[0.55rem] uppercase tracking-[0.32em] text-white/55 group-hover:text-[var(--scene-gold)]">
+                  Read the full verdict
+                  <span aria-hidden>→</span>
+                </p>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════ Express-lane (one-sentence draft) ═════════
+ * Small text link below the input that reveals a 1-line / 280-char
+ * input. POSTs to /api/pitch-coach action=expand and pipes the result
+ * into the main textarea on success. Matches the polish flow's auth
+ * 401 redirect convention. Bails loud when the seed is < 8 chars.
+ * ────────────────────────────────────────────────────────────────────── */
+const EXPRESS_LANE_MIN = 8;
+const EXPRESS_LANE_MAX = 280;
+function ExpressLane({
+  disabled,
+  onDraftReady,
+}: {
+  disabled: boolean;
+  onDraftReady: (draft: string) => void;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [seed, setSeed] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Focus the input when the panel opens — saves a click and signals
+  // to the user that this is a real lane, not just a label.
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  async function expand() {
+    const trimmed = seed.trim();
+    if (trimmed.length < EXPRESS_LANE_MIN) {
+      setError(
+        `Give me at least ${EXPRESS_LANE_MIN} characters — what's the idea?`,
+      );
+      inputRef.current?.focus();
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/pitch-coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "expand", seed: trimmed }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          redirect_to?: string;
+        };
+        if (res.status === 401 && err.redirect_to) {
+          router.push(err.redirect_to);
+          return;
+        }
+        throw new Error(err.error ?? "Couldn't draft from your one-liner.");
+      }
+      const data = (await res.json()) as { draft?: string };
+      if (!data.draft) throw new Error("Coach returned an empty draft.");
+      onDraftReady(data.draft);
+      setSeed("");
+      setOpen(false);
+    } catch (e) {
+      Sentry.captureException(e, {
+        tags: { surface: "express-lane", phase: "expand" },
+      });
+      setError(e instanceof Error ? e.message : "Couldn't draft.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      {!open ? (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setOpen(true)}
+          className="scene-mono inline-flex items-center gap-1 text-[0.6rem] uppercase tracking-[0.28em] text-white/55 transition-colors hover:text-[var(--scene-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)] disabled:opacity-60"
+        >
+          Or describe in one sentence and I&rsquo;ll draft it
+          <span aria-hidden>→</span>
+        </button>
+      ) : (
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 backdrop-blur-md"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                aria-hidden
+                className="scene-mono text-[0.55rem] uppercase tracking-[0.32em] text-white/55"
+              >
+                Express lane
+              </span>
+              <div className="flex flex-1 items-center gap-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={seed}
+                  onChange={(e) => {
+                    setSeed(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void expand();
+                    } else if (e.key === "Escape") {
+                      setOpen(false);
+                      setSeed("");
+                      setError(null);
+                    }
+                  }}
+                  disabled={loading || disabled}
+                  maxLength={EXPRESS_LANE_MAX}
+                  aria-label="Describe your idea in one sentence"
+                  placeholder="markdown spec → scaffold for indie devs"
+                  className="scene-input min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-white placeholder:text-white/35 focus:border-[var(--scene-gold)]/45 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => void expand()}
+                  disabled={loading || disabled}
+                  className="scene-mono inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--scene-gold)]/15 px-4 text-[0.6rem] font-medium uppercase tracking-[0.32em] text-[var(--scene-gold)] transition-all hover:bg-[var(--scene-gold)]/25 active:scale-[0.98] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+                >
+                  {loading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                  ) : (
+                    <Sparkles className="h-3 w-3" aria-hidden />
+                  )}
+                  {loading ? "Drafting…" : "Draft it"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setSeed("");
+                    setError(null);
+                  }}
+                  disabled={loading}
+                  className="scene-mono text-[0.6rem] uppercase tracking-[0.28em] text-white/55 transition-colors hover:text-white/85"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+            {error && (
+              <p
+                role="alert"
+                className="scene-mono mt-2 text-[0.6rem] uppercase tracking-[0.18em] text-red-300/85"
+              >
+                {error}
+              </p>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </div>
   );
 }
 

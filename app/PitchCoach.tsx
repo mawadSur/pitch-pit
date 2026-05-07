@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, Sparkles, Check, X, Loader2, MessageSquareText } from "lucide-react";
+import { Lightbulb, Sparkles, Check, X, Loader2, MessageSquareText, Gavel } from "lucide-react";
 
 const COACH_TOGGLE_KEY = "pitch-pit:coach-enhance-enabled";
 
@@ -15,6 +16,15 @@ const FOLLOWUPS_DEBOUNCE_MS = 5000;
 // Don't ping the coach until the pitch has enough substance to react to.
 // Below 80 chars there's nothing meaningful to follow up on.
 const MIN_LEN_FOR_COACH = 80;
+
+// Quality checklist hides until the user has typed at least this many
+// chars. Below this we render the calm empty-state header only.
+const MIN_LEN_FOR_CHECKS = 10;
+
+// Judges preview kicks in once the pitch has enough substance to give a
+// real-feeling reaction. Below ~200 chars the model has nothing to chew on.
+const MIN_LEN_FOR_JUDGES_PREVIEW = 200;
+const JUDGES_PREVIEW_DEBOUNCE_MS = 5000;
 
 // ─── heuristic quality checks ────────────────────────────────────────
 // Cheap regex-based signals that update as the user types. They're not
@@ -129,25 +139,47 @@ export function PitchCoach({
   onPolishStart?: () => void;
   onPolishEnd?: () => void;
 }) {
-  const [enhanceEnabled, setEnhanceEnabled] = useState(false);
+  const router = useRouter();
+  // Default ON when no key has been written yet — the Polish flow is the
+  // single biggest lever we have for raising pitch quality, and hiding it
+  // behind an OFF default was eating most of its activations. Prior
+  // explicit choices ("0" or "1") are still respected. Initial paint
+  // matches server (false) and we hydrate on mount; no flicker because
+  // the polish button itself is gated behind `len >= 60`, which is also
+  // false at SSR.
+  const [enhanceEnabled, setEnhanceEnabled] = useState(true);
   const [followups, setFollowups] = useState<string[]>([]);
   const [followupsLoading, setFollowupsLoading] = useState(false);
   const [enhanceLoading, setEnhanceLoading] = useState(false);
   const [enhanced, setEnhanced] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [judgesPreview, setJudgesPreview] = useState<{
+    gstack: string;
+    vee: string;
+    robbins: string;
+  } | null>(null);
+  const [judgesPreviewLoading, setJudgesPreviewLoading] = useState(false);
   const lastFetchedForRef = useRef<string>("");
+  const lastJudgesPreviewForRef = useRef<string>("");
   const trimmed = text.trim();
   const len = trimmed.length;
-  const visible = len > 5;
+  // Coach is now mounted from char 0. The component owns its own
+  // empty-state vs. populated-state styling so the homepage layout
+  // stays calm at rest.
+  const showChecks = len >= MIN_LEN_FOR_CHECKS;
   const checks = runChecks(text);
 
-  // Restore toggle state from localStorage.
+  // Restore toggle state from localStorage. Missing key → keep the new
+  // default (ON). Explicit "0" honors a prior opt-out; "1" honors the
+  // existing opt-in path used by current users.
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(COACH_TOGGLE_KEY);
-      if (saved === "1") setEnhanceEnabled(true);
+      if (saved === "0") setEnhanceEnabled(false);
+      else if (saved === "1") setEnhanceEnabled(true);
+      // saved === null → leave default (true)
     } catch {
-      /* private mode etc. — toggle stays default-off */
+      /* private mode etc. — toggle stays default-on */
     }
   }, []);
 
@@ -202,6 +234,44 @@ export function PitchCoach({
     return () => window.clearTimeout(id);
   }, [trimmed, len]);
 
+  // Debounced judges-preview fetch. Mirrors the followups cadence so we
+  // don't fire twice for the same keystroke, and uses its own ref-guard
+  // so we don't re-fetch on the same exact text. Below 200 chars the
+  // panel stays hidden — the model needs real substance to give a
+  // judge-shaped reaction.
+  useEffect(() => {
+    if (len < MIN_LEN_FOR_JUDGES_PREVIEW) {
+      setJudgesPreview(null);
+      return;
+    }
+    if (lastJudgesPreviewForRef.current === trimmed) return;
+    const id = window.setTimeout(() => {
+      lastJudgesPreviewForRef.current = trimmed;
+      setJudgesPreviewLoading(true);
+      fetch("/api/pitch-coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pitch: trimmed, action: "judges-preview" }),
+      })
+        .then(async (res) => {
+          if (!res.ok) return { samples: null };
+          return (await res.json()) as {
+            samples?: { gstack: string; vee: string; robbins: string } | null;
+          };
+        })
+        .then((data) => {
+          setJudgesPreview(data.samples ?? null);
+        })
+        .catch((e) => {
+          Sentry.captureException(e, {
+            tags: { surface: "pitch-coach", phase: "judges-preview" },
+          });
+        })
+        .finally(() => setJudgesPreviewLoading(false));
+    }, JUDGES_PREVIEW_DEBOUNCE_MS);
+    return () => window.clearTimeout(id);
+  }, [trimmed, len]);
+
   async function polish() {
     if (len < 60) return;
     setError(null);
@@ -216,7 +286,12 @@ export function PitchCoach({
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as {
           error?: string;
+          redirect_to?: string;
         };
+        if (res.status === 401 && err.redirect_to) {
+          router.push(err.redirect_to);
+          return;
+        }
         throw new Error(err.error ?? "Polish failed.");
       }
       const data = (await res.json()) as { enhanced?: string };
@@ -246,37 +321,46 @@ export function PitchCoach({
   }
 
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 8 }}
-          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          // Margin owned by the parent — this component is currently
-          // mounted above the input pill on the homepage, so spacing
-          // belongs on the wrapper rather than on the bubble itself.
-          className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md"
-        >
-          {/* Header row: title + AI-enhance toggle */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Lightbulb
-                className="h-3.5 w-3.5 text-[var(--scene-gold)]"
-                aria-hidden
-              />
-              <h3 className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/85">
-                Pitch coach
-              </h3>
-            </div>
-            <label className="inline-flex cursor-pointer items-center gap-2">
-              <span className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
-                AI polish
-              </span>
-              <Toggle on={enhanceEnabled} onChange={persistToggle} />
-            </label>
-          </div>
+    // Coach is now mounted from char 0. The outer bubble stays stable
+    // (no entrance animation, no AnimatePresence) so adding content as
+    // the user types doesn't bounce/jiggle the input below. Internal
+    // panels still animate independently when they appear.
+    <div
+      // Margin owned by the parent — this component is currently
+      // mounted above the input pill on the homepage, so spacing
+      // belongs on the wrapper rather than on the bubble itself.
+      className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md"
+    >
+      {/* Header row: title + AI-enhance toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Lightbulb
+            className="h-3.5 w-3.5 text-[var(--scene-gold)]"
+            aria-hidden
+          />
+          <h3 className="scene-mono text-[0.65rem] uppercase tracking-[0.32em] text-white/85">
+            Pitch coach
+          </h3>
+        </div>
+        <label className="inline-flex cursor-pointer items-center gap-2">
+          <span className="scene-mono text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
+            AI polish
+          </span>
+          <Toggle on={enhanceEnabled} onChange={persistToggle} />
+        </label>
+      </div>
 
+      {!showChecks ? (
+        // Empty / barely-typed state. One faint line — no checklist,
+        // no progress dots, no border-top dividers. Stays calm so the
+        // at-rest layout doesn't read as homework before the user
+        // starts. The wrapper bubble itself doesn't animate so the
+        // transition into the populated state has no bounce.
+        <p className="scene-mono text-[0.6rem] uppercase tracking-[0.28em] text-white/45">
+          Start typing — I&rsquo;ll grade as you go.
+        </p>
+      ) : (
+        <>
           {/* Quality progress + remaining criteria.
               UX choice: show only what's MISSING, not what's done.
               Passed checks fade out instead of staying visible —
@@ -389,6 +473,19 @@ export function PitchCoach({
             </p>
           )}
 
+          {/* Judges preview — small panel showing one sample line in
+              the voice of one of the three judges. Rotates through
+              gstack/vee/robbins by pitch length so it feels persistent
+              across keystrokes. NOT a full verdict, just a taste. */}
+          {len >= MIN_LEN_FOR_JUDGES_PREVIEW &&
+            (judgesPreviewLoading || judgesPreview) && (
+              <JudgesPreviewPanel
+                samples={judgesPreview}
+                loading={judgesPreviewLoading}
+                pitchLen={len}
+              />
+            )}
+
           {/* Diff panel — appears when enhance returned a result */}
           <AnimatePresence>
             {enhanced && (
@@ -448,9 +545,64 @@ export function PitchCoach({
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </>
       )}
-    </AnimatePresence>
+    </div>
+  );
+}
+
+// One-line preview in a single judge's voice, rotated by pitch length so
+// it stays persistent across keystrokes (you don't see all three flicker
+// past). Pulls from a {gstack, vee, robbins} samples object the API
+// returns; if samples is null (still loading), shows a hint line.
+const JUDGE_LABELS: Record<"gstack" | "vee" | "robbins", string> = {
+  gstack: "Garry Tan",
+  vee: "Gary Vee",
+  robbins: "Tony Robbins",
+};
+function JudgesPreviewPanel({
+  samples,
+  loading,
+  pitchLen,
+}: {
+  samples: { gstack: string; vee: string; robbins: string } | null;
+  loading: boolean;
+  pitchLen: number;
+}) {
+  const order: ("gstack" | "vee" | "robbins")[] = ["gstack", "vee", "robbins"];
+  // Bucket pitch length into a 5-char window so a single keystroke
+  // doesn't rotate the visible judge — feels persistent while still
+  // shifting as the pitch grows.
+  const idx = Math.floor(pitchLen / 50) % order.length;
+  const judge = order[idx];
+  const sample = samples?.[judge];
+  return (
+    <div className="border-t border-white/[0.06] pt-3">
+      <p className="scene-mono mb-2 flex items-center gap-2 text-[0.55rem] uppercase tracking-[0.3em] text-white/55">
+        <Gavel className="h-3 w-3" aria-hidden />
+        How a judge might respond
+      </p>
+      {loading && !sample ? (
+        <p className="scene-mono text-[0.6rem] uppercase tracking-[0.18em] text-white/45">
+          Coach is sampling the judges…
+        </p>
+      ) : sample ? (
+        <div className="flex items-start gap-2">
+          <span
+            aria-hidden
+            className="mt-1 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-[var(--scene-gold)]/60"
+          />
+          <div className="min-w-0">
+            <p className="text-[0.78rem] leading-snug text-white/85">
+              &ldquo;{sample}&rdquo;
+            </p>
+            <p className="scene-mono mt-1 text-[0.55rem] uppercase tracking-[0.28em] text-white/45">
+              — {JUDGE_LABELS[judge]}
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

@@ -1,9 +1,10 @@
 // Integration tests for POST /api/pitch-coach.
 //
-// Auth-gated route that dispatches to either renderFollowups or
-// renderEnhanced depending on the `action` field. We mock at the module
-// boundary so the handler's branching, validation, and error reporting
-// can be exercised without hitting Anthropic or Supabase.
+// Auth-gated route that dispatches to renderFollowups, renderEnhanced,
+// renderExpanded, or renderJudgesPreview depending on the `action` field.
+// We mock at the module boundary so the handler's branching, validation,
+// and error reporting can be exercised without hitting Anthropic or
+// Supabase.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -15,6 +16,10 @@ let cookieState: CookieMock = {};
 
 const renderFollowupsMock = vi.fn<(pitch: string) => Promise<string[]>>();
 const renderEnhancedMock = vi.fn<(pitch: string) => Promise<string>>();
+const renderExpandedMock = vi.fn<(seed: string) => Promise<string>>();
+const renderJudgesPreviewMock = vi.fn<
+  (pitch: string) => Promise<{ gstack: string; vee: string; robbins: string }>
+>();
 const captureExceptionMock = vi.fn();
 const limitCoachCallsMock = vi.fn<
   (userId: string) => Promise<{
@@ -38,6 +43,8 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("@/lib/coach/render", () => ({
   renderFollowups: (pitch: string) => renderFollowupsMock(pitch),
   renderEnhanced: (pitch: string) => renderEnhancedMock(pitch),
+  renderExpanded: (seed: string) => renderExpandedMock(seed),
+  renderJudgesPreview: (pitch: string) => renderJudgesPreviewMock(pitch),
 }));
 
 vi.mock("@sentry/nextjs", () => ({
@@ -76,6 +83,8 @@ describe("POST /api/pitch-coach", () => {
     cookieState = {};
     renderFollowupsMock.mockReset();
     renderEnhancedMock.mockReset();
+    renderExpandedMock.mockReset();
+    renderJudgesPreviewMock.mockReset();
     captureExceptionMock.mockReset();
     limitCoachCallsMock.mockReset();
     // Default: limiter passes. Tests that exercise the rate-limited
@@ -243,5 +252,75 @@ describe("POST /api/pitch-coach", () => {
     await POST(makeReq({ pitch: VALID_PITCH, action: "followups" }) as never);
     expect(limitCoachCallsMock).toHaveBeenCalledTimes(1);
     expect(limitCoachCallsMock).toHaveBeenCalledWith("user-a");
+  });
+
+  // ─── expand (express-lane) ─────────────────────────────────
+  it("action=expand calls renderExpanded with the seed and returns its draft", async () => {
+    cookieState.user = { id: "user-a" };
+    const draft =
+      "I'm building a tool for indie devs that turns rough Markdown specs into runnable scaffolds. Why now: model costs collapsed enough that one-shot codegen finally beats hand-glue.";
+    renderExpandedMock.mockResolvedValue(draft);
+    const res = await POST(
+      makeReq({
+        action: "expand",
+        seed: "markdown spec → scaffold for indie devs",
+      }) as never,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ draft });
+    expect(renderExpandedMock).toHaveBeenCalledTimes(1);
+    expect(renderExpandedMock).toHaveBeenCalledWith(
+      "markdown spec → scaffold for indie devs",
+    );
+    expect(renderEnhancedMock).not.toHaveBeenCalled();
+  });
+
+  it("action=expand returns 400 for too-short seed (<8 chars)", async () => {
+    cookieState.user = { id: "user-a" };
+    const res = await POST(
+      makeReq({ action: "expand", seed: "tiny" }) as never,
+    );
+    expect(res.status).toBe(400);
+    expect(renderExpandedMock).not.toHaveBeenCalled();
+  });
+
+  // ─── judges-preview ────────────────────────────────────────
+  it("action=judges-preview calls renderJudgesPreview and returns samples", async () => {
+    cookieState.user = { id: "user-a" };
+    const samples = {
+      gstack: "Who is the first user, exactly — name them.",
+      vee: "Where does this live? TikTok? Reddit? Pick one and own it.",
+      robbins: "Raise your standards — the wedge has to be sharper.",
+    };
+    renderJudgesPreviewMock.mockResolvedValue(samples);
+    const res = await POST(
+      makeReq({
+        pitch: VALID_PITCH,
+        action: "judges-preview",
+      }) as never,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ samples });
+    expect(renderJudgesPreviewMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 502 when renderExpanded throws", async () => {
+    cookieState.user = { id: "user-a" };
+    const err = new Error("expand blew up");
+    renderExpandedMock.mockRejectedValue(err);
+    const res = await POST(
+      makeReq({
+        action: "expand",
+        seed: "decent length seed line for expand",
+      }) as never,
+    );
+    expect(res.status).toBe(502);
+    expect(captureExceptionMock).toHaveBeenCalledTimes(1);
+    const [, capturedCtx] = captureExceptionMock.mock.calls[0];
+    expect(capturedCtx).toMatchObject({
+      tags: { route: "pitch-coach", action: "expand" },
+    });
   });
 });
