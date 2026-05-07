@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { motion, MotionConfig, useReducedMotion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { Particles } from "@/components/scene/Particles";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { Hourglass } from "@/components/scene/Hourglass";
@@ -144,15 +144,6 @@ export function Reveal({
               </p>
             )}
           </motion.div>
-
-          {/* big score moment — Fraunces numeral above the verdict.
-              Pairs typographically with the verdict pull-quote so the two
-              read as one editorial unit. Final score with /100 baseline-
-              aligned to its right; falls back to ai_score × 10 for
-              legacy rows where final_score hasn't been computed yet. */}
-          <BigScoreMoment
-            finalScore={idea.final_score ?? idea.score * 10}
-          />
 
           {/* verdict */}
           <motion.div
@@ -459,36 +450,6 @@ function ClaimAnonymous({ ideaId }: { ideaId: string }) {
         </p>
       )}
     </div>
-  );
-}
-
-// Editorial score moment — large Fraunces numeral that anchors the
-// verdict pull-quote typographically. Pairs with the verdict so the
-// two read as one editorial unit (think Bloomberg headline + price
-// callout). Tabular figures + line-height 0.92 from .scene-numeral
-// so a 7→8 transition doesn't shift width. The /100 is baseline-
-// aligned to the right at ~1/3 the size. Respects reduced-motion via
-// useReducedMotion — when reduced, the entrance is a static fade
-// rather than the spring scale.
-function BigScoreMoment({ finalScore }: { finalScore: number }) {
-  const reduce = useReducedMotion();
-  return (
-    <motion.div
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
-      animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
-      transition={{ duration: 0.7, delay: 1.1 }}
-      className="mt-12 flex items-baseline justify-center gap-2"
-    >
-      <span
-        className="scene-numeral scene-foil text-[96px] text-[var(--scene-gold)] sm:text-[160px] lg:text-[220px]"
-        style={{ textShadow: "0 0 36px rgba(255, 184, 0, 0.25)" }}
-      >
-        {finalScore}
-      </span>
-      <span className="scene-numeral text-2xl tabular-nums text-white/45 sm:text-3xl">
-        /100
-      </span>
-    </motion.div>
   );
 }
 
