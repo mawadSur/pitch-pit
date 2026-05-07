@@ -15,9 +15,12 @@ const followupsSchema = z.object({
 });
 
 const enhanceSchema = z.object({
-  // Same range as the submit schema — defending against the model
-  // returning empty or pathologically long output.
-  enhanced: z.string().min(20).max(2000),
+  // Mirrors submitSchema's pitch envelope (60–3500). Min relaxed to 20
+  // so a short polish of a borderline pitch still passes; max bumped
+  // from 2000 → 3500 to match the homepage ceiling — the previous
+  // 2000 cap was rejecting valid polishes of long pitches and
+  // surfacing as a generic 502 to the user.
+  enhanced: z.string().min(20).max(3500),
 });
 
 const PRICE_PER_MTOK = {
@@ -72,14 +75,15 @@ export async function renderFollowups(pitch: string): Promise<string[]> {
 }
 
 // Enhance call — bigger token budget because we're returning a full
-// polished pitch. 1024 tokens covers up to ~3500 chars output, well
-// beyond the 1500-char schema cap.
+// polished pitch. 2048 tokens covers up to ~7000 chars output, plenty
+// of headroom above the 3500-char schema cap so we never truncate the
+// JSON response mid-string.
 export async function renderEnhanced(pitch: string): Promise<string> {
   const client = new Anthropic();
   const response = await client.messages.create(
     {
       model: "claude-sonnet-4-6",
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: [
         {
           type: "text",
