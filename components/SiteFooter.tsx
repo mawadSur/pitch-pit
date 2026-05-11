@@ -1,16 +1,11 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
+// Closing manifesto for every route in app/(with-footer)/. The two
+// surfaces that opt out — `/` (cinematic homepage) and `/idea/[id]`
+// (verdict reveal) — live in app/(no-footer)/ and never call this
+// component, so the previous pathname-check is gone. Component is now
+// a Server Component (no more usePathname / "use client" overhead).
 export function SiteFooter() {
-  const pathname = usePathname();
-
-  // Hide on the homepage (full-bleed scrollable scene) and on the idea reveal
-  // (its own bottom-anchored cluster). Everywhere else the footer is the
-  // page's closing manifesto moment — not just a row of legal links.
-  if (pathname === "/" || pathname.startsWith("/idea/")) return null;
-
   const year = new Date().getFullYear();
   return (
     <footer

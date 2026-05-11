@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { JsonLd, type JsonLdData } from "@/components/seo/JsonLd";
 import { titleToSlug } from "@/lib/slug";
 import { GalleryScene, type BuiltIdea } from "./GalleryScene";
-import "../scene.css";
+import "@/app/scene.css";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";

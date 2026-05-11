@@ -15,7 +15,7 @@ import { AggregateBand } from "./AggregateBand";
 import { PitchSpecs } from "./PitchSpecs";
 import { SoftGateCTA } from "./SoftGateCTA";
 import { MotionWrapper } from "./MotionWrapper";
-import "../../scene.css";
+import "@/app/scene.css";
 
 const inter = Inter({
   subsets: ["latin"],

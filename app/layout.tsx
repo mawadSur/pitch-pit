@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PageTransition } from "@/components/PageTransition";
-import { SiteFooter } from "@/components/SiteFooter";
 import { JsonLd } from "@/components/seo/JsonLd";
 import "./globals.css";
 
@@ -70,7 +69,10 @@ export default function RootLayout({
           Skip to content
         </a>
         <PageTransition>{children}</PageTransition>
-        <SiteFooter />
+        {/* The manifesto footer is rendered by app/(with-footer)/layout.tsx
+            rather than here, so the cinematic homepage and the idea
+            reveal — both in (no-footer)/ — can render without it.
+            Adding a new route opts in/out by directory placement. */}
         {/* Vercel Analytics — only ships data when deployed to Vercel.
             Tracks page views + Web Vitals. Configure in your Vercel dashboard. */}
         <Analytics />
