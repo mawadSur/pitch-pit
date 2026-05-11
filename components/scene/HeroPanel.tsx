@@ -2,7 +2,12 @@
 
 import NextImage from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { useMotionValueEvent, useReducedMotion, useScroll } from "framer-motion";
+import {
+  useInView,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+} from "framer-motion";
 
 const PAD = (n: number) => String(n).padStart(3, "0");
 
@@ -88,6 +93,15 @@ export function HeroPanel({
   // it needs its own gate. Returns `null` during SSR + the first paint,
   // which we treat as "not reduced" until the client check runs.
   const prefersReducedMotion = useReducedMotion();
+
+  // Perf-M8: viewport visibility gate for the per-frame scrub handler.
+  // Without this, all three sticky panels keep running `useMotionValueEvent`
+  // at scroll-rate even when offscreen — panels 2 and 3 fire 60 events/sec
+  // on landing while the user is still in panel 1. `margin: "100%"` releases
+  // the gate one viewport before the panel enters view, giving the
+  // preload + canvas resize work time to settle before the scrub starts.
+  // Combined with the existing reduced-motion gate below.
+  const inView = useInView(wrapRef, { margin: "100%" });
 
   const hasFrames = !!framesPath && !!frameCount && frameCount > 0;
   // Mobile: skip the canvas entirely to save memory + cpu. The static image
@@ -248,6 +262,13 @@ export function HeroPanel({
   }
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    // Perf-M8: short-circuit when either prefers-reduced-motion is on
+    // (canvas scrub is the very motion they asked the OS not to play)
+    // OR the panel is not within the inView margin. Off-screen panels
+    // otherwise fire this callback at 60Hz on every scroll, even though
+    // their frames are nowhere near the viewport.
+    if (prefersReducedMotion || !inView) return;
+
     // Map raw scroll progress (0..1 over the whole section) to pin progress
     // (0..1 across the panel-pinned portion only). Beyond the pin, the
     // frames stay parked at the last frame while the panel scrolls away.
