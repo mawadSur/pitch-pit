@@ -8,7 +8,7 @@ import {
   rejectIdea,
   startBuilding,
   markBuilt,
-} from "@/app/admin/actions";
+} from "@/app/(with-footer)/admin/actions";
 import { cn } from "@/lib/utils";
 import { titleToSlug } from "@/lib/slug";
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Build-time guard for the three FRAMES_*_COUNT constants in
-// app/HomeScene.tsx. Each constant feeds <HeroPanel frameCount={...}>,
+// app/(no-footer)/HomeScene.tsx. Each constant feeds <HeroPanel frameCount={...}>,
 // which in turn drives the canvas-scrub frame index. If the constant
 // drifts from the actual count in public/scene/frames-N/, the canvas
 // either skips frames (constant too high → nearestReady() fallback)
@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
-const homeScenePath = path.join(projectRoot, "app", "HomeScene.tsx");
+const homeScenePath = path.join(projectRoot, "app", "(no-footer)", "HomeScene.tsx");
 const framesRoot = path.join(projectRoot, "public", "scene");
 
 // Triples of (constant name, directory name) — order matches the three
@@ -42,7 +42,7 @@ function extractConstant(source, name) {
   const m = source.match(re);
   if (!m) {
     throw new Error(
-      `check-frame-counts: could not find \`const ${name} = <number>;\` in app/HomeScene.tsx`,
+      `check-frame-counts: could not find \`const ${name} = <number>;\` in app/(no-footer)/HomeScene.tsx`,
     );
   }
   return Number(m[1]);
@@ -79,7 +79,7 @@ async function main() {
         "check-frame-counts: frame count mismatch — canvas scrub will skip or freeze.",
         ...lines,
         "",
-        "Fix: update the constant in app/HomeScene.tsx to match the actual file count,",
+        "Fix: update the constant in app/(no-footer)/HomeScene.tsx to match the actual file count,",
         "or regenerate the frames so the counts realign. See CLAUDE.md → Frame sequences.",
       ].join("\n"),
     );

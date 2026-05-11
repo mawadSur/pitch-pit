@@ -5,7 +5,7 @@ import { HomeScene, type VerdictCard } from "./HomeScene";
 import { createClient } from "@/lib/supabase/server";
 import { titleToSlug } from "@/lib/slug";
 import type { TickerEntry } from "@/components/scene/LiveTicker";
-import "./scene.css";
+import "@/app/scene.css";
 
 const inter = Inter({
   subsets: ["latin"],

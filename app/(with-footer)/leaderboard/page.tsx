@@ -11,7 +11,7 @@ import {
 import { JsonLd, type JsonLdData } from "@/components/seo/JsonLd";
 import { titleToSlug } from "@/lib/slug";
 import { LeaderboardScene } from "./LeaderboardScene";
-import "../scene.css";
+import "@/app/scene.css";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";

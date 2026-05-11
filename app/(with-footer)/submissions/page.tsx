@@ -5,7 +5,7 @@ import { jetbrains } from "@/lib/fonts/geist-mono";
 import { fraunces } from "@/lib/fonts/fraunces";
 import { createClient } from "@/lib/supabase/server";
 import { SubmissionsScene, type Submission } from "./SubmissionsScene";
-import "../scene.css";
+import "@/app/scene.css";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";

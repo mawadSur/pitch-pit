@@ -29,11 +29,11 @@ The codebase has two aesthetics layered on the same backend. Don't conflate them
 
 **Capitol theatrical** (legacy operator surface): `/feed`, `/admin`. Cinzel + Cormorant Garamond fonts, gold-on-charcoal palette, ornamental dividers. The remaining tokens live as CSS variables in `app/globals.css` (`--ink-*`, `--gold`, `--blood`, `--parchment`, etc.) and feed global chrome — scrollbar, body background, default h1-h4 font, selection. `design-system/MASTER.md` documents this aesthetic but is **stale** — it describes the old Capitol homepage that has since been replaced.
 
-> **Capitol palette is legacy.** The Tailwind utilities (`text-parchment`, `font-display`, `tracking-decree`, `shadow-forge`, `animate-torchlight`, etc.) were removed from `tailwind.config.ts` because grep confirmed they were unused — `/admin` and `/feed` rely on inline styles + the surviving CSS variables instead. Don't reach for the legacy tokens in new code; use the minimalist `.scene` tokens. The Capitol header (`components/Header.tsx`) was deleted in cleanup. Minimalist routes render `<MinimalistHeader />` from `components/scene/`; the legacy operator routes render bare. Footer suppression on minimalist routes lives in `components/SiteFooter.tsx` via a pathname check.
+> **Capitol palette is legacy.** The Tailwind utilities (`text-parchment`, `font-display`, `tracking-decree`, `shadow-forge`, `animate-torchlight`, etc.) were removed from `tailwind.config.ts` because grep confirmed they were unused — `/admin` and `/feed` rely on inline styles + the surviving CSS variables instead. Don't reach for the legacy tokens in new code; use the minimalist `.scene` tokens. The Capitol header (`components/Header.tsx`) was deleted in cleanup. Minimalist routes render `<MinimalistHeader />` from `components/scene/`; the legacy operator routes render bare. Footer rendering is driven by route groups now (see "Route groups" below) — no pathname checks.
 
 ## Homepage scroll architecture (the unique part)
 
-`app/HomeScene.tsx` is three sticky `<HeroPanel>` sections. Each `HeroPanel` (in `components/scene/HeroPanel.tsx`) renders:
+`app/(no-footer)/HomeScene.tsx` is three sticky `<HeroPanel>` sections. Each `HeroPanel` (in `components/scene/HeroPanel.tsx`) renders:
 
 1. A static "at-rest" `<NextImage>` (visible at section's `scrollProgress < 0.005`)
 2. A `<canvas>` that scrubs through a pre-extracted JPEG frame sequence as the user scrolls
@@ -74,7 +74,7 @@ Tables: `users` (mirrors `auth.users`), `ideas`, `votes`, `build_queue`. Migrati
 
 **RLS policy summary**:
 - Anyone reads scored+ ideas; only authenticated can insert; can't vote your own idea (DB-enforced)
-- Admin writes go through `lib/supabase/admin.ts` (service-role client, no session, bypasses RLS) — used only by `app/api/score/route.ts` and `app/admin/actions.ts`
+- Admin writes go through `lib/supabase/admin.ts` (service-role client, no session, bypasses RLS) — used only by `app/api/score/route.ts` and `app/(with-footer)/admin/actions.ts`
 - Regular reads use `lib/supabase/server.ts` (cookie-aware ssr client)
 - Browser writes/realtime use `lib/supabase/client.ts`
 
@@ -112,5 +112,6 @@ Both redirect to `/auth/callback` (`app/auth/callback/route.ts`) which calls `ex
 - **Per-route fonts**: each per-route `page.tsx` loads three fonts and applies them as CSS variables on its root: Inter (`--font-scene`, body, via `next/font/google`), Geist Mono (`--font-scene-mono`, captions, self-hosted via `next/font/local` from `lib/fonts/geist-mono.ts`), and Fraunces (`--font-display`, display/verdict/score numerals, self-hosted from `lib/fonts/fraunces.ts`). Don't move font loading to root layout — it'd pull all three on every route. Self-hosting both Geist and Fraunces avoids the Google Fonts download flakiness we hit early. Use `.scene-display` / `.scene-display-italic` / `.scene-numeral` utility classes for serif moments; raw `var(--font-display)` is also available.
 - **`<Image>` shadowing**: when using `next/image` in a file that also constructs `new Image()` (e.g., for canvas frame preloading), import as `NextImage` to avoid shadowing the global `Image` constructor. See `components/scene/HeroPanel.tsx`.
 - **Scoped CSS**: minimalist styles live in `app/scene.css` under `.scene-*` class prefixes. Don't pollute `app/globals.css` (which holds the legacy Capitol palette).
-- **Route-level conditional footer**: when adding a new full-bleed minimalist route that should not render the Capitol footer, add its pathname to the check in `components/SiteFooter.tsx`. (There is no Capitol header anymore — `components/Header.tsx` was deleted.)
+- **Route groups for footer suppression**: routes live in one of two App Router route groups — `app/(no-footer)/` for full-bleed surfaces (`/` and `/idea/[id]`) and `app/(with-footer)/` for everything else. The closing manifesto footer is rendered by `app/(with-footer)/layout.tsx` only. Add a new route by placing it under whichever group matches its chrome — no pathname checks. `components/SiteFooter.tsx` is now a Server Component (no `usePathname`).
+- **Co-located client components for the homepage** live alongside its page.tsx inside the group: `app/(no-footer)/HomeScene.tsx`, `PitchAttachments.tsx`, `PitchCoach.tsx`, `SubmittingOverlay.tsx`. Import `scene.css` with the absolute path `@/app/scene.css` so the import survives future group reshuffles.
 - **Static-image panels** that match a video's first frame: bg should reference `/scene/frames-N/001.avif`, **not** the source `firstimage.png` etc., so the boundary into the canvas section is invisible.

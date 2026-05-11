@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import { jetbrains } from "@/lib/fonts/geist-mono";
 import { fraunces } from "@/lib/fonts/fraunces";
 import { LoginScene } from "./LoginScene";
-import "../scene.css";
+import "@/app/scene.css";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";

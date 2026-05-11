@@ -2,7 +2,7 @@ import { Inter } from "next/font/google";
 import { jetbrains } from "@/lib/fonts/geist-mono";
 import { fraunces } from "@/lib/fonts/fraunces";
 import { RulesScene } from "./RulesScene";
-import "../scene.css";
+import "@/app/scene.css";
 
 const inter = Inter({
   subsets: ["latin"],

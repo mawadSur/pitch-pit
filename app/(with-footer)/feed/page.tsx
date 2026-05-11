@@ -9,7 +9,7 @@ import {
   VISIBLE_STATUSES,
 } from "@/lib/idea-types";
 import { FeedScene } from "@/components/feed/FeedScene";
-import "../scene.css";
+import "@/app/scene.css";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";

@@ -5,7 +5,7 @@ import { JUDGES } from "@/lib/judges";
 import { DeliberatingCard } from "./DeliberatingCard";
 import { AggregateBandPending } from "./AggregateBandPending";
 import { MotionWrapper } from "./MotionWrapper";
-import "../../scene.css";
+import "@/app/scene.css";
 
 const inter = Inter({
   subsets: ["latin"],
