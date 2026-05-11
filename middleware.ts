@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { limitScoreSubmission } from "@/lib/ratelimit";
 import { verifyAdminAuthHeader } from "@/lib/admin-auth";
+import { getClientIp } from "@/lib/client-ip";
 
 const REALM = 'Basic realm="pitch-pit-admin"';
-
-function clientIp(req: NextRequest): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
-}
 
 async function rateLimitSubmission(
   req: NextRequest,
 ): Promise<NextResponse | null> {
-  const ip = clientIp(req);
+  // getClientIp() prefers Vercel-injected headers; "unknown" is a
+  // sentinel so unknown-IP traffic still throttles under a single
+  // shared bucket rather than failing open.
+  const ip = getClientIp(req);
   const verdict = await limitScoreSubmission(ip);
 
   if (verdict.success) return null;

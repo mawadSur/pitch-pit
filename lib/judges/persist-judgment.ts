@@ -1,5 +1,7 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ScoreResult } from "@/lib/score-schema";
 import type { JudgeId } from "./shared";
@@ -61,6 +63,14 @@ export async function persistJudgment(
   // Pick the first available judge by priority for the top-level summary.
   const summary = presentResults[0];
 
+  // Compute the sha256 hash of the claim_token (migration 023). We
+  // prefer to recompute here rather than carry from draft_pitches so
+  // a single source-of-truth digest function lives in one place. The
+  // bytea wire format for PostgREST is the `\x<hex>` literal.
+  const claimTokenSha256 = draft.claim_token
+    ? "\\x" + createHash("sha256").update(draft.claim_token).digest("hex")
+    : null;
+
   const baseInsert = {
     title: draft.title,
     pitch: draft.pitch,
@@ -81,13 +91,17 @@ export async function persistJudgment(
       ? { image_urls: draft.image_urls }
       : {}),
     // Carry the anonymous claim_token across (migration 018). Spread
-    // guard so a pre-018 ideas table doesn't reject the insert.
+    // guard so a pre-018 ideas table doesn't reject the insert. The
+    // plaintext column persists for one deploy cycle while the legacy
+    // idea-page cookie comparison transitions to the hashed column.
     ...(draft.claim_token ? { claim_token: draft.claim_token } : {}),
+    // Hash of the same token (migration 023). The /api/claim-idea
+    // route compares against THIS column, not the plaintext one.
+    ...(claimTokenSha256 ? { claim_token_sha256: claimTokenSha256 } : {}),
   };
 
   let row: { id: string } | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let dbErr: any = null;
+  let dbErr: PostgrestError | null = null;
 
   {
     const insert = await supabase
@@ -99,15 +113,22 @@ export async function persistJudgment(
     dbErr = insert.error ?? null;
   }
 
-  // Pre-migration-018 fallback: if the ideas table doesn't yet have
-  // claim_token, retry without it. The resulting idea is unclaimable
-  // by anonymous flow on that environment, but submission still works.
-  if (dbErr?.code === "42703" && draft.claim_token) {
-    const { claim_token: _drop, ...without } = baseInsert as {
+  // Pre-migration-018/023 fallback: if the ideas table doesn't yet
+  // have claim_token OR claim_token_sha256, retry without both. The
+  // resulting idea is unclaimable by anonymous flow on that
+  // environment, but submission still works.
+  if (dbErr?.code === "42703" && (draft.claim_token || claimTokenSha256)) {
+    const {
+      claim_token: _dropPlain,
+      claim_token_sha256: _dropHash,
+      ...without
+    } = baseInsert as {
       claim_token?: string;
+      claim_token_sha256?: string;
       [k: string]: unknown;
     };
-    void _drop;
+    void _dropPlain;
+    void _dropHash;
     const retry = await supabase
       .from("ideas")
       .insert(without)
@@ -117,10 +138,10 @@ export async function persistJudgment(
       row = retry.data;
       dbErr = null;
       Sentry.captureMessage(
-        "[judgment] claim_token column missing on ideas",
+        "[judgment] claim_token column(s) missing on ideas",
         {
           level: "warning",
-          tags: { route: "judgment", phase: "schema-drift-018" },
+          tags: { route: "judgment", phase: "schema-drift-018-or-023" },
         },
       );
     }
@@ -234,8 +255,7 @@ export async function loadDraftByToken(token: string): Promise<DraftLookup> {
   };
 
   let data: DraftRow | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let error: any = null;
+  let error: PostgrestError | null = null;
 
   const rich = await supabase
     .from("draft_pitches")

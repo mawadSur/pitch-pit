@@ -13,6 +13,12 @@ export type QuotaVerdict = {
   limit: number;
   resetAt: Date | null; // when their oldest in-window submission ages out
   reason?: string;
+  // Distinguishes a hard-limit rejection (ok=false because the user
+  // really did use up their quota) from an infrastructure failure
+  // (ok=false because we couldn't verify their quota). Callers map
+  // "lookup-failed" to 503 so retries get a different status code
+  // than legitimate quota exhaustion.
+  category?: "limit-reached" | "lookup-failed";
 };
 
 /**
@@ -21,6 +27,12 @@ export type QuotaVerdict = {
  *
  * Database side: relies on `ideas_user_id_idx` (migration 007) for the
  * lookup to stay sub-millisecond.
+ *
+ * Fails CLOSED on infra error: if the Supabase lookup fails we can't
+ * tell whether the user is at quota, so we refuse the submission with
+ * category="lookup-failed" rather than letting an unlimited number
+ * through during a flaky-DB window. Callers should map this to a 503
+ * so the client can retry.
  */
 export async function checkUserQuota(userId: string): Promise<QuotaVerdict> {
   const supabase = createAdminClient();
@@ -37,10 +49,20 @@ export async function checkUserQuota(userId: string): Promise<QuotaVerdict> {
     .limit(WEEKLY_LIMIT + 1); // we only need to know "≥ limit"
 
   if (error) {
-    // Fail-open on infra error — don't block legit users because of a flaky
-    // DB. The IP-based middleware rate limit is still in front of this.
-    console.warn("[user-quota] lookup failed; failing open", error);
-    return { ok: true, used: 0, limit: WEEKLY_LIMIT, resetAt: null };
+    // Fail-CLOSED on infra error — we can't verify the quota, so we
+    // refuse rather than let an unbounded number of submissions through
+    // during a flaky-DB window. The caller maps category="lookup-failed"
+    // to a 503 so the client knows to retry rather than treating it as
+    // a real limit-reached state.
+    console.warn("[user-quota] lookup failed; failing closed", error);
+    return {
+      ok: false,
+      used: 0,
+      limit: WEEKLY_LIMIT,
+      resetAt: null,
+      reason: "Could not verify your submission quota. Try again in a moment.",
+      category: "lookup-failed",
+    };
   }
 
   const used = data?.length ?? 0;
@@ -58,6 +80,7 @@ export async function checkUserQuota(userId: string): Promise<QuotaVerdict> {
       reason: resetAt
         ? `Weekly limit reached (${WEEKLY_LIMIT} submissions). Next slot opens ${resetAt.toUTCString()}.`
         : `Weekly limit reached (${WEEKLY_LIMIT} submissions).`,
+      category: "limit-reached",
     };
   }
 
