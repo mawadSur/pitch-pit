@@ -8,10 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev          # next dev — http://localhost:3000
 npm run build        # next build — runs lint + TypeScript checks
 npm run lint         # next lint
+npm test             # vitest run (unit tests under lib/ and app/api/)
+npm run test:e2e     # playwright (specs in e2e/)
 supabase db push     # apply migrations in supabase/migrations/ to remote
 ```
 
-There are no tests. The build is the verification step — `npm run build` will catch type errors and lint failures.
+Test coverage is partial: vitest covers a handful of lib helpers (`content-filter`, `slug`, `extract-json`, `score-schema`, `week-cycle`) and three API routes (`vote`, `claim-idea`, `pitch-coach`). Playwright has smoke + judge-flow specs only — no signed-in vote test, no `/api/score` happy path, no admin gate test. The build is still a real verification gate — `npm run build` catches type errors and lint failures.
 
 ## Product
 
@@ -25,11 +27,9 @@ The codebase has two aesthetics layered on the same backend. Don't conflate them
 
 **Minimalist cinematic** (the user-facing surface): `/`, `/submit`, `/idea/[id]`, `/leaderboard`, `/built`, `/rules`, `/login`. Black void + warm gold (#FFB800) accents + glass cards + scroll-driven frame sequences. Three-axis typography: **Fraunces** variable serif (display + verdict + score numerals via `--font-display` and the `.scene-display` / `.scene-display-italic` / `.scene-numeral` utility classes), **Inter** for body, **Geist Mono** for caption / label / status pills. Status colors beyond gold: `--scene-oxblood` (fallen, ≤3), `--scene-verdigris` (built — final state), `--scene-slate` (passable, 4–6). Tokens scoped under `.scene` in `app/scene.css`.
 
-**Capitol theatrical** (legacy operator surface): `/feed`, `/admin`. Cinzel + Cormorant Garamond fonts, gold-on-charcoal palette, ornamental dividers. Tokens defined globally in `app/globals.css` and `tailwind.config.ts`. `design-system/MASTER.md` documents this aesthetic but is **stale** — it describes the old Capitol homepage that has since been replaced.
+**Capitol theatrical** (legacy operator surface): `/feed`, `/admin`. Cinzel + Cormorant Garamond fonts, gold-on-charcoal palette, ornamental dividers. The remaining tokens live as CSS variables in `app/globals.css` (`--ink-*`, `--gold`, `--blood`, `--parchment`, etc.) and feed global chrome — scrollbar, body background, default h1-h4 font, selection. `design-system/MASTER.md` documents this aesthetic but is **stale** — it describes the old Capitol homepage that has since been replaced.
 
-> **Capitol palette is legacy.** The tokens (`text-parchment`, `font-display`, `tracking-decree`, `shadow-forge`, `animate-torchlight`, etc.) defined in `tailwind.config.ts` and `app/globals.css` are kept only because `/admin` and `/feed` still consume them. Don't reach for these in new code — use the minimalist `.scene` tokens instead. The Capitol header was deleted in cleanup; only those two operator routes remain.
-
-`components/Header.tsx` (the Capitol header) returns `null` on every minimalist route via path check; minimalist routes render their own `<MinimalistHeader />` from `components/scene/`.
+> **Capitol palette is legacy.** The Tailwind utilities (`text-parchment`, `font-display`, `tracking-decree`, `shadow-forge`, `animate-torchlight`, etc.) were removed from `tailwind.config.ts` because grep confirmed they were unused — `/admin` and `/feed` rely on inline styles + the surviving CSS variables instead. Don't reach for the legacy tokens in new code; use the minimalist `.scene` tokens. The Capitol header (`components/Header.tsx`) was deleted in cleanup. Minimalist routes render `<MinimalistHeader />` from `components/scene/`; the legacy operator routes render bare. Footer suppression on minimalist routes lives in `components/SiteFooter.tsx` via a pathname check.
 
 ## Homepage scroll architecture (the unique part)
 
@@ -47,7 +47,7 @@ Image bgs are intentionally set to **the first frame of the next video sequence*
 
 ## Frame sequences
 
-`public/scene/frames-1/{001..091}.avif` and `public/scene/frames-2/{001..090}.avif` are extracted from the source mp4s via ffmpeg, then converted to AVIF for ~50% smaller file size:
+Three sequences feed the homepage: `public/scene/frames-1/{001..091}.avif` (panel 1 — capture), `public/scene/frames-2/{001..090}.avif` (panel 2 — judge), and `public/scene/frames-3/{001..090}.avif` (panel 3 — winner). All three are extracted from source mp4s via ffmpeg, then converted to AVIF for ~50% smaller file size:
 
 ```bash
 # 1. Extract JPEGs from the source video
@@ -112,5 +112,5 @@ Both redirect to `/auth/callback` (`app/auth/callback/route.ts`) which calls `ex
 - **Per-route fonts**: each per-route `page.tsx` loads three fonts and applies them as CSS variables on its root: Inter (`--font-scene`, body, via `next/font/google`), Geist Mono (`--font-scene-mono`, captions, self-hosted via `next/font/local` from `lib/fonts/geist-mono.ts`), and Fraunces (`--font-display`, display/verdict/score numerals, self-hosted from `lib/fonts/fraunces.ts`). Don't move font loading to root layout — it'd pull all three on every route. Self-hosting both Geist and Fraunces avoids the Google Fonts download flakiness we hit early. Use `.scene-display` / `.scene-display-italic` / `.scene-numeral` utility classes for serif moments; raw `var(--font-display)` is also available.
 - **`<Image>` shadowing**: when using `next/image` in a file that also constructs `new Image()` (e.g., for canvas frame preloading), import as `NextImage` to avoid shadowing the global `Image` constructor. See `components/scene/HeroPanel.tsx`.
 - **Scoped CSS**: minimalist styles live in `app/scene.css` under `.scene-*` class prefixes. Don't pollute `app/globals.css` (which holds the legacy Capitol palette).
-- **Route-level conditional Header**: when adding a new route that uses the minimalist theme, add it to the path check at the top of `components/Header.tsx` so the Capitol header doesn't leak in.
+- **Route-level conditional footer**: when adding a new full-bleed minimalist route that should not render the Capitol footer, add its pathname to the check in `components/SiteFooter.tsx`. (There is no Capitol header anymore — `components/Header.tsx` was deleted.)
 - **Static-image panels** that match a video's first frame: bg should reference `/scene/frames-N/001.avif`, **not** the source `firstimage.png` etc., so the boundary into the canvas section is invisible.

@@ -59,4 +59,12 @@ create trigger comments_touch_updated_at
   for each row execute function public.touch_comments_updated_at();
 
 -- ─── realtime ────────────────────────────────────────────────────────
-alter publication supabase_realtime add table public.comments;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'comments'
+  ) then
+    alter publication supabase_realtime add table public.comments;
+  end if;
+end $$;
