@@ -46,34 +46,45 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Toggle: delete existing vote if present, otherwise insert.
-  const { data: existing } = await supabase
+  // Atomic toggle. The previous SELECT-then-INSERT/DELETE shape raced
+  // with itself: two concurrent POSTs from the same user could both
+  // read "no existing vote" and both attempt to INSERT, where one would
+  // win and the other would surface as a 500 via the
+  // (user_id, idea_id) UNIQUE constraint from 002_votes.sql.
+  //
+  // Resolution: ON CONFLICT DO NOTHING is the toggle. If we successfully
+  // insert a row, this is a toggle-ON. If the conflict elided the insert
+  // (no row returned), this is a toggle-OFF — DELETE the existing row.
+  // Both branches are single statements so concurrent callers serialize
+  // on the unique index instead of racing in application code.
+  const { data: inserted, error: insErr } = await supabase
     .from("votes")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("idea_id", ideaId)
-    .maybeSingle();
-
-  if (existing) {
-    const { error: delErr } = await supabase
-      .from("votes")
-      .delete()
-      .eq("id", existing.id);
-    if (delErr) {
-      return NextResponse.json({ error: delErr.message }, { status: 500 });
-    }
-    return NextResponse.json({ voted: false });
-  }
-
-  const { error: insErr } = await supabase
-    .from("votes")
-    .insert({ user_id: user.id, idea_id: ideaId });
+    .upsert(
+      { user_id: user.id, idea_id: ideaId },
+      { onConflict: "user_id,idea_id", ignoreDuplicates: true },
+    )
+    .select("id");
 
   if (insErr) {
     return NextResponse.json({ error: insErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ voted: true });
+  if (inserted && inserted.length > 0) {
+    return NextResponse.json({ voted: true });
+  }
+
+  // Conflict path: the user already had a vote. Retract it.
+  const { error: delErr } = await supabase
+    .from("votes")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("idea_id", ideaId);
+
+  if (delErr) {
+    return NextResponse.json({ error: delErr.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ voted: false });
 }
 
 // GET /api/vote?ideaId=... — returns current vote state for the user.
