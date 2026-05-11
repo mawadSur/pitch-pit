@@ -126,8 +126,10 @@ export function HomeScene({
             silently hides this section instead of reading stale. */}
         <LiveTicker entries={latestIdeas} />
 
-        {/* persistent corner sparkle */}
-        <div className="pointer-events-none fixed bottom-6 right-6 z-40 sm:bottom-8 sm:right-8">
+        {/* persistent corner sparkle — honor iOS safe-area-inset-bottom
+            so the sparkle doesn't sit under the home indicator + Safari
+            bottom bar gesture region on iPhones. */}
+        <div className="pointer-events-none fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-6 z-40 sm:bottom-[max(2rem,env(safe-area-inset-bottom))] sm:right-8">
           <CornerSparkle size={26} />
         </div>
       </main>
@@ -1066,13 +1068,16 @@ function LiveCounter({
       : "Waiting for the first builds";
 
   return (
+    // No aria-live here: the counter values are SSR-fed and never
+    // mutate on the client, so a polite live region only causes
+    // some screen readers to re-announce the same string on focus
+    // or page load with no actual change happening.
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-10% 0px" }}
       transition={{ duration: 0.5 }}
       className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2"
-      aria-live="polite"
     >
       <span
         aria-hidden

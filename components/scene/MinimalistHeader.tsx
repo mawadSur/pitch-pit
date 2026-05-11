@@ -332,22 +332,74 @@ function AuthClusterSkeleton() {
 function UserMenu({ user }: { user: User }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Menu container — used to find focusable menuitems for arrow-key nav.
+  // We picked option A (full WAI-ARIA APG menu semantics) over dropping
+  // `role="menu"` because the popover contains a mix of navigation links
+  // AND an action button ("Sign out"), which makes it more than a plain
+  // link list. APG menus expect ArrowUp/Down/Home/End to move focus
+  // between menuitems — we implement that here.
+  const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Close on outside click + Escape.
+  // Close on outside click + Escape, plus arrow-key roving focus inside
+  // the menu while it's open.
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const getMenuItems = (): HTMLElement[] => {
+      const container = menuRef.current;
+      if (!container) return [];
+      return Array.from(
+        container.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+      ).filter((el) => !el.hasAttribute("disabled"));
+    };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      // Only handle arrow nav when focus is inside the open menu.
+      const container = menuRef.current;
+      if (!container || !container.contains(document.activeElement)) return;
+      const items = getMenuItems();
+      if (items.length === 0) return;
+      const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+        items[next]?.focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev =
+          currentIndex < 0
+            ? items.length - 1
+            : (currentIndex - 1 + items.length) % items.length;
+        items[prev]?.focus();
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        items[0]?.focus();
+      } else if (e.key === "End") {
+        e.preventDefault();
+        items[items.length - 1]?.focus();
+      }
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
+    // When the menu opens, place focus on the first menuitem so arrow
+    // keys have a starting point. Defer to next tick so the DOM has
+    // mounted the popover.
+    const focusTimer = window.setTimeout(() => {
+      const items = menuRef.current?.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]',
+      );
+      items?.[0]?.focus();
+    }, 0);
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+      window.clearTimeout(focusTimer);
     };
   }, [open]);
 
@@ -405,6 +457,7 @@ function UserMenu({ user }: { user: User }) {
 
       {open && (
         <div
+          ref={menuRef}
           role="menu"
           aria-label={`${fullName} menu`}
           className="absolute right-0 top-full mt-3 w-60 overflow-hidden rounded-xl border border-white/12 bg-[#0e0e10]/95 shadow-[0_24px_72px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md"

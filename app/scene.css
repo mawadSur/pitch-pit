@@ -1126,3 +1126,29 @@
     animation: none !important;
   }
 }
+
+/* ───── backdrop-filter fallback ─────
+ * The minimalist scene leans on `backdrop-filter: blur(...)` to give
+ * its glass cards readable contrast over the black void: most surfaces
+ * use `background: rgba(255, 255, 255, 0.025)`, which is too transparent
+ * on its own to push white/55-90 text above the WCAG floor. When
+ * backdrop-filter is unsupported (older Firefox quirks, disabled by
+ * privacy extensions, or printing) the blur disappears and contrast
+ * collapses. Bump the background opacity on those same surfaces so
+ * the cards still read as cards. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .scene-card,
+  .scene-card-gold,
+  .scene-input-shell,
+  .scene-submit,
+  .countdown-unit,
+  .cta-btn-ghost {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .scene-card-gold {
+    background: rgba(255, 184, 0, 0.1);
+  }
+  .scene-header[data-scrolled="true"] {
+    background: rgba(10, 10, 10, 0.95);
+  }
+}
