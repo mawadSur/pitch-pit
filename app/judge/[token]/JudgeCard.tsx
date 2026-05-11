@@ -28,9 +28,16 @@ export async function JudgeCard({
     // Capture so a partial-panel verdict (Anthropic timeout, schema
     // validation reject, content filter throw) is visible in Sentry —
     // otherwise the only signal is a failed-card UI on the user's screen.
+    //
+    // The 8-hex prefix gives the on-call enough to correlate multiple
+    // events from the same draft without leaking the full token. The
+    // full token is what gates /judge/<token> access — anyone reading
+    // Sentry would otherwise be able to navigate to the route and read
+    // the user's draft pitch verbatim. 32 bits is plenty of correlation
+    // entropy; the remaining 96 bits stay private.
     Sentry.captureException(e, {
       tags: { route: "judge", judge: judge.id, phase: "render-promise" },
-      extra: { token },
+      extra: { tokenPrefix: token.slice(0, 8) },
     });
     errored = true;
   }
