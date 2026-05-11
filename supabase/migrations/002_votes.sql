@@ -88,4 +88,12 @@ create trigger votes_bump_count_after_delete
 -- ─────────────────────────────────────────────────────────────
 -- realtime — broadcast vote changes
 -- ─────────────────────────────────────────────────────────────
-alter publication supabase_realtime add table public.votes;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'votes'
+  ) then
+    alter publication supabase_realtime add table public.votes;
+  end if;
+end $$;

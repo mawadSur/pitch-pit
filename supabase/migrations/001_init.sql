@@ -134,5 +134,18 @@ create policy "Build queue is public"
 -- ─────────────────────────────────────────────────────────────
 -- Realtime — broadcast inserts/updates on ideas to subscribers
 -- ─────────────────────────────────────────────────────────────
-alter publication supabase_realtime add table public.ideas;
-alter publication supabase_realtime add table public.build_queue;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'ideas'
+  ) then
+    alter publication supabase_realtime add table public.ideas;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'build_queue'
+  ) then
+    alter publication supabase_realtime add table public.build_queue;
+  end if;
+end $$;

@@ -154,24 +154,3 @@ html {
   }
 }
 
-/* Utility — gold gradient text for special headlines */
-@layer utilities {
-  .text-gilded {
-    background: linear-gradient(
-      180deg,
-      var(--gold-bright) 0%,
-      var(--gold) 60%,
-      var(--gold-shadow) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .text-engraved {
-    color: var(--parchment);
-    text-shadow:
-      0 1px 0 rgba(0, 0, 0, 0.6),
-      0 -1px 0 rgba(232, 220, 196, 0.04);
-  }
-}
