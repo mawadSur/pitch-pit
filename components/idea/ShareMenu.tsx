@@ -124,6 +124,13 @@ export function ShareMenu({
   const [copied, setCopied] = useState<ShareTarget | null>(null);
   const [hasNativeShare, setHasNativeShare] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Focus-trap refs (WCAG 2.4.3 — focus order):
+  //   triggerRef    — the button that opened the dialog. Focus returns here on close.
+  //   dialogRef     — the role="dialog" container; descendant query for focusables.
+  //   closeBtnRef   — receives initial focus on open (it's the rightmost, safest first target).
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   // Detect Web Share API on mount only — calling it on hydration would
   // mismatch SSR. Browsers without the API simply hide the option.
@@ -147,6 +154,65 @@ export function ShareMenu({
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Focus management for the role="dialog" container (WCAG 2.4.3).
+  //   - On open: move focus into the dialog (close button is the natural
+  //     starting point — it's the explicit "out" affordance and sits at
+  //     the top of the visual order).
+  //   - While open: trap Tab / Shift+Tab inside the dialog so keyboard
+  //     users can't tab back to the page underneath.
+  //   - On close: restore focus to the trigger button so the user lands
+  //     back where they came from.
+  // We attach the keydown listener to the dialog itself rather than the
+  // document so the trap is scoped — the existing Escape handler above
+  // stays on document and continues to work regardless of focus location.
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    // dialog ref is populated after the AnimatePresence child mounts; in
+    // the same paint, queue a microtask before reaching for focus.
+    const raf = requestAnimationFrame(() => {
+      closeBtnRef.current?.focus();
+    });
+
+    const FOCUSABLE =
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+    const onTrapKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const root = dialogRef.current;
+      if (!root) return;
+      const focusables = Array.from(
+        root.querySelectorAll<HTMLElement>(FOCUSABLE),
+      ).filter((el) => !el.hasAttribute("disabled"));
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey) {
+        if (active === first || !root.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last || !root.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    dialog?.addEventListener("keydown", onTrapKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      dialog?.removeEventListener("keydown", onTrapKey);
+      // Restore focus to the trigger on close. Guard against the trigger
+      // having unmounted (e.g., parent removed the component) so we don't
+      // throw — focus() on a detached node is silently fine, but the ref
+      // may legitimately be null.
+      triggerRef.current?.focus();
     };
   }, [open]);
 
@@ -325,6 +391,7 @@ export function ShareMenu({
   return (
     <div ref={ref} className="inline-block">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
@@ -361,6 +428,7 @@ export function ShareMenu({
                 clicks on the scrim above. */}
             <motion.div
               key="dialog"
+              ref={dialogRef}
               role="dialog"
               aria-modal="true"
               aria-labelledby="share-dialog-title"
@@ -402,6 +470,7 @@ export function ShareMenu({
                     Share this idea
                   </h2>
                   <button
+                    ref={closeBtnRef}
                     type="button"
                     onClick={() => setOpen(false)}
                     aria-label="Close share dialog"
