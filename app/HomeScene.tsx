@@ -154,10 +154,23 @@ function Panel1() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const turnstileRef = useRef<TurnstileHandle | null>(null);
   // A11y-4: focus the textarea on any validation/submit error so the user
   // lands on the field they need to fix without hunting for it.
   const pitchRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Touch-device detection runs once after mount. Drives:
+  //   - Enter behavior (mobile: newline; desktop: submit)
+  //   - enterKeyHint (mobile shows a "send" affordance only when Cmd/Ctrl
+  //     also serves as the submit shortcut, so we use "enter" for newline)
+  //   - scrollIntoView on focus to outrun the iOS keyboard hiding the input
+  //   - Counter copy ("⌘+enter" vs "enter to enter the pit")
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setIsCoarsePointer(window.matchMedia("(pointer: coarse)").matches);
+  }, []);
 
   // Seed from localStorage on mount. Initial state stays "" so server-rendered
   // markup matches client first paint — we only hydrate the draft after.
@@ -200,6 +213,27 @@ function Panel1() {
       // ignore — see note above
     }
   }, [text]);
+
+  // Autosize the textarea so users can SEE what they've typed. The original
+  // rows={1} + scrollable internal overflow meant the user had a one-line
+  // peephole into a 60-3500 char draft — punishing on mobile especially.
+  // Sizing rules:
+  //   at-rest empty + unfocused → ~1 line (preserves at-rest alignment with
+  //     the painted input pill in the bg image — critical for the cinematic)
+  //   focused or any text typed → floor at ~3 lines (reads as a textarea,
+  //     gives mobile users vertical room to drag/select)
+  //   typing → grows to fit content, capped at ~6 lines (above which the
+  //     internal scrollbar kicks in so the panel layout doesn't blow out)
+  useEffect(() => {
+    const el = pitchRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const isActive = isFocused || text.length > 0;
+    const floorPx = isActive ? 72 : 26;
+    const ceilPx = 158;
+    const next = Math.min(Math.max(el.scrollHeight, floorPx), ceilPx);
+    el.style.height = `${next}px`;
+  }, [text, isFocused]);
 
   function deriveTitle(input: string): string {
     const trimmed = input.trim();
@@ -321,10 +355,33 @@ function Panel1() {
   }
 
   function onKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key !== "Enter") return;
+    // Desktop: Enter submits, Shift+Enter is a newline (kept for muscle memory).
+    // Touch: plain Enter inserts a newline so mobile users can write actual
+    // paragraphs; only Cmd/Ctrl+Enter submits. The on-screen "Submit" tile
+    // is the primary submit affordance on mobile.
+    if (isCoarsePointer) {
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        submit();
+      }
+      return;
+    }
+    if (!e.shiftKey) {
       e.preventDefault();
       submit();
     }
+  }
+
+  // Touch devices: pull the input above the keyboard once it's settled.
+  // 320ms covers the iOS Safari keyboard-open animation; we kick it after
+  // setIsFocused so the textarea has already grown to its 3-line floor.
+  function handleFocus() {
+    setIsFocused(true);
+    if (!isCoarsePointer) return;
+    window.setTimeout(() => {
+      pitchRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 320);
   }
 
   const length = text.trim().length;
@@ -356,7 +413,7 @@ function Panel1() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7 }}
-        className="absolute inset-x-0 top-[7%] flex flex-col items-center px-6 text-center"
+        className="absolute inset-x-0 top-[max(96px,7%)] flex flex-col items-center px-6 text-center"
         style={{ zIndex: 10 }}
       >
         <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-white/55 sm:text-[0.92rem]">
@@ -452,6 +509,8 @@ function Panel1() {
                   if (error) setError(null);
                 }}
                 onKeyDown={onKey}
+                onFocus={handleFocus}
+                onBlur={() => setIsFocused(false)}
                 disabled={pending}
                 autoCorrect="off"
                 spellCheck="true"
@@ -459,11 +518,18 @@ function Panel1() {
                 maxLength={SUBMIT_LIMITS.pitchMax}
                 aria-label="Pitch your idea"
                 autoComplete="off"
+                inputMode="text"
+                // Touch: "enter" so the on-screen keyboard's return key
+                // inserts a newline (we suppress submit-on-Enter for
+                // coarse pointers, see onKey). Desktop: "send" surfaces
+                // the submit affordance on hardware keyboards that honor
+                // the hint.
+                enterKeyHint={isCoarsePointer ? "enter" : "send"}
                 className="scene-input pl-3"
-                // minHeight + maxHeight bumped 10% so the textarea's
-                // own intrinsic size grows with the shell. 1.5→1.65rem
-                // (=26.4px) for the closed at-rest state; 9→9.9rem
-                // (=158.4px) for the max expanded.
+                // Floor/ceiling for the autosize effect above. The effect
+                // sets explicit height in px on every text/focus change;
+                // these inline values are the static fallback before that
+                // effect first runs (e.g. SSR + first paint).
                 style={{ minHeight: "1.65rem", maxHeight: "9.9rem" }}
               />
               {length === 0 && !pending && (
@@ -553,10 +619,14 @@ function Panel1() {
             : pending
               ? "↘ The machine is judging"
               : length === 0
-                ? `Press enter to enter the pit · ${SUBMIT_LIMITS.pitchMin}-${SUBMIT_LIMITS.pitchMax} chars`
+                ? isCoarsePointer
+                  ? `Tap to pitch · ${SUBMIT_LIMITS.pitchMin}-${SUBMIT_LIMITS.pitchMax} chars`
+                  : `Press enter to enter the pit · ${SUBMIT_LIMITS.pitchMin}-${SUBMIT_LIMITS.pitchMax} chars`
                 : length < SUBMIT_LIMITS.pitchMin
                   ? `${SUBMIT_LIMITS.pitchMin - length} more to enter the pit · ${length}/${SUBMIT_LIMITS.pitchMax}`
-                  : `${length}/${SUBMIT_LIMITS.pitchMax} · enter to enter the pit`}
+                  : isCoarsePointer
+                    ? `${length}/${SUBMIT_LIMITS.pitchMax} · tap submit to enter the pit`
+                    : `${length}/${SUBMIT_LIMITS.pitchMax} · enter to enter the pit`}
         </p>
         {/* Express-lane secondary CTA — lives next to the primary
             counter line so it reads as an alternative entry path

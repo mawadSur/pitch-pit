@@ -229,10 +229,17 @@
   caret-color: var(--scene-gold);
   resize: none;
   font: inherit;
-  font-size: 1rem;
+  /* iOS Safari auto-zooms any input whose font-size is < 16px on focus.
+     The viewport then needs a manual pinch-out to recover. We hold the
+     line at exactly 16px on touch viewports (clamp via max(...)) so
+     the focus event never triggers the zoom. */
+  font-size: max(1rem, 16px);
   line-height: 1.5;
   padding: 0;
   width: 100%;
+  /* Honor the autosize JS that sets explicit height on every keystroke;
+     animate the floor→typing transition so it doesn't snap. */
+  transition: height 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .scene-input::placeholder {
   color: rgba(255, 255, 255, 0.32);
@@ -298,6 +305,36 @@
   outline: 2px solid var(--scene-gold-bright);
   outline-offset: 4px;
   border-color: rgba(255, 184, 0, 0.85);
+}
+
+/* ───── mobile input ergonomics ─────
+ * On phone-class viewports the at-rest aesthetic still matters (the
+ * input shell needs to align with the painted pill in the bg image),
+ * but the moment the user focuses the field we want a comfortable
+ * thumb-friendly target. The autosize effect in HomeScene grows the
+ * textarea to 3 lines on focus; the rules below grow the SHELL with
+ * it so the gold border doesn't clip the textarea on tiny viewports.
+ * The submit tile bumps to 60px so it matches the WCAG 2.5.5 enhanced
+ * target size and sits comfortably under a thumb on the right edge. */
+@media (max-width: 640px) and (pointer: coarse) {
+  .scene-input-shell {
+    border-radius: 20px;
+    /* Slightly tighter horizontal pad to leave room for thumbs to drag-
+       select; vertical pad bumps so the 3-line floor doesn't crowd the
+       gold border. */
+    padding: 1rem 1.125rem !important;
+  }
+  .scene-submit {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+  }
+  /* The placeholder cursor blinker only makes sense on desktop where
+     the at-rest pill is small; on mobile we let the textarea look
+     unmistakably like a textarea (3-line floor on focus does the work). */
+  .scene-cursor {
+    display: none;
+  }
 }
 
 /* hourglass halo + sand stream */
@@ -619,6 +656,21 @@
      to 1ch, this guards against caret/glyph fallback width drift. */
   font-variant-numeric: tabular-nums lining-nums;
   vertical-align: baseline;
+}
+
+/* Establish a real typographic baseline inside the inline-block. Without
+   this, the absolutely-positioned static halves leave the inline-block
+   with no in-flow content, so the browser falls back to the bottom margin
+   edge as the baseline. In contexts that mix flip-digits with surrounding
+   inline text under `align-items: baseline` (e.g., the header ticker —
+   "5d 02h 06m"), that collapsed baseline pushes the digits up into
+   superscript position relative to the text. The hidden zero-width "0"
+   gives the inline-block a proper baseline to align with. */
+.flip-digit::before {
+  content: "0";
+  display: inline-block;
+  width: 0;
+  visibility: hidden;
 }
 
 /* Static halves: show the CURRENT digit. The top half is clipped to the
