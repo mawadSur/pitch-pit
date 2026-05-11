@@ -406,26 +406,32 @@
   vertical-align: -0.2em;
 }
 
-/* glass card (used in idea review) */
+/* glass card (used in idea review).
+   Background opacity bumped from 0.025 → 0.10 (and the gold variant
+   0.04 → 0.14) because on the cinematic homepage panels the previous
+   value vanished against the gold-spotlight + thumbs-up backdrop —
+   the Machine/Crowd stat cards on Panel 2 were illegible. Border
+   opacity also bumped so the card edge reads cleanly even when the
+   bg behind is high-contrast. */
 .scene-card {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
   border-radius: 18px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 24px 72px -24px rgba(0, 0, 0, 0.85);
 }
 
 .scene-card-gold {
-  background: rgba(255, 184, 0, 0.04);
-  border: 1px solid rgba(255, 184, 0, 0.25);
+  background: rgba(255, 184, 0, 0.14);
+  border: 1px solid rgba(255, 184, 0, 0.35);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
   border-radius: 18px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 209, 122, 0.1),
+    inset 0 1px 0 rgba(255, 209, 122, 0.14),
     0 24px 72px -24px rgba(255, 184, 0, 0.35),
     0 0 48px rgba(255, 184, 0, 0.12);
 }
@@ -1143,10 +1149,10 @@
   .scene-submit,
   .countdown-unit,
   .cta-btn-ghost {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.14);
   }
   .scene-card-gold {
-    background: rgba(255, 184, 0, 0.1);
+    background: rgba(255, 184, 0, 0.18);
   }
   .scene-header[data-scrolled="true"] {
     background: rgba(10, 10, 10, 0.95);
