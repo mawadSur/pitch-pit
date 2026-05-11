@@ -288,6 +288,17 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+/* Keyboard users tabbing onto the primary homepage CTA must see where
+   focus is — the browser-default outline is effectively invisible on
+   glass + black. Using `outline` (not `box-shadow`) so the ring renders
+   reliably even where the surrounding backdrop-filter creates compositor
+   quirks. Mirrors the `.cta-btn-primary:focus-visible` treatment for
+   visual consistency with the rest of the primary-action language. */
+.scene-submit:focus-visible {
+  outline: 2px solid var(--scene-gold-bright);
+  outline-offset: 4px;
+  border-color: rgba(255, 184, 0, 0.85);
+}
 
 /* hourglass halo + sand stream */
 @keyframes scene-sand-fall {

@@ -2,7 +2,7 @@
 
 import NextImage from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { useMotionValueEvent, useScroll } from "framer-motion";
+import { useMotionValueEvent, useReducedMotion, useScroll } from "framer-motion";
 
 const PAD = (n: number) => String(n).padStart(3, "0");
 
@@ -81,10 +81,20 @@ export function HeroPanel({
   // before it draws anything anyway.
   const [largeEnough, setLargeEnough] = useState(false);
 
+  // `framer-motion`'s `useReducedMotion()` listens to the OS-level
+  // `prefers-reduced-motion` media query. The `MotionConfig reducedMotion="user"`
+  // up the tree only gates framer-motion's `animate` props — the manual
+  // scroll-driven canvas scrub below has its own state and frame work, so
+  // it needs its own gate. Returns `null` during SSR + the first paint,
+  // which we treat as "not reduced" until the client check runs.
+  const prefersReducedMotion = useReducedMotion();
+
   const hasFrames = !!framesPath && !!frameCount && frameCount > 0;
   // Mobile: skip the canvas entirely to save memory + cpu. The static image
   // stays visible across the whole panel; no scrubbing on small screens.
-  const canvasActive = hasFrames && largeEnough;
+  // Reduced-motion users also keep the static at-rest image — the canvas
+  // scrub is the very motion they asked the OS not to play.
+  const canvasActive = hasFrames && largeEnough && !prefersReducedMotion;
 
   // Detect viewport ≥ 768px for canvas activation
   useEffect(() => {
@@ -245,14 +255,15 @@ export function HeroPanel({
       pinFraction > 0 ? Math.min(1, latest / pinFraction) : latest;
 
     // Only crossfade the static image when the canvas is going to take
-    // over. On mobile (canvas disabled), keep the image visible the whole
-    // way — otherwise we'd fade to a black background with nothing behind.
+    // over. On mobile (canvas disabled) or for reduced-motion users (canvas
+    // suppressed), keep the image visible the whole way — otherwise we'd
+    // fade to a black background with nothing behind.
     if (canvasActive) {
       const next = pinProgress > SWAP_THRESHOLD;
       setScrolled((prev) => (prev === next ? prev : next));
     }
 
-    // scrub frames if canvas is active (skipped on mobile)
+    // scrub frames if canvas is active (skipped on mobile + reduced-motion)
     if (!canvasActive || !frameCount) return;
     const targetIdx = Math.max(
       0,
