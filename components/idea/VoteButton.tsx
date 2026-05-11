@@ -59,29 +59,102 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
     };
   }, [ideaId]);
 
-  // Realtime subscription: refresh state whenever votes change for this idea.
-  // Skips refresh if a vote-toggle is in flight (we trust the optimistic state).
+  // Realtime subscription: reflect vote changes for this idea.
+  // Perf-M7: apply each event LOCALLY from the payload — bumping vote_count
+  // by ±1 based on INSERT/DELETE, and flipping userHasVoted only when the
+  // event row belongs to the current user. The old shape refetched
+  // /api/vote on EVERY event; a hot idea getting 10 votes/sec produced
+  // 10 round-trips per second per open tab. Reconciliation is preserved
+  // as a debounced safety net (at most once per 5s) so any drift between
+  // local accounting and the DB self-heals.
+  //
   // Perf-4: pause the channel while the tab is hidden so we don't burn
   // Supabase bandwidth on backgrounded tabs; re-subscribe on visibility return.
   useEffect(() => {
     const supabase = createClient();
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    // Current user's id, captured once after mount. Used to detect when an
+    // INSERT/DELETE event corresponds to *this* user — i.e. the userHasVoted
+    // gate flipping — versus someone else voting. Null until the auth probe
+    // resolves; in that brief window we still update vote_count from
+    // payload (the count delta doesn't depend on identity).
+    let currentUserId: string | null = null;
+    // Timestamp of last reconciliation refetch; gates the debounce window.
+    let lastReconcileAt = 0;
+    let reconcileTimer: number | null = null;
+    const RECONCILE_WINDOW_MS = 5000;
 
-    function refresh() {
+    function flashGold() {
+      setFlash(true);
+      if (flashTimeoutRef.current)
+        window.clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = window.setTimeout(
+        () => setFlash(false),
+        650,
+      );
+    }
+
+    // Hits /api/vote and reconciles count + userHasVoted with the DB.
+    // Safety net only — every realtime event already updates state from
+    // its payload, so this exists to repair drift (missed events, rapid
+    // toggles, server-side trigger lag). Throttled by lastReconcileAt.
+    function reconcile() {
+      lastReconcileAt = Date.now();
       fetch(`/api/vote?ideaId=${encodeURIComponent(ideaId)}`)
         .then((r) => r.json())
         .then((data) => {
+          if (cancelled) return;
           setVoteCount(data.voteCount ?? 0);
           setUserHasVoted(!!data.userHasVoted);
-          setFlash(true);
-          if (flashTimeoutRef.current)
-            window.clearTimeout(flashTimeoutRef.current);
-          flashTimeoutRef.current = window.setTimeout(
-            () => setFlash(false),
-            650,
-          );
         })
         .catch(() => {});
+    }
+
+    // Apply realtime event to local state and schedule a debounced
+    // reconciliation refetch (at most once per RECONCILE_WINDOW_MS).
+    function applyRealtime(payload: {
+      eventType: "INSERT" | "UPDATE" | "DELETE";
+      new: { user_id?: string; idea_id?: string } | null;
+      old: { user_id?: string; idea_id?: string } | null;
+    }) {
+      const evt = payload.eventType;
+      // Count delta from the event type. UPDATEs on the votes table
+      // shouldn't move the count (toggles are INSERT/DELETE), so they
+      // pass through as a no-op delta.
+      const delta = evt === "INSERT" ? 1 : evt === "DELETE" ? -1 : 0;
+      if (delta !== 0) {
+        setVoteCount((prev) => Math.max(0, (prev ?? 0) + delta));
+      }
+
+      // Did THIS event correspond to the current user? If so, mirror
+      // userHasVoted locally — otherwise it's someone else voting and we
+      // only flash the count.
+      const eventUserId =
+        evt === "DELETE"
+          ? payload.old?.user_id
+          : payload.new?.user_id;
+      if (currentUserId && eventUserId === currentUserId) {
+        if (evt === "INSERT") setUserHasVoted(true);
+        else if (evt === "DELETE") setUserHasVoted(false);
+      } else if (delta !== 0) {
+        // External voter — gold flash on the count display.
+        flashGold();
+      }
+
+      // Debounced reconciliation. If we're outside the cooldown window,
+      // refetch now. Otherwise, schedule a single trailing refetch at
+      // the end of the window so a burst of events still resolves
+      // exactly once.
+      const sinceLast = Date.now() - lastReconcileAt;
+      if (sinceLast >= RECONCILE_WINDOW_MS) {
+        reconcile();
+      } else if (reconcileTimer === null) {
+        reconcileTimer = window.setTimeout(() => {
+          reconcileTimer = null;
+          if (!cancelled) reconcile();
+        }, RECONCILE_WINDOW_MS - sinceLast);
+      }
     }
 
     function subscribe() {
@@ -96,7 +169,10 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
             table: "votes",
             filter: `idea_id=eq.${ideaId}`,
           },
-          refresh,
+          (payload) =>
+            applyRealtime(
+              payload as Parameters<typeof applyRealtime>[0],
+            ),
         )
         .subscribe();
     }
@@ -112,12 +188,23 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
       if (document.visibilityState === "hidden") {
         unsubscribe();
       } else {
-        // Coming back from hidden — refetch in case votes changed
-        // while we weren't listening, then resubscribe.
-        refresh();
+        // Coming back from hidden — full reconcile (we may have missed
+        // events while paused), then resubscribe.
+        reconcile();
         subscribe();
       }
     }
+
+    // Capture the current user id once so realtime events can decide
+    // whether they belong to "me" or "someone else". Best-effort —
+    // if the auth probe fails or the user signs out mid-session, we
+    // still update vote_count from payload (delta is identity-free).
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (!cancelled) currentUserId = data.user?.id ?? null;
+      })
+      .catch(() => {});
 
     if (typeof document === "undefined" || document.visibilityState !== "hidden") {
       subscribe();
@@ -125,8 +212,13 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
+      cancelled = true;
       document.removeEventListener("visibilitychange", handleVisibility);
       unsubscribe();
+      if (reconcileTimer !== null) {
+        window.clearTimeout(reconcileTimer);
+        reconcileTimer = null;
+      }
       if (flashTimeoutRef.current)
         window.clearTimeout(flashTimeoutRef.current);
     };
