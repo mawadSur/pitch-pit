@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { limitScoreSubmission } from "@/lib/ratelimit";
+import { verifyAdminAuthHeader } from "@/lib/admin-auth";
 
 const REALM = 'Basic realm="pitch-pit-admin"';
 
@@ -36,16 +37,14 @@ async function rateLimitSubmission(
 }
 
 function adminBasicAuth(req: NextRequest): NextResponse | null {
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) {
+  const result = verifyAdminAuthHeader(req.headers.get("authorization"));
+  if (result.ok) return null;
+  if (result.reason === "not-configured") {
     return new NextResponse(
       "ADMIN_PASSWORD is not configured. Set it in your environment.",
       { status: 503 },
     );
   }
-  const expected = "Basic " + btoa(`admin:${password}`);
-  const authHeader = req.headers.get("authorization");
-  if (authHeader === expected) return null;
   return new NextResponse("Authentication required", {
     status: 401,
     headers: { "WWW-Authenticate": REALM },
