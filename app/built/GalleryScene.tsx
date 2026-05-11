@@ -150,9 +150,13 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
               Open the build <span aria-hidden>↗</span>
             </a>
           )}
+          {/* The mono caption label stays the same small-cap typographic
+              treatment, but the tap target is padded out to clear the
+              WCAG 2.5.5 44×44 minimum so it sits at the same visual
+              scale as the verdigris "Open the build" CTA on this card. */}
           <Link
             href={`/idea/${idea.id}${titleToSlug(idea.title) ? `/${titleToSlug(idea.title)}` : ""}`}
-            className="scene-mono text-[0.55rem] uppercase tracking-[0.32em] text-white/55 transition-colors hover:text-white"
+            className="scene-mono inline-flex min-h-11 items-center rounded-full px-4 py-2 text-[0.55rem] uppercase tracking-[0.32em] text-white/55 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
           >
             Read the judgment →
           </Link>

@@ -23,6 +23,11 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
   const [ideas, setIdeas] = useState<FeedIdea[]>(initial);
   const [filter, setFilter] = useState<Filter>("all");
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
+  // Single short message that a screen-reader-only live region
+  // announces when a new tribute arrives. Cleared shortly after so the
+  // next insert re-fires the announcement instead of being suppressed
+  // by the assistive tech as "no change".
+  const [announcement, setAnnouncement] = useState("");
   const seenIds = useRef(new Set(initial.map((i) => i.id)));
 
   // Realtime — new INSERTs slide in at the top
@@ -51,6 +56,7 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
             next.add(row.id);
             return next;
           });
+          setAnnouncement("1 new tribute");
           setTimeout(() => {
             setNewIds((prev) => {
               const next = new Set(prev);
@@ -58,6 +64,9 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
               return next;
             });
           }, 1400);
+          // Clear the announcement so the next insert's identical
+          // string re-fires the polite re-read.
+          setTimeout(() => setAnnouncement(""), 1500);
         },
       )
       .subscribe();
@@ -111,10 +120,21 @@ export function FeedScene({ initial }: { initial: FeedIdea[] }) {
             <>
               <FilterBar active={filter} onChange={setFilter} counts={counts} />
 
+              {/* Live region for new-insert announcements lives OUTSIDE
+                  the <ul> — putting aria-live on the list itself would
+                  cause screen readers to re-announce every visible
+                  item on every realtime insert. This sr-only span fires
+                  a single short "1 new tribute" message instead. */}
+              <span
+                className="sr-only"
+                aria-live="polite"
+                aria-relevant="additions"
+              >
+                {announcement}
+              </span>
               <MotionConfig reducedMotion="user">
                 <ul
                   className="space-y-4 sm:space-y-5"
-                  aria-live="polite"
                   aria-label="Tributes"
                 >
                   <AnimatePresence initial={false} mode="popLayout">

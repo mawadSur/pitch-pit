@@ -411,8 +411,10 @@ export function Reveal({
           </motion.div>
         </div>
 
-        {/* corner sparkle */}
-        <div className="pointer-events-none absolute bottom-6 right-6 sm:bottom-8 sm:right-8">
+        {/* corner sparkle — honor iOS safe-area-inset-bottom so the
+            sparkle clears the home indicator + Safari bottom bar
+            gesture region on iPhones. */}
+        <div className="pointer-events-none absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-6 sm:bottom-[max(2rem,env(safe-area-inset-bottom))] sm:right-8">
           <CornerSparkle size={26} />
         </div>
 
