@@ -1,22 +1,27 @@
 // Integration tests for POST /api/vote.
 //
-// Toggle behavior: insert if no existing vote, delete if one exists. Owner
-// pre-check returns 403 to short-circuit before hitting RLS. We mock at
-// the Supabase module boundary and dispatch on table name.
+// Toggle behavior is now atomic: an UPSERT with ON CONFLICT DO NOTHING
+// returns the newly-inserted row on toggle-ON, or an empty array on
+// toggle-OFF (followed by a DELETE). Owner pre-check returns 403 to
+// short-circuit before hitting RLS. We mock at the Supabase module
+// boundary and dispatch on table name.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 type State = {
   user?: { id: string } | null;
   idea?: { user_id: string | null } | null;
-  existingVote?: { id: string } | null;
-  insertError?: { message: string };
+  // Whether the user already has a vote for this idea. The upsert
+  // mock uses this to decide whether to return a row (insert won) or
+  // an empty array (conflict elided the insert → toggle-off path).
+  existingVote?: boolean;
+  upsertError?: { message: string };
   deleteError?: { message: string };
 };
 
 let state: State = {};
-let lastInsert: { user_id: string; idea_id: string } | null = null;
-let lastDelete: { id: string } | null = null;
+let lastUpsert: { user_id: string; idea_id: string } | null = null;
+let lastDelete: { user_id: string; idea_id: string } | null = null;
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: () => ({
@@ -38,18 +43,17 @@ vi.mock("@/lib/supabase/server", () => ({
       }
       if (table === "votes") {
         return {
+          // GET count: select("*", { count, head }).eq → thenable {count, error}.
+          // Returned only so this same mock still serves the GET handler;
+          // POST does not call .select() at the top level anymore.
           select: () => {
-            // Two callers: (1) toggle-check via .eq.eq.maybeSingle,
-            // (2) GET count via {count: "exact", head: true}.eq → returns
-            // a thenable {count, error}. We support both.
             const builder: Record<string, unknown> = {
               eq: () => builder,
               maybeSingle: async () => ({
-                data: state.existingVote ?? null,
+                data: null,
                 error: null,
               }),
             };
-            // Make it await-able as a count query too.
             (builder as { then: unknown }).then = (
               resolve: (v: unknown) => unknown,
             ) =>
@@ -59,20 +63,47 @@ vi.mock("@/lib/supabase/server", () => ({
               });
             return builder;
           },
-          insert: (row: { user_id: string; idea_id: string }) => {
-            lastInsert = row;
-            return Promise.resolve({
-              error: state.insertError ?? null,
-            });
+          // Atomic toggle path: .upsert(row, opts).select("id") → resolves
+          // to { data: inserted[], error }. When a row pre-existed and
+          // onConflict elided the insert, Postgres + supabase-js return
+          // an empty array (with our ignoreDuplicates: true).
+          upsert: (
+            row: { user_id: string; idea_id: string },
+            _opts: unknown,
+          ) => {
+            lastUpsert = row;
+            return {
+              select: (_cols: string) =>
+                Promise.resolve({
+                  data: state.existingVote
+                    ? []
+                    : [{ id: "new-vote-id" }],
+                  error: state.upsertError ?? null,
+                }),
+            };
           },
-          delete: () => ({
-            eq: (_col: string, val: string) => {
-              lastDelete = { id: val };
-              return Promise.resolve({
-                error: state.deleteError ?? null,
-              });
-            },
-          }),
+          // Toggle-off: .delete().eq("user_id", ...).eq("idea_id", ...).
+          delete: () => {
+            const captured: Partial<{ user_id: string; idea_id: string }> = {};
+            const builder = {
+              eq(col: string, val: string) {
+                if (col === "user_id") captured.user_id = val;
+                if (col === "idea_id") captured.idea_id = val;
+                // After the second .eq, the call awaits.
+                if (captured.user_id && captured.idea_id) {
+                  lastDelete = {
+                    user_id: captured.user_id,
+                    idea_id: captured.idea_id,
+                  };
+                  return Promise.resolve({
+                    error: state.deleteError ?? null,
+                  });
+                }
+                return builder;
+              },
+            };
+            return builder;
+          },
         };
       }
       return {};
@@ -91,7 +122,7 @@ const IDEA_ID = "550e8400-e29b-41d4-a716-446655440000";
 describe("POST /api/vote", () => {
   beforeEach(() => {
     state = {};
-    lastInsert = null;
+    lastUpsert = null;
     lastDelete = null;
   });
 
@@ -124,24 +155,27 @@ describe("POST /api/vote", () => {
   it("inserts a new vote when none exists", async () => {
     state.user = { id: "user-a" };
     state.idea = { user_id: "user-b" };
-    state.existingVote = null;
+    state.existingVote = false;
     const res = await POST(makeReq({ ideaId: IDEA_ID }) as never);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.voted).toBe(true);
-    expect(lastInsert).toEqual({ user_id: "user-a", idea_id: IDEA_ID });
+    expect(lastUpsert).toEqual({ user_id: "user-a", idea_id: IDEA_ID });
     expect(lastDelete).toBeNull();
   });
 
   it("retracts an existing vote (toggle off)", async () => {
     state.user = { id: "user-a" };
     state.idea = { user_id: "user-b" };
-    state.existingVote = { id: "vote-1" };
+    // ON CONFLICT elides the insert → upsert resolves with empty data,
+    // route falls through to DELETE by (user_id, idea_id).
+    state.existingVote = true;
     const res = await POST(makeReq({ ideaId: IDEA_ID }) as never);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.voted).toBe(false);
-    expect(lastDelete).toEqual({ id: "vote-1" });
-    expect(lastInsert).toBeNull();
+    expect(lastDelete).toEqual({ user_id: "user-a", idea_id: IDEA_ID });
+    // upsert still ran (atomic path) — but it was the conflict branch.
+    expect(lastUpsert).toEqual({ user_id: "user-a", idea_id: IDEA_ID });
   });
 });

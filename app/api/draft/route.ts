@@ -277,6 +277,38 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Concurrent idempotent retries can both lookup-miss the dedupe path
+  // above and both reach this INSERT. Migration 022 adds a partial
+  // UNIQUE index on (user_id, request_id) WHERE request_id IS NOT NULL,
+  // so the loser of the race surfaces here as Postgres 23505
+  // (unique_violation). Re-select the winning row and return its
+  // access_token — same response shape as the idempotency-lookup
+  // branch above, so the homepage submit handler doesn't need to
+  // distinguish "found via lookup" from "found via insert race".
+  if (dbErr?.code === "23505" && request_id) {
+    let q = supabase
+      .from("draft_pitches")
+      .select("id, access_token")
+      .eq("request_id", request_id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    q = userId ? q.eq("user_id", userId) : q.is("user_id", null);
+    const { data: winner, error: winnerErr } = await q.maybeSingle();
+    if (!winnerErr && winner) {
+      Sentry.captureMessage("[draft] idempotency race resolved via 23505", {
+        level: "info",
+        tags: { route: "draft", phase: "idempotency-race" },
+      });
+      return NextResponse.json({ token: winner.access_token });
+    }
+    // Re-select failed unexpectedly — fall through to the generic
+    // 500 below with the original 23505 captured so we can diagnose.
+    Sentry.captureException(
+      winnerErr ?? new Error("23505 but winner row not found"),
+      { tags: { route: "draft", phase: "idempotency-race-recover" } },
+    );
+  }
+
   if (dbErr || !row) {
     console.error("[draft] insert failure", dbErr);
     Sentry.captureException(dbErr ?? new Error("Insert returned no row"), {
