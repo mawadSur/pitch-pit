@@ -410,10 +410,16 @@ function Panel1() {
       <HourglassSand />
       <CursorTrail panelRef={panelRef} />
 
-      {/* TOP — kicker + headline (above the image's hourglass) */}
+      {/* TOP — kicker + headline (above the image's hourglass).
+          Panel 1 is what greets a first-time visitor — the entrance
+          animation was sliding everything up on load, which read as
+          a layout shift more than a deliberate reveal. Switched to
+          opacity-only so the content lands in place without movement.
+          Panels 2/3 keep their scroll-triggered y-reveals — those fire
+          when the user has already chosen to scroll into them. */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.7 }}
         className="absolute inset-x-0 top-[max(96px,7%)] flex flex-col items-center px-6 text-center"
         style={{ zIndex: 10 }}
@@ -440,8 +446,8 @@ function Panel1() {
           cinematic bg crossfades to the canvas as soon as the user
           starts scrolling anyway. */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.7, delay: 0.15 }}
         className="absolute inset-x-0 top-[32%] mx-auto flex max-w-md flex-col items-center px-6"
         style={{ zIndex: 10 }}
@@ -458,8 +464,8 @@ function Panel1() {
           shifts it to ~70%/viewport on desktop, ~85% on iPhone SE —
           still clear of the bottom subtitle at bottom-[8%] (=92%). */}
       <motion.form
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.7, delay: 0.3 }}
         onSubmit={(e) => {
           e.preventDefault();
@@ -497,7 +503,13 @@ function Panel1() {
                 user crosses 60 / 300 / 1500 chars from below. */}
             <InputMilestoneFX shellRef={inputShellRef} length={length} />
             <div className="relative flex flex-1 items-center">
-              {length === 0 && (
+              {/* Decorative gold blinker shown ONLY when the field is
+                  empty AND unfocused. As soon as the user focuses the
+                  textarea, the browser's native caret takes over —
+                  rendering both produced a "double cursor" where the
+                  fake one sat at left-0 while the native one blinked
+                  next to the placeholder at left-3. */}
+              {length === 0 && !isFocused && (
                 <span
                   aria-hidden
                   className="scene-cursor pointer-events-none absolute left-0 top-1/2 -translate-y-1/2"
@@ -598,8 +610,8 @@ function Panel1() {
       {/* BOTTOM — live counter + scroll cue (input is the singular primary CTA;
           secondary nav lives in the header now, not above-the-fold) */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.7, delay: 0.45 }}
         className="absolute inset-x-0 bottom-[8%] flex flex-col items-center gap-5 px-6 text-center"
         style={{ zIndex: 10 }}
