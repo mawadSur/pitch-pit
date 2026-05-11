@@ -17,6 +17,26 @@ const hasUpstash =
   !!process.env.UPSTASH_REDIS_REST_URL &&
   !!process.env.UPSTASH_REDIS_REST_TOKEN;
 
+// Production fail-fast: the in-memory fallback below is per-worker
+// only, so on Vercel each cold-start function gets its own Map and
+// "5 per 10min" effectively becomes "5 × N workers." Refuse to boot
+// production without a real distributed store. Dev/preview still get
+// the in-memory fallback — it's fine for local testing.
+//
+// `NEXT_PHASE` is set by Next.js during the build (`phase-production-build`)
+// when it collects route metadata. Skip the assert during that phase so
+// builds don't require the env to be set in CI; the check still fires the
+// first time a route imports this module at actual request-handling time.
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.NEXT_PHASE !== "phase-production-build" &&
+  !hasUpstash
+) {
+  throw new Error(
+    "ratelimit: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN required in production",
+  );
+}
+
 // Lazily create the Upstash limiter — module-level so the connection is reused
 // across requests inside the same worker.
 const upstashLimiter = hasUpstash

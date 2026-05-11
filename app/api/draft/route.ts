@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createCookieClient } from "@/lib/supabase/server";
@@ -8,6 +8,7 @@ import { checkContent } from "@/lib/content-filter";
 import { checkUserQuota, WEEKLY_LIMIT } from "@/lib/user-quota";
 import { verifyTurnstile, turnstileEnabled } from "@/lib/turnstile";
 import { limitAnonDrafts } from "@/lib/ratelimit";
+import { getClientIp } from "@/lib/client-ip";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,16 +60,22 @@ export async function POST(req: NextRequest) {
     parsed.data;
 
   // Capture the requester IP up front — we use it for both Turnstile
-  // and (when no session) the anonymous IP throttle. Strip x-forwarded-for
-  // to its first entry; behind Vercel that's the real client IP.
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    req.headers.get("x-real-ip") ??
-    undefined;
+  // and (when no session) the anonymous IP throttle. getClientIp prefers
+  // x-vercel-forwarded-for (Vercel-injected; not spoofable on the first
+  // hop) over x-forwarded-for (which IS spoofable). When all sources
+  // miss, returns the sentinel "unknown" so the limiter still fires
+  // under a shared bucket rather than failing open. See lib/client-ip.ts.
+  const ip = getClientIp(req);
 
   // ─── captcha ──────────────────────────────────────────────
   if (turnstileEnabled) {
-    const captcha = await verifyTurnstile(turnstile_token, ip);
+    // Don't forward the "unknown" sentinel to Cloudflare — siteverify
+    // expects a real IP or the field omitted. Pass undefined in that
+    // case so Turnstile skips the optional remoteip check.
+    const captcha = await verifyTurnstile(
+      turnstile_token,
+      ip === "unknown" ? undefined : ip,
+    );
     if (!captcha.ok) {
       return NextResponse.json(
         { error: captcha.reason ?? "Captcha verification failed." },
@@ -108,10 +115,13 @@ export async function POST(req: NextRequest) {
   // ─── per-IP throttle for anonymous submissions ────────────
   // Signed-in users skip this — they get the per-user weekly quota
   // below instead. Anonymous users are bounded to 3 drafts / 24h /
-  // IP. When we can't determine the IP (rare; misconfigured proxy)
-  // we let the request through rather than block legitimate traffic.
-  if (!userId && ip) {
-    const verdict = await limitAnonDrafts(ip);
+  // IP. When the IP is unknown (rare; misconfigured proxy or stripped
+  // headers) getClientIp returns the sentinel "unknown" — that maps
+  // to a single shared bucket so the limiter still fires. Failing
+  // open here is the bypass M1+M2 closed.
+  if (!userId) {
+    const limiterKey = ip === "unknown" ? "anon-unknown" : ip;
+    const verdict = await limitAnonDrafts(limiterKey);
     if (!verdict.success) {
       return NextResponse.json(
         {
@@ -136,6 +146,22 @@ export async function POST(req: NextRequest) {
   if (userId) {
     const quota = await checkUserQuota(userId);
     if (!quota.ok) {
+      // Distinguish a real "you hit the cap" (429) from "we couldn't
+      // check the cap" (503). The DB-lookup-failed path used to fail
+      // open here; closing it means clients see 503 + Retry-After
+      // instead of an unbounded green light during a flaky-DB window.
+      if (quota.category === "lookup-failed") {
+        return NextResponse.json(
+          {
+            error: quota.reason,
+            category: "quota-unavailable",
+          },
+          {
+            status: 503,
+            headers: { "Retry-After": "30" },
+          },
+        );
+      }
       return NextResponse.json(
         {
           error: quota.reason,
@@ -220,6 +246,20 @@ export async function POST(req: NextRequest) {
   // submissions don't need it — auth itself proves ownership.
   const claimToken = userId ? null : randomBytes(16).toString("hex");
 
+  // Migration 023 introduces claim_token_sha256 (bytea) so the secret
+  // isn't at rest in plaintext after this deploy. We store both columns
+  // for one cycle: the plaintext claim_token still drives the cookie-
+  // match render on /idea/[id] (until that page is updated in a
+  // follow-up), while claim_token_sha256 is what /api/claim-idea
+  // compares the (re-hashed) cookie value against.
+  //
+  // PostgREST accepts bytea as a Postgres hex-escaped literal of the
+  // form "\\x<hex>"; we use that shape so the value round-trips through
+  // JSON without needing a Buffer in the supabase-js payload.
+  const claimTokenSha256 = claimToken
+    ? "\\x" + createHash("sha256").update(claimToken).digest("hex")
+    : null;
+
   // Spread request_id only when present so the insert stays compatible
   // with environments that haven't yet applied migration 012 (the column
   // was added after 010). PostgREST rejects unknown keys even when null.
@@ -238,6 +278,9 @@ export async function POST(req: NextRequest) {
     // pre-migration-018 environments — see the retry path on
     // undefined_column below.
     ...(claimToken ? { claim_token: claimToken } : {}),
+    // Hash of the same token — migration 023+. Spread guard so a pre-023
+    // environment falls through to the 42703 retry path below.
+    ...(claimTokenSha256 ? { claim_token_sha256: claimTokenSha256 } : {}),
   };
 
   let row: { id: string; access_token: string } | null = null;
@@ -253,15 +296,25 @@ export async function POST(req: NextRequest) {
     dbErr = insert.error ?? null;
   }
 
-  // Migration 018 hasn't been applied yet — claim_token column missing.
-  // Retry once without it so the route degrades gracefully (no claim
-  // CTA on the resulting idea, but submission still completes).
+  // Migration 018/023 hasn't been applied yet — either the plaintext
+  // claim_token column (018) or claim_token_sha256 (023) is missing.
+  // Retry once with both stripped so the route degrades gracefully
+  // (no claim CTA on the resulting idea, but submission still
+  // completes). We can't tell from the error code WHICH column is
+  // missing, so we drop both — the worst case is that a pre-023 env
+  // unnecessarily loses the legacy claim_token column on this retry.
   if ((dbErr?.code === "42703" || (dbErr && !row)) && claimToken) {
-    const { claim_token: _drop, ...payloadWithoutClaim } = insertPayload as {
+    const {
+      claim_token: _dropPlain,
+      claim_token_sha256: _dropHash,
+      ...payloadWithoutClaim
+    } = insertPayload as {
       claim_token?: string;
+      claim_token_sha256?: string;
       [k: string]: unknown;
     };
-    void _drop;
+    void _dropPlain;
+    void _dropHash;
     const retry = await supabase
       .from("draft_pitches")
       .insert(payloadWithoutClaim)
@@ -270,9 +323,9 @@ export async function POST(req: NextRequest) {
     if (!retry.error && retry.data) {
       row = retry.data;
       dbErr = null;
-      Sentry.captureMessage("[draft] claim_token column missing", {
+      Sentry.captureMessage("[draft] claim_token column(s) missing", {
         level: "warning",
-        tags: { route: "draft", phase: "schema-drift-018" },
+        tags: { route: "draft", phase: "schema-drift-018-or-023" },
       });
     }
   }
