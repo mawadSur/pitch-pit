@@ -2,17 +2,18 @@
 //   <Logo variant="mark" />      → just the symbol
 //   <Logo variant="lockup" />    → symbol + wordmark in a horizontal row
 //
-// The mark is a geometric V (the "pit" cross-section): two diagonal gold
-// lines converging to an apex, with a glowing gold token at the point.
-// A thin rim line above the V suggests the pit's mouth. Pure SVG, scales
-// crisp from 16px favicon through giant brand mark.
+// The mark is a minimal hourglass glyph — two triangular cones joined at
+// a narrow neck, geometry derived from the full Hourglass.tsx component
+// (viewBox 0 0 120 180). Gold stroke on transparent, reads crisp from
+// 16px favicon through large brand mark. The wordmark "pitch-pit" sits
+// alongside in the lockup variant.
 
 import { cn } from "@/lib/utils";
 
 type Variant = "mark" | "lockup";
 
 interface LogoProps {
-  size?: number; // height in px (mark uses square; lockup matches mark height)
+  size?: number; // height in px (mark is 2:3 aspect; lockup matches mark height)
   variant?: Variant;
   monochrome?: boolean; // render gold elements as currentColor
   className?: string;
@@ -27,11 +28,11 @@ export function Logo({
   wordClassName,
 }: LogoProps) {
   if (variant === "mark") {
-    return <PitMark size={size} monochrome={monochrome} className={className} />;
+    return <HourglassMark size={size} monochrome={monochrome} className={className} />;
   }
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <PitMark size={size} monochrome={monochrome} />
+      <HourglassMark size={size} monochrome={monochrome} />
       <span
         className={cn(
           "whitespace-nowrap text-[0.95em] font-medium leading-none tracking-[-0.013em] text-white",
@@ -49,7 +50,11 @@ export function Logo({
   );
 }
 
-function PitMark({
+// Minimal hourglass glyph — geometry mirrors Hourglass.tsx (120×180 viewBox).
+// Top cone: wide at y=2 (cap top), narrows to neck at y=88-94.
+// Bottom cone: neck at y=88-94, widens to y=178 (cap bottom).
+// Horizontal cap bars at top and bottom echo the brushed-gold caps.
+function HourglassMark({
   size = 24,
   monochrome = false,
   className,
@@ -58,84 +63,47 @@ function PitMark({
   monochrome?: boolean;
   className?: string;
 }) {
-  const stroke = monochrome ? "currentColor" : "url(#pp-mark-stroke)";
-  const tokenFill = monochrome ? "currentColor" : "url(#pp-mark-token)";
-  const rim = monochrome ? "currentColor" : "#FFB800";
+  const gold = monochrome ? "currentColor" : "#FFB800";
+  // Hourglass is 2:3 aspect (120×180 viewBox). Render width proportionally.
+  const w = Math.round(size * (2 / 3));
 
   return (
     <svg
-      width={size}
+      width={w}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 120 180"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="pitch-pit"
       className={className}
     >
-      <defs>
-        {/* stroke gradient — slight luminance from rim down toward apex */}
-        <linearGradient id="pp-mark-stroke" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FFE7A3" />
-          <stop offset="55%" stopColor="#FFB800" />
-          <stop offset="100%" stopColor="#9A7100" />
-        </linearGradient>
-        {/* token glow — bright core fading to deep gold */}
-        <radialGradient id="pp-mark-token" cx="50%" cy="45%" r="50%">
-          <stop offset="0%" stopColor="#FFF2C4" />
-          <stop offset="55%" stopColor="#FFB800" />
-          <stop offset="100%" stopColor="#8B6500" />
-        </radialGradient>
-        {/* outer halo — soft glow behind the token */}
-        <radialGradient id="pp-mark-halo" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#FFB800" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#FFB800" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-
-      {/* token halo — scales nicely; barely visible at 16px, atmospheric at 48px+ */}
-      <circle cx="16" cy="24.5" r="6" fill="url(#pp-mark-halo)" />
-
-      {/* pit's mouth — subtle horizontal rim above the V */}
-      <line
-        x1="6.5"
-        y1="9"
-        x2="25.5"
-        y2="9"
-        stroke={rim}
-        strokeWidth="0.9"
-        strokeLinecap="round"
-        opacity="0.42"
-      />
-
-      {/* the V — two diagonal walls converging to the apex */}
+      {/* top cap bar */}
+      <rect x="14" y="2" width="92" height="8" rx="1.5" fill={gold} />
+      {/* top cone — wide at cap, narrows to neck */}
+      <path d="M 18 10 L 102 10 L 64 88 L 56 88 Z" fill={gold} opacity="0.15" />
       <path
-        d="M4.5 9 L16 24.5 L27.5 9"
-        stroke={stroke}
-        strokeWidth="2"
+        d="M 18 10 L 56 88 M 102 10 L 64 88"
+        stroke={gold}
+        strokeWidth="2.5"
         strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
       />
-
-      {/* token at the apex */}
-      <circle
-        cx="16"
-        cy="24.5"
-        r="2.6"
-        fill={tokenFill}
-        stroke={monochrome ? "currentColor" : "#FFE7A3"}
-        strokeWidth="0.4"
+      {/* neck connector */}
+      <rect x="56" y="88" width="8" height="6" fill={gold} opacity="0.55" />
+      {/* bottom cone — neck to wide base */}
+      <path d="M 56 94 L 64 94 L 102 170 L 18 170 Z" fill={gold} opacity="0.15" />
+      <path
+        d="M 56 94 L 18 170 M 64 94 L 102 170"
+        stroke={gold}
+        strokeWidth="2.5"
+        strokeLinecap="round"
       />
-
-      {/* tiny inner highlight on the token for the "polished" feel */}
-      <circle
-        cx="15.4"
-        cy="23.9"
-        r="0.7"
-        fill="#FFF7DD"
-        opacity={monochrome ? "0" : "0.85"}
-      />
+      {/* bottom cap bar */}
+      <rect x="14" y="170" width="92" height="8" rx="1.5" fill={gold} />
+      {/* sand dots — two small circles suggesting fallen sand in the bottom */}
+      <circle cx="60" cy="148" r="2.5" fill={gold} opacity="0.7" />
+      <circle cx="52" cy="162" r="2" fill={gold} opacity="0.5" />
+      <circle cx="68" cy="162" r="2" fill={gold} opacity="0.5" />
     </svg>
   );
 }

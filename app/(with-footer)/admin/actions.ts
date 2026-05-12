@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminFromServerAction } from "@/lib/admin-auth";
+import { sendBuildNotification } from "@/lib/email";
 
 const ADMIN_PATHS = ["/admin", "/feed", "/leaderboard", "/built"] as const;
 
@@ -62,6 +63,13 @@ export async function startBuilding(ideaId: string) {
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
+  const { data: idea, error: fetchErr } = await supabase
+    .from("ideas")
+    .select("id,title,pitch,score,final_score,verdict,strengths,concerns,reasoning")
+    .eq("id", ideaId)
+    .single();
+  if (fetchErr) return { error: fetchErr.message };
+
   const { error: ideaErr } = await supabase
     .from("ideas")
     .update({ status: "building" })
@@ -75,6 +83,14 @@ export async function startBuilding(ideaId: string) {
   if (queueErr) return { error: queueErr.message };
 
   revalidateAll(ideaId);
+
+  // Best-effort email — never block or surface errors to the admin caller.
+  try {
+    await sendBuildNotification(idea);
+  } catch (err) {
+    console.error("[startBuilding] Failed to send build notification:", err);
+  }
+
   return { ok: true };
 }
 

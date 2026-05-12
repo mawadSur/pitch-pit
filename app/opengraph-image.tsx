@@ -38,18 +38,42 @@ export default function OpengraphImage() {
             filter: "blur(40px)",
           }}
         />
+        {/* hourglass kicker glyph + wordmark */}
         <div
           style={{
             display: "flex",
-            fontSize: 18,
-            letterSpacing: 8,
-            textTransform: "uppercase",
-            color: "#FFB800",
-            fontFamily: "monospace",
+            alignItems: "center",
+            gap: 16,
             marginBottom: 24,
           }}
         >
-          · pitch-pit ·
+          <svg
+            width="20"
+            height="30"
+            viewBox="0 0 120 180"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect x="14" y="2" width="92" height="9" rx="1.5" fill="#FFB800" />
+            <path d="M 18 11 L 102 11 L 64 88 L 56 88 Z" fill="#FFB800" opacity="0.3" />
+            <path d="M 18 11 L 56 88 M 102 11 L 64 88" stroke="#FFB800" strokeWidth="5" strokeLinecap="round" />
+            <rect x="55" y="88" width="10" height="6" rx="1" fill="#FFB800" />
+            <path d="M 56 94 L 64 94 L 102 169 L 18 169 Z" fill="#FFB800" opacity="0.6" />
+            <path d="M 56 94 L 18 169 M 64 94 L 102 169" stroke="#FFB800" strokeWidth="5" strokeLinecap="round" />
+            <rect x="14" y="169" width="92" height="9" rx="1.5" fill="#FFB800" />
+          </svg>
+          <div
+            style={{
+              display: "flex",
+              fontSize: 18,
+              letterSpacing: 8,
+              textTransform: "uppercase",
+              color: "#FFB800",
+              fontFamily: "monospace",
+            }}
+          >
+            · pitch-pit ·
+          </div>
         </div>
         <div
           style={{

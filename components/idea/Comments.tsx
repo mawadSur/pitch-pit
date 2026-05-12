@@ -224,12 +224,18 @@ export function Comments({
                 maxLength={MAX_LEN}
                 placeholder="Add to the conversation…"
                 aria-label="Add a comment"
+                aria-invalid={!!error}
+                aria-describedby="add-comment-error"
                 autoComplete="off"
                 className="block w-full resize-y rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-base leading-relaxed text-white placeholder:text-white/30 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
               />
             </label>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
+              <p
+                id="add-comment-error"
+                className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/55"
+                role={error ? "alert" : undefined}
+              >
                 {error ? (
                   <span className="text-red-300/85">{error}</span>
                 ) : (
@@ -597,11 +603,19 @@ function CommentRow({
               rows={3}
               maxLength={1000}
               aria-label="Edit your comment"
+              aria-invalid={!!error}
+              aria-describedby={`edit-comment-error-${comment.id}`}
               className="block w-full resize-y rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-base leading-snug text-white placeholder:text-white/30 transition-colors focus:border-[var(--scene-gold)]/55 focus:outline-none focus:ring-1 focus:ring-[var(--scene-gold)]/40"
             />
             <div className="flex flex-wrap items-center justify-end gap-2 scene-mono text-[0.65rem] uppercase tracking-[0.3em]">
               {error && (
-                <span className="mr-auto text-red-300/85">{error}</span>
+                <span
+                  id={`edit-comment-error-${comment.id}`}
+                  role="alert"
+                  className="mr-auto text-red-300/85"
+                >
+                  {error}
+                </span>
               )}
               <button
                 type="button"

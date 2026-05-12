@@ -30,6 +30,8 @@ const JUDGE_ACCENTS: Record<JudgeId, {
   ctaBg: string;
   ctaBgHover: string;
   ctaBorder: string;
+  letterheadColor: string;
+  stampBorder: string;
 }> = {
   gstack: {
     text: "text-[var(--scene-gold)]",
@@ -39,6 +41,8 @@ const JUDGE_ACCENTS: Record<JudgeId, {
     ctaBg: "bg-[var(--scene-gold)]/[0.08]",
     ctaBgHover: "hover:bg-[var(--scene-gold)]/[0.16]",
     ctaBorder: "border-[var(--scene-gold)]/40",
+    letterheadColor: "rgba(255, 184, 0, 0.45)",
+    stampBorder: "border-[var(--scene-gold)]",
   },
   vee: {
     text: "text-[var(--scene-oxblood-bright)]",
@@ -48,6 +52,8 @@ const JUDGE_ACCENTS: Record<JudgeId, {
     ctaBg: "bg-[var(--scene-oxblood-bright)]/[0.08]",
     ctaBgHover: "hover:bg-[var(--scene-oxblood-bright)]/[0.16]",
     ctaBorder: "border-[var(--scene-oxblood-bright)]/40",
+    letterheadColor: "rgba(181, 58, 77, 0.45)",
+    stampBorder: "border-[var(--scene-oxblood-bright)]",
   },
   robbins: {
     text: "text-[var(--scene-verdigris-bright)]",
@@ -57,6 +63,8 @@ const JUDGE_ACCENTS: Record<JudgeId, {
     ctaBg: "bg-[var(--scene-verdigris-bright)]/[0.08]",
     ctaBgHover: "hover:bg-[var(--scene-verdigris-bright)]/[0.16]",
     ctaBorder: "border-[var(--scene-verdigris-bright)]/40",
+    letterheadColor: "rgba(136, 184, 156, 0.45)",
+    stampBorder: "border-[var(--scene-verdigris-bright)]",
   },
 };
 
@@ -86,8 +94,29 @@ export function JudgeCardClient({
         ease: [0.16, 1, 0.3, 1],
         delay: index * 0.06,
       }}
-      className="relative min-h-[420px] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6 backdrop-blur-md"
+      className="relative min-h-[420px] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-md"
     >
+      {/* Letterhead double-rule: two horizontal lines at top and bottom,
+          per-judge accent color, creating a notary/stamp border feel. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[9px]"
+        style={{
+          borderTop: `1px solid ${accent.letterheadColor}`,
+          borderBottom: `1px solid ${accent.letterheadColor}`,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[9px]"
+        style={{
+          borderTop: `1px solid ${accent.letterheadColor}`,
+          borderBottom: `1px solid ${accent.letterheadColor}`,
+        }}
+      />
+
+      <div className="p-6">
+
       {/* accent flash on reveal — subtle box-shadow keyframe in this
           judge's accent color rather than universal gold. */}
       {result && <AccentFlash color={accent.flashShadow} />}
@@ -113,12 +142,13 @@ export function JudgeCardClient({
             score={result.score}
             textClass={accent.text}
             shadow={accent.shadow}
+            stampBorder={accent.stampBorder}
           />
         )}
       </header>
 
       <div className="mt-5">
-        <h3 className="text-lg font-semibold text-white">{judge.name}</h3>
+        <h3 className="scene-display text-xl font-semibold text-white sm:text-2xl">{judge.name}</h3>
         <p className="scene-mono mt-1 text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
           {judge.role}
         </p>
@@ -181,6 +211,8 @@ export function JudgeCardClient({
           )}
         </>
       )}
+
+      </div>{/* end inner p-6 wrapper */}
     </motion.article>
   );
 }
@@ -189,10 +221,12 @@ function ScoreNumber({
   score,
   textClass,
   shadow,
+  stampBorder,
 }: {
   score: number;
   textClass: string;
   shadow: string;
+  stampBorder: string;
 }) {
   const reduce = useReducedMotion();
   // Snap to final value when reduced-motion is requested. `useMotionValue`
@@ -216,19 +250,18 @@ function ScoreNumber({
   }, [mv, score, reduce]);
 
   return (
-    <div className="flex min-w-0 items-baseline">
-      {/* Sized so the two-digit numeral + "/10" suffix fits inside the
-          card's right edge across every breakpoint — including the
-          narrowest case (xl:grid-cols-3 inside max-w-6xl, ~360px per
-          card minus the 96px portrait + gap-4 + p-6). The previous
-          112px was getting clipped by the article's overflow-hidden. */}
+    /* Stamp treatment: circular badge, per-judge accent border, subtle
+       rotation — evoking an old US-government rubber stamp impression. */
+    <div
+      className={`inline-flex h-20 w-20 -rotate-2 flex-col items-center justify-center rounded-full border-2 ${stampBorder} bg-black/30`}
+    >
       <motion.span
-        className={`scene-numeral scene-foil text-[64px] sm:text-[80px] ${textClass}`}
+        className={`scene-numeral text-[1.75rem] leading-none ${textClass}`}
         style={{ textShadow: shadow }}
       >
         {display}
       </motion.span>
-      <span className="ml-1 text-xl tabular-nums text-white/55">/10</span>
+      <span className="mt-0.5 font-mono text-[0.55rem] tabular-nums text-white/45">/10</span>
     </div>
   );
 }

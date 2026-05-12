@@ -554,6 +554,8 @@ function Panel1() {
                 rows={1}
                 maxLength={SUBMIT_LIMITS.pitchMax}
                 aria-label="Pitch your idea"
+                aria-invalid={!!error}
+                aria-describedby="pitch-error"
                 autoComplete="off"
                 inputMode="text"
                 // Touch: "enter" so the on-screen keyboard's return key
@@ -640,6 +642,7 @@ function Panel1() {
         style={{ zIndex: 10 }}
       >
         <p
+          id="pitch-error"
           className={`scene-mono text-[0.65rem] uppercase tracking-[0.35em] sm:text-[0.65rem] ${
             error
               ? "text-red-300/85"

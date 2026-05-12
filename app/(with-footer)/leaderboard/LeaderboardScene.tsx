@@ -544,32 +544,33 @@ function PodiumSlot({
   const numeralGlow = isFirst
     ? { textShadow: "0 0 36px rgba(255,184,0,0.35)" }
     : undefined;
+  // Rank-differentiated numeral sizes: 1 largest, 2/3 progressively smaller.
+  const numeralSize = isFirst
+    ? "text-[96px] sm:text-[140px] lg:text-[180px]"
+    : "text-[64px] sm:text-[100px] lg:text-[140px]";
 
   // Empty placeholder — keeps grid columns from collapsing.
   if (!idea) {
     return (
       <div
         className={cn(
-          "relative flex flex-col items-center px-6 py-8 text-center",
+          "relative flex flex-col gap-4 px-6 py-8 sm:flex-row sm:items-start",
           order,
           isFirst ? "lg:-mt-4 lg:scale-105" : "",
         )}
       >
         <div
-          className={cn(
-            "scene-numeral text-[140px] sm:text-[180px] lg:text-[220px]",
-            "text-white/15",
-          )}
+          className={cn("scene-numeral shrink-0 leading-none", numeralSize, "text-white/15")}
           aria-hidden
         >
           {String(rank).padStart(2, "0")}
         </div>
-        <div className="scene-display mt-2 text-xl text-white/35 sm:text-2xl">
-          —
+        <div className="flex flex-col justify-center gap-1">
+          <div className="scene-display text-xl text-white/35 sm:text-2xl">—</div>
+          <p className="scene-mono text-[0.55rem] uppercase tracking-[0.35em] text-white/35">
+            Awaiting
+          </p>
         </div>
-        <p className="scene-mono mt-3 text-[0.55rem] uppercase tracking-[0.35em] text-white/35">
-          Awaiting
-        </p>
       </div>
     );
   }
@@ -583,7 +584,7 @@ function PodiumSlot({
       href={ideaPath(idea.id, idea.title)}
       aria-label={`Rank ${rank}: ${idea.title}`}
       className={cn(
-        "group relative flex flex-col items-center rounded-2xl px-6 py-8 text-center",
+        "group relative flex flex-col gap-4 rounded-2xl px-6 py-8 sm:flex-row sm:items-start",
         "border border-white/[0.06] bg-white/[0.015]",
         "transition-all duration-300",
         "hover:border-[var(--scene-gold)]/40 hover:bg-white/[0.025]",
@@ -593,12 +594,14 @@ function PodiumSlot({
         isFirst ? "lg:-mt-4 lg:scale-110" : "",
       )}
     >
+      {/* Rank numeral — anchored left, title and metadata flow to the right */}
       <div
         className={cn(
-          "scene-numeral text-[140px] sm:text-[180px] lg:text-[220px]",
+          "scene-numeral shrink-0 leading-none",
           // Only rank 1 gets the foil sweep — keeps the moment
           // singular instead of three numerals fighting for the eye.
           isFirst && "scene-foil",
+          numeralSize,
           numeralColor,
         )}
         style={numeralGlow}
@@ -607,52 +610,54 @@ function PodiumSlot({
         {String(rank).padStart(2, "0")}
       </div>
 
-      <h3 className="scene-display mt-2 line-clamp-2 text-xl font-medium text-white sm:text-2xl">
-        {idea.title}
-      </h3>
+      {/* Metadata column — title, score, votes, share */}
+      <div className="flex min-w-0 flex-col justify-center gap-3">
+        <h3 className="scene-display line-clamp-2 text-xl font-medium text-white sm:text-2xl">
+          {idea.title}
+        </h3>
 
-      {isBuilt && (
-        <span className="scene-mono mt-3 inline-flex items-center rounded-full border border-[var(--scene-verdigris-bright)]/40 bg-[var(--scene-verdigris)]/10 px-2 py-0.5 text-[0.55rem] uppercase tracking-[0.3em] text-[var(--scene-verdigris-bright)]">
-          Built
-        </span>
-      )}
-
-      <div className="mt-5 flex items-baseline justify-center gap-1">
-        <span
-          className="scene-numeral text-3xl tabular-nums"
-          style={{ color: scoreColor }}
-        >
-          {idea.final_score ?? 0}
-        </span>
-        <span className="text-base tabular-nums text-white/45">/100</span>
-      </div>
-
-      <p className="scene-mono mt-3 text-[0.65rem] uppercase tracking-[0.16em] text-white/55">
-        {idea.vote_count === 0 ? (
-          <span className="text-white/55">AI-only · awaiting votes</span>
-        ) : (
-          <>{formatVoteCount(idea.vote_count)} votes</>
+        {isBuilt && (
+          <span className="scene-mono inline-flex w-fit items-center rounded-full border border-[var(--scene-verdigris-bright)]/40 bg-[var(--scene-verdigris)]/10 px-2 py-0.5 text-[0.55rem] uppercase tracking-[0.3em] text-[var(--scene-verdigris-bright)]">
+            Built
+          </span>
         )}
-      </p>
 
-      <div
-        className="mt-4"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-        role="presentation"
-      >
-        <ShareMenu
-          idea={{
-            id: idea.id,
-            title: idea.title,
-            verdict: idea.verdict,
-            finalScore: idea.final_score ?? Math.round(idea.score * 10),
-            aiScore: idea.score,
-            voteCount: idea.vote_count,
-          }}
-          variant="icon"
-          ariaLabel={`Share "${idea.title}"`}
-        />
+        <div className="flex items-baseline gap-1">
+          <span
+            className="scene-numeral text-3xl tabular-nums"
+            style={{ color: scoreColor }}
+          >
+            {idea.final_score ?? 0}
+          </span>
+          <span className="text-base tabular-nums text-white/45">/100</span>
+        </div>
+
+        <p className="scene-mono text-[0.65rem] uppercase tracking-[0.16em] text-white/55">
+          {idea.vote_count === 0 ? (
+            <span className="text-white/55">AI-only · awaiting votes</span>
+          ) : (
+            <>{formatVoteCount(idea.vote_count)} votes</>
+          )}
+        </p>
+
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <ShareMenu
+            idea={{
+              id: idea.id,
+              title: idea.title,
+              verdict: idea.verdict,
+              finalScore: idea.final_score ?? Math.round(idea.score * 10),
+              aiScore: idea.score,
+              voteCount: idea.vote_count,
+            }}
+            variant="icon"
+            ariaLabel={`Share "${idea.title}"`}
+          />
+        </div>
       </div>
     </Link>
   );

@@ -157,7 +157,7 @@ export function Reveal({
             transition={{ duration: 0.6, delay: 1.0 }}
             className="mt-6 text-center"
           >
-            <h1 className="text-balance text-2xl font-medium leading-tight text-white sm:text-3xl">
+            <h1 className="scene-display text-balance text-4xl font-semibold leading-tight tracking-tight text-white sm:text-6xl">
               {idea.title}
             </h1>
             {idea.handle && (
@@ -178,7 +178,7 @@ export function Reveal({
             <p className="scene-mono mb-5 text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
               · The Verdict ·
             </p>
-            <p className="scene-display-italic mx-auto max-w-3xl text-balance text-3xl leading-tight text-white/92 sm:text-5xl">
+            <p className="scene-display-italic mx-auto max-w-3xl text-balance text-3xl leading-[1.1] text-white/92 sm:text-[56px] lg:text-7xl">
               &ldquo;{idea.verdict}&rdquo;
             </p>
             {/* Lead-reviewer attribution. Only shown for ideas scored under

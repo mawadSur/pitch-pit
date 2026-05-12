@@ -93,6 +93,9 @@ export default async function JudgeRoute({
       className={`scene min-h-screen ${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}
       style={{ background: "var(--scene-bg)" }}
     >
+      {/* Film grain overlay — matches the cinematic treatment on /idea/[id]
+          so entering the judge route doesn't feel like leaving the brand. */}
+      <div aria-hidden className="scene-grain" />
       <MinimalistHeader />
 
       <MotionWrapper>

@@ -53,3 +53,10 @@ supabase/.temp/
 
 # Marketing notes (not for the repo)
 marketing.md
+
+# Agent tooling artifacts
+.claude-flow/
+.swarm/
+agentdb.rvf
+agentdb.rvf.lock
+ruvector.db
