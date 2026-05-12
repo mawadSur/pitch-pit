@@ -21,10 +21,11 @@ const projectRoot = path.resolve(__dirname, "..");
 const homeScenePath = path.join(projectRoot, "app", "(no-footer)", "HomeScene.tsx");
 const framesRoot = path.join(projectRoot, "public", "scene");
 
-// Triples of (constant name, directory name) — order matches the three
-// panels: capture, judge, winner.
+// Pairs of (constant name, directory name). Panel 1 was switched to
+// image-only (no scrub), so FRAMES_1_COUNT was removed and frames-1/ is
+// no longer validated here. The directory still exists on disk in case
+// the scrub returns. Add a third entry back if you re-enable Panel 1.
 const PANELS = [
-  { constant: "FRAMES_1_COUNT", dir: "frames-1" },
   { constant: "FRAMES_2_COUNT", dir: "frames-2" },
   { constant: "FRAMES_3_COUNT", dir: "frames-3" },
 ];

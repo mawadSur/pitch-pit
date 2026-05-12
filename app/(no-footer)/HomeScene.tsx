@@ -28,7 +28,9 @@ import type { VerdictCard } from "./types";
 // VerdictCard from "./HomeScene" don't need their import path updated.
 export type { VerdictCard } from "./types";
 
-const FRAMES_1_COUNT = 91;
+// Panel 1 is image-only (no canvas scrub) — see the Panel 1 JSX comment
+// for the rationale. FRAMES_1_COUNT was removed; frames-1 still exists
+// on disk under public/scene/frames-1/ in case the scrub returns later.
 const FRAMES_2_COUNT = 90;
 const FRAMES_3_COUNT = 90;
 
@@ -76,14 +78,17 @@ export function HomeScene({
         <MinimalistHeader />
 
       <main id="main" tabIndex={-1} className="scene relative bg-black">
-        {/* Panel 1 — Capture. h-[200vh] gives the canvas a full 100vh of
-            pinned scroll to scrub all 91 frames in front of the user before
-            the panel hands off. Frame scrub completes during pin, not after. */}
+        {/* Panel 1 — Capture. Image-only single 100vh hero. The frame-scrub
+            canvas + 200vh sticky pin were removed because the pinned scroll
+            (200vh of "nothing happens" with the canvas slowly playing) made
+            the first-impression scroll feel sticky and disorienting on
+            multiple devices. The static firstimage.avif now holds the bg
+            for one normal viewport, the form sits on top, and scrolling
+            past hands off cleanly to Panel 2 — which keeps its cinematic
+            scrub because it's a deliberate scroll-to-reveal mid-page,
+            not the landing experience. */}
         <HeroPanel
           image="/scene/firstimage.avif"
-          framesPath="/scene/frames-1"
-          frameCount={FRAMES_1_COUNT}
-          heightVh={200}
           alt=""
           tone="dark"
           priority
