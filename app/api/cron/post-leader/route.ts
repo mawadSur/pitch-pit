@@ -8,6 +8,11 @@ export const runtime = "nodejs";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://pitchpit.app";
 
+// Days (in UTC) on which the leader tweet should fire.
+// Sun=0, Thu=4, Sat=6 — three weekly advertising beats during the open week.
+// The Vercel cron fires daily; this filter is what shapes the cadence.
+const POST_DAYS_UTC = new Set([0, 4, 6]);
+
 function verifyCronAuth(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -49,6 +54,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  const now = new Date();
+  const dayOfWeek = now.getUTCDay();
+  if (!POST_DAYS_UTC.has(dayOfWeek)) {
+    return NextResponse.json({ skipped: "not-a-post-day", dayOfWeek });
+  }
+
   const supabase = createAdminClient();
 
   // Open week (the one currently accepting votes)
@@ -82,10 +93,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skipped: "no-leader-yet" });
   }
 
-  // Idempotency: one leader post per week. If you want one per leader change,
-  // include the idea id in the key — but that risks tweet spam when leaders
-  // flip-flop, so we keep it to one per week.
-  const eventKey = `current-leader-week-${week.week_number}`;
+  // Idempotency: one leader post per (week × UTC date). Daily cron fires
+  // get filtered to Sun/Thu/Sat above, so we expect 3 rows per open week.
+  // Date in the key prevents double-posting if a single day fires twice
+  // (Vercel cron retries on non-2xx), while still allowing the next post day.
+  const today = now.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  const eventKey = `current-leader-week-${week.week_number}-${today}`;
 
   const { data: existing } = await supabase
     .from("social_posts")
