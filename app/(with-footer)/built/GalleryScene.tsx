@@ -256,20 +256,32 @@ function MvpFrame({
   );
 }
 
+/* ════════════════════════ EmptyGallery ══════════════════════════════
+ * Branded empty state for /built. The empty pedestal SVG carries the
+ * weight visually — the copy then sets expectations (a winner each
+ * week, ships under their own name) and the CTA routes to /leaderboard,
+ * where users can see the contest in motion before it produces a
+ * shipped build. Mono kicker under the CTA stays for the "winners ship
+ * under their own name" promise — it's the contest's central wager.
+ * ────────────────────────────────────────────────────────────────────── */
 function EmptyGallery() {
   return (
-    <div className="mt-20 flex flex-col items-center text-center">
+    <div className="mt-20 flex flex-col items-center px-4 text-center">
       <Pedestal />
-      <p className="mt-10 scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)]">
+      <p className="mt-10 scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.65rem]">
         · the gallery is dark ·
       </p>
-      <h2 className="scene-display-italic mt-5 max-w-2xl text-balance text-3xl leading-tight text-white sm:text-5xl">
+      <h2 className="scene-display-italic mt-5 max-w-2xl text-balance text-3xl leading-[1.05] text-white sm:text-5xl lg:text-6xl">
         Nothing has been built &mdash; yet.
       </h2>
-      <p className="scene-display mx-auto mt-5 max-w-xl text-base text-white/55 sm:text-lg">
-        Earn a sharp score. Be greenlit. Watch your idea ship.
+      <p className="scene-display mx-auto mt-5 max-w-xl text-balance text-base leading-snug text-white/72 sm:text-lg">
+        Each week&rsquo;s winner gets shipped under their own name. The
+        first build lands next week.
       </p>
-      <p className="scene-mono mx-auto mt-4 max-w-xl text-[0.55rem] uppercase tracking-[0.32em] text-white/35">
+      <Link href="/leaderboard" className="cta-btn-primary mt-7 text-sm">
+        See the leaderboard <span aria-hidden>→</span>
+      </Link>
+      <p className="scene-mono mx-auto mt-5 max-w-xl text-[0.55rem] uppercase tracking-[0.32em] text-white/35">
         winners ship under their own name
       </p>
     </div>

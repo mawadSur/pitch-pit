@@ -831,21 +831,29 @@ function JudgeBreakdown({
   );
 }
 
+/* ════════════════════════ Empty ═════════════════════════════════════
+ * Branded empty state for both tabs. The headline is serif italic
+ * (Fraunces) so it reads as a moment, not a status. The mono eyebrow
+ * + supporting body keep the brand's three-axis typography rhythm.
+ * Both variants land the user on `/` (the homepage pitch pill) — the
+ * natural next action when there's nothing yet to read.
+ * ────────────────────────────────────────────────────────────────────── */
 function Empty({ tab }: { tab: Tab }) {
+  const isAllTime = tab === "alltime";
   return (
-    <div className="mt-20 flex flex-col items-center gap-6 text-center">
-      <p className="scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)]">
-        {tab === "alltime" ? "· awaiting first champion ·" : "· week not yet judged ·"}
+    <div className="mt-20 flex flex-col items-center gap-6 px-4 text-center sm:mt-24">
+      <p className="scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.65rem]">
+        {isAllTime ? "· no victors yet ·" : "· this week's pit is open ·"}
       </p>
-      <h2 className="scene-display-italic max-w-2xl text-balance text-3xl leading-tight text-white sm:text-5xl">
-        {tab === "alltime"
-          ? "The leaderboard is empty."
-          : "No idea has crossed the wire this week."}
+      <h2 className="scene-display-italic max-w-2xl text-balance text-3xl leading-[1.05] text-white sm:text-5xl lg:text-6xl">
+        {isAllTime ? "The pit is hungry." : "Nothing scored this week."}
       </h2>
-      <p className="scene-display max-w-md text-balance text-base text-white/55 sm:text-lg">
-        First pitches landing soon. Be the first.
+      <p className="scene-display max-w-md text-balance text-base leading-snug text-white/72 sm:text-lg">
+        {isAllTime
+          ? "Names appear here once the gamemaster has weighed them. Yours could be first."
+          : "The hourglass hasn't drained. First tribute through gets the top of the page."}
       </p>
-      <Link href="/submissions" className="cta-btn-primary mt-3 text-sm">
+      <Link href="/" className="cta-btn-primary mt-3 text-sm">
         Pitch your idea <span aria-hidden>→</span>
       </Link>
     </div>

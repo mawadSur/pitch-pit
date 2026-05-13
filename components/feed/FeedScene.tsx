@@ -238,20 +238,27 @@ function FilterBar({
   );
 }
 
+/* ════════════════════════ ZeroState ═════════════════════════════════
+ * Branded empty state for the feed when no tributes exist yet. The
+ * page remains mounted so the realtime subscription above is still
+ * live — when the first INSERT lands, `ideas.length` flips to 1 and
+ * this component unmounts in favor of the live list. The CTA points
+ * at `/` because the homepage pitch pill is the natural next action.
+ * ────────────────────────────────────────────────────────────────────── */
 function ZeroState() {
   return (
-    <div className="mt-20 flex flex-col items-center gap-6 text-center">
-      <p className="scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)]">
-        · the pit is empty ·
+    <div className="mt-20 flex flex-col items-center gap-6 px-4 text-center sm:mt-24">
+      <p className="scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.65rem]">
+        · the pit is silent ·
       </p>
-      <h2 className="scene-display-italic max-w-2xl text-balance text-3xl leading-tight text-white sm:text-5xl">
-        Stake your claim.
+      <h2 className="scene-display-italic max-w-2xl text-balance text-3xl leading-[1.05] text-white sm:text-5xl lg:text-6xl">
+        Nothing in the feed yet.
       </h2>
-      <p className="scene-display max-w-md text-balance text-base leading-snug text-white/55 sm:text-lg">
-        Be the first to enter the pit. Three judges. One winner.
+      <p className="scene-display max-w-md text-balance text-base leading-snug text-white/72 sm:text-lg">
+        Tributes appear here the moment they&rsquo;re scored. The next one could be yours.
       </p>
       <Link href="/" className="cta-btn-primary mt-3 text-sm">
-        Pitch your idea <span aria-hidden>→</span>
+        Pitch yours <span aria-hidden>→</span>
       </Link>
     </div>
   );
