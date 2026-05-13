@@ -24,6 +24,29 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  build:
+    name: Build + type-check (Next.js)
+    runs-on: ubuntu-latest
+    # `next build` runs the TypeScript compiler and renders the static parts
+    # of every route. Module-load code in the Supabase + Sentry SDKs throws
+    # if these env vars are missing, so we set stubs — the build doesn't
+    # hit the network or the DB.
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-stub-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-stub-service-role-key
+      ANTHROPIC_API_KEY: ci-stub-anthropic-key
+      ADMIN_PASSWORD: ci-stub-admin-password
+      NEXT_PUBLIC_SITE_URL: http://localhost:3100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
   e2e:
     name: E2E smoke tests (Playwright)
     runs-on: ubuntu-latest
