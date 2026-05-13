@@ -450,7 +450,10 @@ function Panel1() {
         <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-white/55 sm:text-[0.92rem]">
           ↘ The pit closes Monday at midnight EST
         </p>
-        <h1 className="mt-5 max-w-3xl text-balance text-[2rem] font-medium leading-[1.04] text-white sm:text-5xl lg:text-6xl">
+        {/* Mobile h1 dropped from 2rem→1.625rem (and mt-5→mt-3) so the
+            headline never wraps into the countdown at top-[32%]. The
+            sm: breakpoint restores the larger display sizing on tablet+. */}
+        <h1 className="mt-3 max-w-3xl text-balance text-[1.625rem] font-medium leading-[1.08] text-white sm:mt-5 sm:text-5xl sm:leading-[1.04] lg:text-6xl">
           Pitch your idea. The{" "}
           <FoilSweep>
             <span className="italic text-[var(--scene-gold-bright)]">
@@ -498,7 +501,7 @@ function Panel1() {
         // the input is visibly wider, matching the size bump the user
         // requested. Inner padding is also bumped 10% on the input
         // shell below.
-        className="absolute inset-x-0 top-[52%] mx-auto w-full max-w-[740px] px-6"
+        className="absolute inset-x-0 top-[48%] mx-auto w-full max-w-[740px] px-6 sm:top-[52%]"
         style={{ zIndex: 10 }}
       >
         {/* Pitch coach — above the input. Quality checks, AI follow-ups,
@@ -638,7 +641,7 @@ function Panel1() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.7, delay: 0.45 }}
-        className="absolute inset-x-0 bottom-[8%] flex flex-col items-center gap-5 px-6 text-center"
+        className="absolute inset-x-0 bottom-[3%] flex flex-col items-center gap-3 px-6 text-center sm:bottom-[8%] sm:gap-5"
         style={{ zIndex: 10 }}
       >
         <p
@@ -673,13 +676,19 @@ function Panel1() {
             (subordinated, not competing). Hides while submitting; the
             counter line above carries the loading copy in that state. */}
         {!pending && (
-          <ExpressLane
-            disabled={pending}
-            onDraftReady={(draft) => {
-              setText(draft);
-              pitchRef.current?.focus();
-            }}
-          />
+          // Hidden on mobile — the primary input above is already the
+          // entry path, and on iPhone-class viewports the panel is too
+          // short to fit a secondary CTA without colliding with the
+          // input pill's counter line above.
+          <div className="hidden sm:contents">
+            <ExpressLane
+              disabled={pending}
+              onDraftReady={(draft) => {
+                setText(draft);
+                pitchRef.current?.focus();
+              }}
+            />
+          </div>
         )}
         <ScrollCue />
       </motion.div>
