@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { loadFraunces, loadFrauncesItalic } from "@/lib/og-fonts";
 
 // Per-idea Open Graph card — rendered when /idea/[id] is shared on
 // social. Matches the cinematic dark+gold treatment of the static
@@ -52,7 +53,11 @@ export default async function OpengraphImage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const idea = await fetchIdea(id);
+  const [idea, frauncesData, frauncesItalicData] = await Promise.all([
+    fetchIdea(id),
+    loadFraunces(),
+    loadFrauncesItalic(),
+  ]);
 
   // Final score is 0–100 (50% AI + 50% community). Fallback chain
   // lets us still render something useful for ideas where the
@@ -64,6 +69,18 @@ export default async function OpengraphImage({
   const title = idea?.title ?? "An idea on pitch-pit";
   const verdict = idea?.verdict ?? "AI-rated. Community-voted.";
   const voteCount = idea?.vote_count ?? 0;
+
+  // Build the font registration list for ImageResponse. Skip null
+  // entries — a failed Google Fonts fetch falls back to system fonts.
+  const fonts: { name: string; data: ArrayBuffer; weight?: 400 | 600; style?: "normal" | "italic" }[] = [];
+  if (frauncesData) {
+    fonts.push({ name: "Fraunces", data: frauncesData, weight: 600, style: "normal" });
+  }
+  if (frauncesItalicData) {
+    fonts.push({ name: "Fraunces", data: frauncesItalicData, weight: 600, style: "italic" });
+  }
+  const hasFraunces = frauncesData !== null;
+  const hasFrauncesItalic = frauncesItalicData !== null;
 
   return new ImageResponse(
     (
@@ -154,11 +171,18 @@ export default async function OpengraphImage({
           <div
             style={{
               display: "flex",
-              fontSize: 64,
+              fontSize: 72,
               fontWeight: 600,
-              lineHeight: 1.08,
-              letterSpacing: -1.5,
+              lineHeight: 1.04,
+              letterSpacing: -2,
               maxWidth: 1040,
+              // Fraunces when the runtime fetch succeeded; otherwise fall
+              // back to system serif → sans. We avoid mixing Fraunces +
+              // generic sans in the title because a missed font load would
+              // shift kerning / x-height noticeably.
+              fontFamily: hasFraunces
+                ? "Fraunces, Georgia, serif"
+                : "Georgia, 'Times New Roman', serif",
             }}
           >
             {truncate(title, 110)}
@@ -166,12 +190,17 @@ export default async function OpengraphImage({
           <div
             style={{
               display: "flex",
-              fontSize: 30,
-              color: "rgba(255,255,255,0.78)",
+              fontSize: 32,
+              color: "rgba(255,255,255,0.82)",
               fontStyle: "italic",
-              lineHeight: 1.35,
-              marginTop: 24,
+              fontWeight: 600,
+              lineHeight: 1.3,
+              marginTop: 28,
               maxWidth: 1040,
+              letterSpacing: -0.5,
+              fontFamily: hasFrauncesItalic
+                ? "Fraunces, Georgia, serif"
+                : "Georgia, 'Times New Roman', serif",
             }}
           >
             &ldquo;{truncate(verdict, 180)}&rdquo;
@@ -199,11 +228,14 @@ export default async function OpengraphImage({
                 <span
                   style={{
                     display: "flex",
-                    fontSize: 96,
-                    fontWeight: 700,
+                    fontSize: 128,
+                    fontWeight: 600,
                     color: "#FFB800",
                     lineHeight: 1,
-                    letterSpacing: -3,
+                    letterSpacing: -5,
+                    fontFamily: hasFraunces
+                      ? "Fraunces, Georgia, serif"
+                      : "Georgia, 'Times New Roman', serif",
                   }}
                 >
                   {finalScore}
@@ -211,9 +243,12 @@ export default async function OpengraphImage({
                 <span
                   style={{
                     display: "flex",
-                    fontSize: 32,
+                    fontSize: 42,
                     color: "rgba(255,255,255,0.45)",
-                    letterSpacing: -1,
+                    letterSpacing: -1.5,
+                    fontFamily: hasFraunces
+                      ? "Fraunces, Georgia, serif"
+                      : "Georgia, 'Times New Roman', serif",
                   }}
                 >
                   /100
@@ -261,6 +296,12 @@ export default async function OpengraphImage({
         </div>
       </div>
     ),
-    size,
+    {
+      ...size,
+      // Register the fetched Fraunces faces with ImageResponse so the
+      // inline fontFamily: "Fraunces, …" declarations resolve. Empty
+      // array when both fetches failed → falls through to Georgia.
+      fonts: fonts.length > 0 ? fonts : undefined,
+    },
   );
 }

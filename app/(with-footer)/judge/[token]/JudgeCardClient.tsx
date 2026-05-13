@@ -22,6 +22,15 @@ import type { ScoreResult } from "@/lib/score-schema";
 // Accents resolve to scene-css tokens; fallback hex values match the
 // bright-on-dark variants documented in the design review (oxblood-bright
 // passes WCAG AA at ~6.5:1, verdigris-bright at ~9:1).
+//
+// wax: rgba background for the letterhead surface. Subtle tint so the
+//   three cards visually rhyme but don't read as three identical glass
+//   panels.
+// rule: the heavy top/bottom rule (1.5px). Pair with hairlineColor for
+//   the inner thin rule to get the double-rule notary-letter feel.
+// stampHex: the raw color used for the notary-stamp inset rings — we
+//   render those via box-shadow which can't reference a CSS variable
+//   safely across all browsers when interpolated into a template string.
 const JUDGE_ACCENTS: Record<JudgeId, {
   text: string;
   ring: string;
@@ -30,41 +39,55 @@ const JUDGE_ACCENTS: Record<JudgeId, {
   ctaBg: string;
   ctaBgHover: string;
   ctaBorder: string;
-  letterheadColor: string;
+  rule: string;
+  hairline: string;
+  wax: string;
   stampBorder: string;
+  stampHex: string;
 }> = {
   gstack: {
-    text: "text-[var(--scene-gold)]",
+    text: "text-[var(--scene-gold-bright)]",
     ring: "ring-[var(--scene-gold)]/40",
-    shadow: "0 0 18px rgba(255, 184, 0, 0.25)",
+    shadow: "0 0 18px rgba(255, 184, 0, 0.35)",
     flashShadow: "rgba(255, 184, 0, 0.6)",
     ctaBg: "bg-[var(--scene-gold)]/[0.08]",
     ctaBgHover: "hover:bg-[var(--scene-gold)]/[0.16]",
     ctaBorder: "border-[var(--scene-gold)]/40",
-    letterheadColor: "rgba(255, 184, 0, 0.45)",
+    // Cool gold — judge-1 letterhead, slightly cooler than the gold
+    // accent on /idea/[id] so the three judges feel like distinct voices.
+    rule: "rgba(255, 209, 122, 0.75)",
+    hairline: "rgba(255, 184, 0, 0.32)",
+    wax: "linear-gradient(180deg, rgba(255, 209, 122, 0.045) 0%, rgba(255, 184, 0, 0.02) 100%)",
     stampBorder: "border-[var(--scene-gold)]",
+    stampHex: "rgba(255, 184, 0, 0.18)",
   },
   vee: {
     text: "text-[var(--scene-oxblood-bright)]",
     ring: "ring-[var(--scene-oxblood-bright)]/40",
-    shadow: "0 0 18px rgba(181, 58, 77, 0.35)",
+    shadow: "0 0 18px rgba(181, 58, 77, 0.45)",
     flashShadow: "rgba(181, 58, 77, 0.6)",
     ctaBg: "bg-[var(--scene-oxblood-bright)]/[0.08]",
     ctaBgHover: "hover:bg-[var(--scene-oxblood-bright)]/[0.16]",
     ctaBorder: "border-[var(--scene-oxblood-bright)]/40",
-    letterheadColor: "rgba(181, 58, 77, 0.45)",
+    rule: "rgba(181, 58, 77, 0.75)",
+    hairline: "rgba(181, 58, 77, 0.32)",
+    wax: "linear-gradient(180deg, rgba(181, 58, 77, 0.05) 0%, rgba(123, 31, 43, 0.02) 100%)",
     stampBorder: "border-[var(--scene-oxblood-bright)]",
+    stampHex: "rgba(181, 58, 77, 0.18)",
   },
   robbins: {
     text: "text-[var(--scene-verdigris-bright)]",
     ring: "ring-[var(--scene-verdigris-bright)]/40",
-    shadow: "0 0 18px rgba(136, 184, 156, 0.35)",
+    shadow: "0 0 18px rgba(136, 184, 156, 0.45)",
     flashShadow: "rgba(136, 184, 156, 0.6)",
     ctaBg: "bg-[var(--scene-verdigris-bright)]/[0.08]",
     ctaBgHover: "hover:bg-[var(--scene-verdigris-bright)]/[0.16]",
     ctaBorder: "border-[var(--scene-verdigris-bright)]/40",
-    letterheadColor: "rgba(136, 184, 156, 0.45)",
+    rule: "rgba(136, 184, 156, 0.75)",
+    hairline: "rgba(136, 184, 156, 0.32)",
+    wax: "linear-gradient(180deg, rgba(136, 184, 156, 0.05) 0%, rgba(91, 138, 110, 0.02) 100%)",
     stampBorder: "border-[var(--scene-verdigris-bright)]",
+    stampHex: "rgba(136, 184, 156, 0.18)",
   },
 };
 
@@ -94,28 +117,44 @@ export function JudgeCardClient({
         ease: [0.16, 1, 0.3, 1],
         delay: index * 0.06,
       }}
-      className="relative min-h-[420px] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-md"
+      // Letterhead, not glass: no backdrop-blur, no rounded-2xl, no
+      // gradient white surface. The card reads as a sealed notary document
+      // — heavy double-rule on top + bottom in the judge's accent, slight
+      // wax-tint background, no side borders so the rules read as the
+      // whole edge. The slight rounded-md keeps it from feeling like a
+      // raw <hr>-stacked block.
+      className="relative min-h-[420px] overflow-hidden rounded-md"
+      style={{
+        background: accent.wax,
+        // Inner shadow gives the letterhead a hint of paper texture
+        // without an actual texture image — the slight darkening at the
+        // edges sells the "this is a sheet" feel.
+        boxShadow:
+          "inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 24px 64px -32px rgba(0, 0, 0, 0.6)",
+      }}
     >
-      {/* Letterhead double-rule: two horizontal lines at top and bottom,
-          per-judge accent color, creating a notary/stamp border feel. */}
+      {/* Letterhead double-rule TOP — heavy line + hairline below,
+          per-judge accent color, evoking the foil-stamp border on an
+          official letterhead or diploma. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[9px]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[8px]"
         style={{
-          borderTop: `1px solid ${accent.letterheadColor}`,
-          borderBottom: `1px solid ${accent.letterheadColor}`,
+          borderTop: `2px solid ${accent.rule}`,
+          borderBottom: `1px solid ${accent.hairline}`,
         }}
       />
+      {/* Letterhead double-rule BOTTOM — mirrored. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[9px]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[8px]"
         style={{
-          borderTop: `1px solid ${accent.letterheadColor}`,
-          borderBottom: `1px solid ${accent.letterheadColor}`,
+          borderTop: `1px solid ${accent.hairline}`,
+          borderBottom: `2px solid ${accent.rule}`,
         }}
       />
 
-      <div className="p-6">
+      <div className="p-6 pt-7 pb-9">
 
       {/* accent flash on reveal — subtle box-shadow keyframe in this
           judge's accent color rather than universal gold. */}
@@ -143,13 +182,19 @@ export function JudgeCardClient({
             textClass={accent.text}
             shadow={accent.shadow}
             stampBorder={accent.stampBorder}
+            stampHex={accent.stampHex}
           />
         )}
       </header>
 
       <div className="mt-5">
-        <h3 className="scene-display text-xl font-semibold text-white sm:text-2xl">{judge.name}</h3>
-        <p className="scene-mono mt-1 text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
+        {/* Judge name in Fraunces — heavier weight so it carries the
+            signature/letterhead authority. Tracking tightened slightly
+            for the display-size feel. */}
+        <h3 className="scene-display text-2xl font-semibold tracking-tight text-white sm:text-[28px]">
+          {judge.name}
+        </h3>
+        <p className="scene-mono mt-1.5 text-[0.65rem] uppercase tracking-[0.32em] text-white/55">
           {judge.role}
         </p>
       </div>
@@ -222,11 +267,13 @@ function ScoreNumber({
   textClass,
   shadow,
   stampBorder,
+  stampHex,
 }: {
   score: number;
   textClass: string;
   shadow: string;
   stampBorder: string;
+  stampHex: string;
 }) {
   const reduce = useReducedMotion();
   // Snap to final value when reduced-motion is requested. `useMotionValue`
@@ -250,18 +297,25 @@ function ScoreNumber({
   }, [mv, score, reduce]);
 
   return (
-    /* Stamp treatment: circular badge, per-judge accent border, subtle
-       rotation — evoking an old US-government rubber stamp impression. */
+    /* Notary-stamp treatment: double-ringed circular badge in the judge's
+       accent color, slight tilt, inset shadow so the score reads as if
+       it's been pressed into the page rather than drawn on top. The outer
+       hairline + inner heavy ring is the visual cue that this is a stamp,
+       not a button. */
     <div
-      className={`inline-flex h-20 w-20 -rotate-2 flex-col items-center justify-center rounded-full border-2 ${stampBorder} bg-black/30`}
+      className={`relative inline-flex h-20 w-20 -rotate-3 flex-col items-center justify-center rounded-full border-2 ${stampBorder}`}
+      style={{
+        background: "rgba(0, 0, 0, 0.35)",
+        boxShadow: `inset 0 0 0 1px rgba(0, 0, 0, 0.4), inset 0 0 0 3px ${stampHex}, 0 1px 0 rgba(255, 255, 255, 0.06)`,
+      }}
     >
       <motion.span
-        className={`scene-numeral text-[1.75rem] leading-none ${textClass}`}
+        className={`scene-numeral text-[1.9rem] leading-none ${textClass}`}
         style={{ textShadow: shadow }}
       >
         {display}
       </motion.span>
-      <span className="mt-0.5 font-mono text-[0.55rem] tabular-nums text-white/45">/10</span>
+      <span className="mt-0.5 font-mono text-[0.55rem] tabular-nums text-white/55">/10</span>
     </div>
   );
 }
@@ -270,7 +324,7 @@ function AccentFlash({ color }: { color: string }) {
   return (
     <motion.div
       aria-hidden
-      className="pointer-events-none absolute inset-0 rounded-2xl"
+      className="pointer-events-none absolute inset-0 rounded-md"
       initial={{
         boxShadow: `0 0 0 1px ${color} inset, 0 0 24px ${color}`,
       }}

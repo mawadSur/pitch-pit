@@ -1,12 +1,28 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { jetbrains } from "@/lib/fonts/geist-mono";
+import { fraunces } from "@/lib/fonts/fraunces";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Reveal, type Idea } from "@/components/idea/Reveal";
 import type { Comment } from "@/components/idea/Comments";
 import { titleToSlug } from "@/lib/slug";
 import { JsonLd, type JsonLdData } from "@/components/seo/JsonLd";
+import "@/app/scene.css";
+
+// Per-route font loading: Inter (body/UI), Geist Mono (captions/labels),
+// Fraunces (display serif for h1, verdict pull-quote, big score numerals).
+// Mirrors the pattern in every other minimalist route — don't push these
+// to the root layout, they'd ship on every route.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-scene",
+  display: "swap",
+});
 
 export const dynamic = "force-dynamic";
 
@@ -247,7 +263,10 @@ export default async function IdeaPage({
   };
 
   return (
-    <>
+    <div
+      className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}
+      style={{ display: "contents" }}
+    >
       <JsonLd data={jsonLd} />
       <Reveal
         idea={idea}
@@ -257,6 +276,6 @@ export default async function IdeaPage({
         hasClaimCookie={hasClaimCookie}
         autoPromptClaim={autoPromptClaim}
       />
-    </>
+    </div>
   );
 }

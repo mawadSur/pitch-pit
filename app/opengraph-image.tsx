@@ -1,12 +1,23 @@
 import { ImageResponse } from "next/og";
+import { loadFraunces } from "@/lib/og-fonts";
 
-export const runtime = "edge";
+// Node runtime so the Google Fonts fetch can use the standard fetch +
+// arrayBuffer path. The edge runtime works too but loses the longer
+// runtime cache lifetime we'd get from cold-warm-cold node lambdas.
+export const runtime = "nodejs";
 
 export const alt = "pitch-pit · weekly idea contest";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
+  const frauncesData = await loadFraunces();
+  const hasFraunces = frauncesData !== null;
+  const fonts: { name: string; data: ArrayBuffer; weight?: 400 | 600; style?: "normal" | "italic" }[] =
+    frauncesData
+      ? [{ name: "Fraunces", data: frauncesData, weight: 600, style: "normal" }]
+      : [];
+
   return new ImageResponse(
     (
       <div
@@ -78,12 +89,18 @@ export default function OpengraphImage() {
         <div
           style={{
             display: "flex",
-            fontSize: 96,
+            fontSize: 108,
             fontWeight: 600,
-            lineHeight: 1.05,
+            lineHeight: 1.02,
             textAlign: "center",
-            letterSpacing: -2,
-            maxWidth: 980,
+            letterSpacing: -3,
+            maxWidth: 1040,
+            // Fraunces 600 — characterful display serif. Falls back to
+            // Georgia if the Google Fonts fetch failed, so a flaky network
+            // never produces a broken share preview.
+            fontFamily: hasFraunces
+              ? "Fraunces, Georgia, serif"
+              : "Georgia, 'Times New Roman', serif",
           }}
         >
           To the victor go the tokens.
@@ -118,6 +135,9 @@ export default function OpengraphImage() {
         </div>
       </div>
     ),
-    size,
+    {
+      ...size,
+      fonts: fonts.length > 0 ? fonts : undefined,
+    },
   );
 }

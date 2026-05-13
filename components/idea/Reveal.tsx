@@ -178,18 +178,31 @@ export function Reveal({
             <p className="scene-mono mb-5 text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
               · The Verdict ·
             </p>
-            <p className="scene-display-italic mx-auto max-w-3xl text-balance text-3xl leading-[1.1] text-white/92 sm:text-[56px] lg:text-7xl">
+            {/* Pull-quote treatment. Fraunces italic, ≥40px on mobile (the
+                review spec calls for 56px+ but at 375px width that wraps
+                aggressively; we clamp up to 56px starting at sm: and 72px
+                at lg: so the line breaks read intentional, not cramped).
+                Letter-spacing tightens at display sizes so the quote reads
+                as one continuous gesture, not a sentence. */}
+            <p className="scene-display-italic mx-auto max-w-3xl text-balance text-[40px] leading-[1.05] text-white/92 sm:text-[56px] lg:text-[72px]">
               &ldquo;{idea.verdict}&rdquo;
             </p>
             {/* Lead-reviewer attribution. Only shown for ideas scored under
                 the three-judge flow — legacy single-judge ideas don't have
                 judge_scores populated, so we leave the verdict unattributed
-                rather than misleadingly tagging them. Set in Fraunces (not
-                mono) so it reads like a real attribution line. */}
+                rather than misleadingly tagging them. Weighted: Fraunces
+                roman (not italic) so the name reads like a signature
+                anchoring the quote above, with the role/credential set in
+                mono uppercase microcopy underneath. */}
             {idea.judge_scores?.gstack && (
-              <p className="scene-display-italic mt-5 text-base text-white/55">
-                — Garry Tan · lead reviewer
-              </p>
+              <div className="mt-6 flex flex-col items-center gap-1.5">
+                <p className="scene-display text-lg font-medium tracking-tight text-white/85 sm:text-xl">
+                  — Garry Tan
+                </p>
+                <p className="scene-mono text-[0.6rem] uppercase tracking-[0.35em] text-white/45">
+                  Lead reviewer
+                </p>
+              </div>
             )}
           </motion.div>
 
@@ -596,11 +609,28 @@ function ScoreReveal({
         <p className="scene-mono mb-4 text-[0.65rem] uppercase tracking-[0.4em] text-white/55">
           Final score
         </p>
-        <p className="scene-score-glow scene-mono relative text-[7rem] font-bold leading-none tabular-nums sm:text-[9rem]">
-          {finalScore}
-        </p>
-        <p className="scene-mono relative mt-3 text-[0.65rem] uppercase tracking-[0.4em] text-white/55">
-          of one hundred
+        {/* Bloomberg-terminal numeral: Fraunces tabular figures, ~120px
+            gold, with `/100` at ~1/3 the size. tabular-nums + scene-numeral
+            keep width stable through any future count-up. The baseline
+            alignment puts /100 hanging from the cap-height of the big
+            numeral, like a financial readout. */}
+        <p className="scene-foil relative flex items-baseline gap-2 leading-none text-[var(--scene-gold)]">
+          <span
+            className="scene-numeral text-[96px] sm:text-[120px] lg:text-[144px]"
+            style={{
+              textShadow:
+                "0 0 18px rgba(255, 184, 0, 0.55), 0 0 48px rgba(255, 184, 0, 0.32), 0 0 96px rgba(255, 184, 0, 0.18)",
+            }}
+          >
+            {finalScore}
+          </span>
+          <span
+            className="scene-numeral text-[34px] sm:text-[42px] lg:text-[50px] text-white/45"
+            aria-hidden
+          >
+            /100
+          </span>
+          <span className="sr-only">out of 100</span>
         </p>
         <p className="scene-mono relative mt-4 text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
           AI{" "}
