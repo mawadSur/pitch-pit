@@ -1081,6 +1081,108 @@
   will-change: transform;
 }
 
+/* ───── home custom cursor ─────
+   Scoped to `/` via `<HomeCursor />` mounted inside HomeScene. The
+   component sets `data-home-cursor="1"` on <html> while it's active;
+   we hide the OS pointer for the homepage main only, so chrome
+   (header, footer, browser controls) keeps the system cursor.
+
+   The cursor itself is two visual states in one absolutely-positioned
+   wrapper: a tiny gold filled circle (default) and a crosshair (when
+   the pointer is over the input pill or the submit tile). Both are
+   transform-only animations, GPU-friendly. Visibility is gated by
+   `data-visible` (toggled when the pointer enters/leaves the document).
+
+   Honors prefers-reduced-motion — the component bails entirely in
+   that case, so no animations are shipped here. The CSS below is a
+   no-op when the wrapper isn't mounted. */
+
+[data-home-cursor="1"] main#main,
+[data-home-cursor="1"] main#main * {
+  /* Hide the OS pointer only inside the home main. Header + footer
+     and browser chrome keep their native cursors. */
+  cursor: none;
+}
+/* Restore the I-beam over text fields so the user can still see
+   where they're typing — the custom dot would otherwise occlude
+   the caret position cue. */
+[data-home-cursor="1"] main#main textarea,
+[data-home-cursor="1"] main#main input,
+[data-home-cursor="1"] main#main [contenteditable="true"] {
+  cursor: text;
+}
+
+.home-cursor {
+  /* Hide until the pointer enters the document (set by pointerenter). */
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.home-cursor[data-visible="1"] {
+  opacity: 1;
+}
+
+.home-cursor-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* Gold core + soft halo. The halo is a wide outer box-shadow so it
+     reads as ambient glow rather than a hard ring. */
+  background: radial-gradient(
+    circle,
+    rgba(255, 245, 200, 1) 0%,
+    rgba(255, 184, 0, 0.95) 55%,
+    rgba(255, 184, 0, 0.6) 100%
+  );
+  box-shadow:
+    0 0 8px rgba(255, 209, 122, 0.85),
+    0 0 18px rgba(255, 184, 0, 0.5),
+    0 0 36px rgba(255, 184, 0, 0.25);
+  transform: translate(-50%, -50%) scale(1);
+  transition: opacity 140ms ease, transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home-cursor-cross {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: rgba(255, 209, 122, 0.95);
+  box-shadow: 0 0 6px rgba(255, 184, 0, 0.6);
+  opacity: 0;
+  transition: opacity 140ms ease, transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.home-cursor-cross-h {
+  width: 22px;
+  height: 1.5px;
+  transform: translate(-50%, -50%);
+}
+.home-cursor-cross-v {
+  width: 1.5px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+}
+
+/* Crosshair mode — pointer is over an interactive type-here surface. */
+.home-cursor[data-crosshair="1"] .home-cursor-dot {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.4);
+}
+.home-cursor[data-crosshair="1"] .home-cursor-cross {
+  opacity: 1;
+}
+
+/* Reduced motion: belt-and-braces — the component already bails, but
+   in case a hot reload sneaks the dot in, kill the transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .home-cursor,
+  .home-cursor-dot,
+  .home-cursor-cross {
+    transition: none !important;
+  }
+}
+
 /* ───── cursor trail particle ─────
    Small gold dot, transform/opacity only. Pool lives in
    components/scene/CursorTrail.tsx. */

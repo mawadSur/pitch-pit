@@ -16,6 +16,7 @@ import { FoilSweep } from "@/components/scene/FoilSweep";
 import { HourglassSand } from "@/components/scene/HourglassSand";
 import { WanderingSpotlight } from "@/components/scene/WanderingSpotlight";
 import { CursorTrail } from "@/components/scene/CursorTrail";
+import { HomeCursor } from "@/components/scene/HomeCursor";
 import { LiveTicker, type TickerEntry } from "@/components/scene/LiveTicker";
 import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
 import { SubmittingOverlay } from "./SubmittingOverlay";
@@ -76,6 +77,12 @@ export function HomeScene({
     <MotionConfig reducedMotion="user">
       <>
         <MinimalistHeader />
+        {/* Custom cursor — homepage only. Tiny gold circle that follows
+            the pointer, snaps to a crosshair over the input pill / submit
+            tile. Bails on touch + reduced-motion + non-home routes.
+            Rendered outside <main> so it remains positioned even as the
+            cinematic panels mount/unmount their canvases. */}
+        <HomeCursor />
 
       <main id="main" tabIndex={-1} className="scene relative bg-black">
         {/* Panel 1 — Capture. Image-only single 100vh hero. The frame-scrub
