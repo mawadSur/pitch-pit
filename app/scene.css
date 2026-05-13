@@ -1057,6 +1057,42 @@
   pointer-events: none;
 }
 
+/* ───── hourglass watermark (chrome on /idea/[id]) ─────
+   Two SVG circles fall from the neck (cy=94) to a point just above the
+   bottom pile (cy=142). 1.5s cycle with a half-cycle phase offset on the
+   second grain so the page reads as a slow, occasional drip rather than
+   a flicker. The grain fades to 0 in the last 15% of each fall so it
+   doesn't visually crash into the pile.
+   When [data-paused="true"] is set on the wrapper (window blur / tab
+   hidden / prefers-reduced-motion), animation-play-state freezes the
+   grains — they snap back to the neck at their next iteration boundary
+   when un-paused. */
+.scene-hourglass-watermark[data-paused="true"]
+  .scene-hourglass-watermark__grain {
+  animation-play-state: paused;
+}
+.scene-hourglass-watermark__grain {
+  transform-origin: center;
+  animation: scene-hourglass-watermark-drop 1500ms linear infinite;
+}
+.scene-hourglass-watermark__grain--late {
+  animation-delay: -750ms; /* phase-offset by half the cycle */
+}
+@keyframes scene-hourglass-watermark-drop {
+  0% {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  85% {
+    transform: translateY(48px);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(48px);
+    opacity: 0;
+  }
+}
+
 /* ───── wandering spotlight ─────
    Single big soft gold blob that drifts via JS (framer-motion).
    transform-only; the background and blur are static. Reduced-motion

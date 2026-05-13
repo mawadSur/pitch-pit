@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Reveal, type Idea } from "@/components/idea/Reveal";
 import type { Comment } from "@/components/idea/Comments";
+import { HourglassWatermark } from "@/components/scene/HourglassWatermark";
 import { titleToSlug } from "@/lib/slug";
 import { JsonLd, type JsonLdData } from "@/components/seo/JsonLd";
 import "@/app/scene.css";
@@ -268,6 +269,11 @@ export default async function IdeaPage({
       style={{ display: "contents" }}
     >
       <JsonLd data={jsonLd} />
+      {/* Brand-presence chrome — fixed top-right hourglass with two
+          falling grains. Pauses on blur / tab-hidden / reduced-motion.
+          Tucked below the sticky header (z<header z-index) and out of
+          the way of the right-side share/menu cluster. */}
+      <HourglassWatermark className="fixed right-4 top-[72px] z-[5] sm:right-6 sm:top-[80px]" />
       <Reveal
         idea={idea}
         currentUserId={user?.id ?? null}
