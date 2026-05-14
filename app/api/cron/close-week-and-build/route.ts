@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBuildNotification } from "@/lib/email";
+import {
+  dispatchBuild,
+  isDispatchConfigured,
+  mintCallbackToken,
+} from "@/lib/build-dispatch";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -83,13 +88,20 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // 6. Upsert into build_queue with in_progress + timestamps.
+  // 6. Upsert into build_queue with in_progress + timestamps + a fresh
+  //    callback_token for the auto-builder to authenticate with. Reset
+  //    retry_count and build_logs so re-running a week starts clean.
+  const callbackToken = mintCallbackToken();
   const { error: queueErr } = await supabase.from("build_queue").upsert(
     {
       idea_id: idea.id,
       status: "in_progress",
       approved_at: now,
       started_at: now,
+      callback_token: callbackToken,
+      retry_count: 0,
+      build_phase: "queued",
+      build_logs: [],
     },
     { onConflict: "idea_id" },
   );
@@ -101,12 +113,36 @@ export async function GET(req: NextRequest) {
   }
 
   // 7. Send the build-notification email. Best-effort — log on failure.
+  //    Serves as a heads-up; the actual build is driven by the dispatch
+  //    in step 8.
   let emailSent = false;
   try {
     await sendBuildNotification(idea);
     emailSent = true;
   } catch (err) {
     console.error("[close-week-and-build] Email send failed:", err);
+  }
+
+  // 8. Fire repository_dispatch to the GitHub builder. Best-effort — if
+  //    GitHub is down or the env vars are missing, the email already gave
+  //    a manual fallback. The /winner page will still render the queued
+  //    state and the user can re-trigger via /admin if needed.
+  let dispatchSent = false;
+  let dispatchError: string | null = null;
+  if (isDispatchConfigured()) {
+    try {
+      await dispatchBuild({
+        idea,
+        callbackToken,
+        attempt: 1,
+      });
+      dispatchSent = true;
+    } catch (err) {
+      dispatchError = err instanceof Error ? err.message : String(err);
+      console.error("[close-week-and-build] Dispatch failed:", err);
+    }
+  } else {
+    dispatchError = "dispatch-not-configured";
   }
 
   return NextResponse.json({
@@ -117,5 +153,7 @@ export async function GET(req: NextRequest) {
       final_score: idea.final_score,
     },
     email_sent: emailSent,
+    dispatch_sent: dispatchSent,
+    dispatch_error: dispatchError,
   });
 }

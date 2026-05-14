@@ -59,6 +59,10 @@ let lastQueueUpsert:
         status: string;
         approved_at: string;
         started_at: string;
+        callback_token?: string;
+        retry_count?: number;
+        build_phase?: string;
+        build_logs?: unknown[];
       };
       opts: unknown;
     }
@@ -66,6 +70,8 @@ let lastQueueUpsert:
 
 const sendBuildNotificationMock =
   vi.fn<(idea: IdeaRow) => Promise<void>>();
+const dispatchBuildMock = vi.fn<() => Promise<void>>();
+const isDispatchConfiguredMock = vi.fn<() => boolean>();
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
@@ -133,6 +139,14 @@ vi.mock("@/lib/email", () => ({
   sendBuildNotification: (idea: IdeaRow) => sendBuildNotificationMock(idea),
 }));
 
+vi.mock("@/lib/build-dispatch", () => ({
+  dispatchBuild: () => dispatchBuildMock(),
+  isDispatchConfigured: () => isDispatchConfiguredMock(),
+  // mintCallbackToken is deterministic in tests so the upsert payload is
+  // predictable. Real implementation uses crypto.getRandomValues.
+  mintCallbackToken: () => "test-callback-token-fixed",
+}));
+
 // Import AFTER the mocks are declared.
 import { GET } from "./route";
 
@@ -175,6 +189,11 @@ describe("GET /api/cron/close-week-and-build", () => {
     lastQueueUpsert = null;
     sendBuildNotificationMock.mockReset();
     sendBuildNotificationMock.mockResolvedValue(undefined);
+    dispatchBuildMock.mockReset();
+    dispatchBuildMock.mockResolvedValue(undefined);
+    isDispatchConfiguredMock.mockReset();
+    // Default: dispatch is configured so the happy-path test exercises it.
+    isDispatchConfiguredMock.mockReturnValue(true);
     process.env.CRON_SECRET = CRON_SECRET;
   });
 
@@ -231,6 +250,8 @@ describe("GET /api/cron/close-week-and-build", () => {
         final_score: WINNER_IDEA.final_score,
       },
       email_sent: true,
+      dispatch_sent: true,
+      dispatch_error: null,
     });
 
     // 1. The close_current_week RPC was invoked.
@@ -240,17 +261,25 @@ describe("GET /api/cron/close-week-and-build", () => {
     expect(lastIdeaUpdate).toEqual({ status: "building" });
 
     // 3. build_queue got an in_progress row keyed by idea_id with both
-    //    approved_at and started_at populated.
+    //    approved_at and started_at populated, plus the callback token
+    //    and a fresh build_phase='queued' / retry_count=0.
     expect(lastQueueUpsert).not.toBeNull();
     expect(lastQueueUpsert!.row.idea_id).toBe(WINNER_IDEA.id);
     expect(lastQueueUpsert!.row.status).toBe("in_progress");
     expect(typeof lastQueueUpsert!.row.approved_at).toBe("string");
     expect(typeof lastQueueUpsert!.row.started_at).toBe("string");
+    expect(lastQueueUpsert!.row.callback_token).toBe("test-callback-token-fixed");
+    expect(lastQueueUpsert!.row.retry_count).toBe(0);
+    expect(lastQueueUpsert!.row.build_phase).toBe("queued");
+    expect(lastQueueUpsert!.row.build_logs).toEqual([]);
     expect(lastQueueUpsert!.opts).toMatchObject({ onConflict: "idea_id" });
 
     // 4. Email was sent exactly once with the winner idea.
     expect(sendBuildNotificationMock).toHaveBeenCalledTimes(1);
     expect(sendBuildNotificationMock).toHaveBeenCalledWith(state.idea);
+
+    // 5. Dispatch fired exactly once after the email.
+    expect(dispatchBuildMock).toHaveBeenCalledTimes(1);
   });
 
   it("idempotency: when winner is already 'building', no re-update and no email", async () => {
@@ -355,6 +384,49 @@ describe("GET /api/cron/close-week-and-build", () => {
     // The status update and queue write must still have happened — we
     // only swallow the email failure.
     expect(lastIdeaUpdate).toEqual({ status: "building" });
+    expect(lastQueueUpsert).not.toBeNull();
+
+    // Dispatch is independent of the email: it should still have fired.
+    expect(dispatchBuildMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns dispatch_sent=false with an error when the GitHub dispatch throws", async () => {
+    state.closedWeek = CLOSED_WEEK;
+    state.idea = { ...WINNER_IDEA, status: "scored" };
+    dispatchBuildMock.mockRejectedValueOnce(new Error("github 503"));
+
+    const res = await GET(
+      makeReq({ authorization: `Bearer ${CRON_SECRET}` }) as never,
+    );
+    // Dispatch is best-effort — the queue row and email already give
+    // a fallback path, so the cron itself still returns 200.
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.email_sent).toBe(true);
+    expect(body.dispatch_sent).toBe(false);
+    expect(body.dispatch_error).toBe("github 503");
+
+    // The queue row was still written so the /winner page can render.
+    expect(lastQueueUpsert).not.toBeNull();
+  });
+
+  it("returns dispatch_error='dispatch-not-configured' when env vars are missing", async () => {
+    isDispatchConfiguredMock.mockReturnValue(false);
+    state.closedWeek = CLOSED_WEEK;
+    state.idea = { ...WINNER_IDEA, status: "scored" };
+
+    const res = await GET(
+      makeReq({ authorization: `Bearer ${CRON_SECRET}` }) as never,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.dispatch_sent).toBe(false);
+    expect(body.dispatch_error).toBe("dispatch-not-configured");
+
+    // Dispatch must not be attempted when not configured.
+    expect(dispatchBuildMock).not.toHaveBeenCalled();
+    // Email + queue still happen — the manual fallback path is intact.
+    expect(sendBuildNotificationMock).toHaveBeenCalledTimes(1);
     expect(lastQueueUpsert).not.toBeNull();
   });
 });

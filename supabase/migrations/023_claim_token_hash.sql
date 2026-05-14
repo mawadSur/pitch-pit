@@ -58,7 +58,7 @@ begin
       and column_name = 'claim_token'
   ) then
     update public.ideas
-       set claim_token_sha256 = digest(claim_token, 'sha256')
+       set claim_token_sha256 = extensions.digest(claim_token, 'sha256')
      where claim_token is not null
        and claim_token_sha256 is null;
   end if;
@@ -70,7 +70,7 @@ begin
       and column_name = 'claim_token'
   ) then
     update public.draft_pitches
-       set claim_token_sha256 = digest(claim_token, 'sha256')
+       set claim_token_sha256 = extensions.digest(claim_token, 'sha256')
      where claim_token is not null
        and claim_token_sha256 is null;
   end if;
