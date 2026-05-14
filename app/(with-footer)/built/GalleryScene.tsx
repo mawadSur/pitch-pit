@@ -14,10 +14,18 @@ export type BuiltIdea = {
   pitch: string;
   handle: string | null;
   score: number;
+  // 0..100 community-weighted final score. Nullable for legacy built rows
+  // whose final_score predates the trigger landing — those fall back to
+  // `score * 10` at render time.
+  final_score: number | null;
   verdict: string;
   mvp_url: string | null;
   screenshot_url: string | null;
   updated_at: string;
+  // Week number this idea won. Nullable for legacy rows that pre-date
+  // the weeks table (migration 005) — those render with an em-dash in
+  // the week badge slot so the chronological narrative still parses.
+  week_number: number | null;
 };
 
 export function GalleryScene({ ideas }: { ideas: BuiltIdea[] }) {
@@ -40,18 +48,18 @@ export function GalleryScene({ ideas }: { ideas: BuiltIdea[] }) {
             className="text-center"
           >
             <p className="scene-mono text-[0.65rem] uppercase tracking-[0.42em] text-[var(--scene-verdigris-bright)] sm:text-[0.78rem]">
-              · the gallery ·
+              · hall of fame ·
             </p>
             <h1 className="scene-display mt-5 text-balance text-[2.25rem] font-medium leading-[1.02] text-white sm:text-6xl lg:text-7xl">
-              Built and{" "}
+              To the victor go the{" "}
               <span className="scene-display-italic text-[var(--scene-verdigris-bright)]">
-                shipped
+                tokens
               </span>
               .
             </h1>
             <p className="scene-display mx-auto mt-5 max-w-xl text-base text-white/65 sm:text-lg">
-              Ideas the pit chose, built, and shipped under the
-              founder&rsquo;s name.
+              Every weekly champion, built into a live MVP — claimed by the
+              founder under their own name.
             </p>
           </motion.header>
 
@@ -85,7 +93,20 @@ export function GalleryScene({ ideas }: { ideas: BuiltIdea[] }) {
 
 function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
   const reverse = index % 2 === 1;
-  const ordinal = String(index + 1).padStart(2, "0");
+  // Chapter-mark numeral. Week number when known; em-dash for legacy
+  // rows so the chronological narrative still reads top-down without
+  // a missing pedestal entry.
+  const weekLabel =
+    idea.week_number != null
+      ? `WK ${String(idea.week_number).padStart(2, "0")}`
+      : "WK —";
+  // final_score is 0..100. Fall back to score×10 for legacy rows whose
+  // final_score predates the trigger — same fallback the leaderboard
+  // and ShareMenu use so the displayed number agrees across surfaces.
+  const finalScore = idea.final_score ?? Math.round(idea.score * 10);
+  const ideaHref = `/idea/${idea.id}${
+    titleToSlug(idea.title) ? `/${titleToSlug(idea.title)}` : ""
+  }`;
 
   return (
     <motion.article
@@ -110,25 +131,44 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
       </div>
 
       <div className={cn("max-w-xl", reverse ? "lg:ml-auto" : "")}>
-        {/* Ordinal — serif numeral leads the eye on each entry, like a
-            chapter mark in a book. The score sits as a quiet caption. */}
-        <div className="flex items-baseline gap-4">
+        {/* Chapter-mark row — serif week numeral leads the eye, the
+            final_score numeral sits to its right as the contest's
+            authoritative verdict. AI score moves down to the caption
+            line so the marquee number is consistent with /leaderboard. */}
+        <div className="flex items-baseline gap-5">
           <span className="scene-numeral text-5xl text-[var(--scene-verdigris-bright)] sm:text-6xl">
-            {ordinal}
+            {weekLabel}
           </span>
-          <span className="scene-mono text-[0.55rem] uppercase tracking-[0.35em] text-white/45 tabular-nums">
-            score {idea.score}/10
+          <span className="flex items-baseline gap-1">
+            <span className="scene-numeral text-3xl tabular-nums text-white/85 sm:text-4xl">
+              {finalScore}
+            </span>
+            <span className="scene-mono text-[0.6rem] uppercase tracking-[0.16em] text-white/45">
+              /100
+            </span>
           </span>
         </div>
+
+        {/* Title — Linked to /idea/[id]/[slug] per spec. /winner/[ideaId]
+            is WIP and owned by another agent; the canonical detail page
+            is the safe target for the title click. */}
         <h2 className="scene-display mt-4 text-3xl font-medium leading-tight text-white sm:text-4xl">
-          {idea.title}
+          <Link
+            href={ideaHref}
+            className="rounded-sm transition-colors hover:text-[var(--scene-verdigris-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-verdigris-bright)]/60 focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--scene-bg)]"
+          >
+            {idea.title}
+          </Link>
         </h2>
         {idea.handle && (
           <p className="scene-mono mt-2 text-[0.55rem] uppercase tracking-[0.32em] text-white/45">
-            {idea.handle}
+            {idea.handle} · AI {idea.score}/10
           </p>
         )}
 
+        {/* Verdict — rendered in .scene-display per spec. Italic quote
+            block carries the gamemaster's line; the verdigris rule on
+            the left ties it to the built-status palette. */}
         <p className="scene-display-italic mt-6 border-l-2 border-[var(--scene-verdigris-bright)]/55 pl-5 text-xl leading-snug text-white sm:text-2xl">
           &ldquo;{idea.verdict}&rdquo;
         </p>
@@ -147,15 +187,15 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
               // gold "Pitch idea" / "Read judgment" affordances elsewhere.
               className="scene-display inline-flex h-11 items-center gap-2 rounded-full bg-[var(--scene-verdigris-bright)]/15 px-5 text-sm font-medium text-[var(--scene-verdigris-bright)] transition-all hover:bg-[var(--scene-verdigris-bright)]/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-verdigris-bright)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
             >
-              Open the build <span aria-hidden>↗</span>
+              Visit MVP <span aria-hidden>↗</span>
             </a>
           )}
           {/* The mono caption label stays the same small-cap typographic
               treatment, but the tap target is padded out to clear the
               WCAG 2.5.5 44×44 minimum so it sits at the same visual
-              scale as the verdigris "Open the build" CTA on this card. */}
+              scale as the verdigris "Visit MVP" CTA on this card. */}
           <Link
-            href={`/idea/${idea.id}${titleToSlug(idea.title) ? `/${titleToSlug(idea.title)}` : ""}`}
+            href={ideaHref}
             className="scene-mono inline-flex min-h-11 items-center rounded-full px-4 py-2 text-[0.55rem] uppercase tracking-[0.32em] text-white/55 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
           >
             Read the judgment →
@@ -166,7 +206,7 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
                 id: idea.id,
                 title: idea.title,
                 verdict: idea.verdict,
-                finalScore: Math.round(idea.score * 10),
+                finalScore,
                 aiScore: idea.score,
                 voteCount: undefined,
               }}
@@ -269,14 +309,14 @@ function EmptyGallery() {
     <div className="mt-20 flex flex-col items-center px-4 text-center">
       <Pedestal />
       <p className="mt-10 scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.65rem]">
-        · the gallery is dark ·
+        · the hall is empty ·
       </p>
       <h2 className="scene-display-italic mt-5 max-w-2xl text-balance text-3xl leading-[1.05] text-white sm:text-5xl lg:text-6xl">
-        Nothing has been built &mdash; yet.
+        No winners yet.
       </h2>
       <p className="scene-display mx-auto mt-5 max-w-xl text-balance text-base leading-snug text-white/72 sm:text-lg">
-        Each week&rsquo;s winner gets shipped under their own name. The
-        first build lands next week.
+        The first ships Monday at midnight EST. Until then, the pit
+        decides who&rsquo;s worthy.
       </p>
       <Link href="/leaderboard" className="cta-btn-primary mt-7 text-sm">
         See the leaderboard <span aria-hidden>→</span>

@@ -23,40 +23,98 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const BUILT_DESCRIPTION =
-  "The graveyard of winners. Every weekly champion built into a live MVP — claimed by the founder, no equity, no fees. To the victor go the tokens.";
+  "Hall of Fame. Every weekly champion built into a live MVP — claimed by the founder, no equity, no fees. To the victor go the tokens.";
 
 export const metadata: Metadata = {
-  title: "Gallery — pitch-pit",
+  title: "Hall of Fame — pitch-pit",
   description: BUILT_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/built` },
   openGraph: {
-    title: "Gallery — pitch-pit",
+    title: "Hall of Fame — pitch-pit",
     description: BUILT_DESCRIPTION,
     url: `${SITE_URL}/built`,
     type: "website",
+    // OG card endpoint is being built by another agent — the URL is
+    // wired up here so it lights up automatically once that route lands.
+    // A 404 in the interim is harmless (consumers fall back to no image).
+    images: [
+      {
+        url: `${SITE_URL}/api/og/winners`,
+        width: 1200,
+        height: 630,
+        alt: "pitch-pit Hall of Fame",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Gallery — pitch-pit",
+    title: "Hall of Fame — pitch-pit",
     description: BUILT_DESCRIPTION,
+    images: [`${SITE_URL}/api/og/winners`],
   },
 };
 
+// Pull display fields + the week join so the gallery can lead each
+// entry with its week number. Embedded `weeks` resource is a single
+// round-trip via PostgREST (no extra query). `mvp_url` not null guards
+// against built rows where the build_callback hasn't written the URL
+// yet — a built entry without an mvp_url has nothing for the user to
+// click through to and would render as an empty card.
 const SELECT =
-  "id,title,pitch,handle,score,verdict,mvp_url,screenshot_url,updated_at";
+  "id,title,pitch,handle,score,final_score,verdict,mvp_url,screenshot_url,updated_at,week:weeks(week_number)";
 
 async function fetchBuilt(): Promise<BuiltIdea[]> {
   try {
     const supabase = await createClient();
+    // Chronological by week, newest first. Falling back to updated_at
+    // covers legacy rows where week_id is null (pre-005 migration data)
+    // — they sort to the bottom because their `weeks` embed comes back
+    // null and PostgREST nulls-last for nested sort isn't reliable.
+    // updated_at desc is the deterministic tiebreaker.
     const { data, error } = await supabase
       .from("ideas")
       .select(SELECT)
       .eq("status", "built")
       .not("mvp_url", "is", null)
       .order("updated_at", { ascending: false })
-      .limit(40);
+      .limit(60);
     if (error || !data) return [];
-    return data as BuiltIdea[];
+    // PostgREST returns embedded `weeks` as object or array depending on
+    // FK cardinality inference. Normalize to a flat `week_number` on the
+    // row so the client component doesn't need to know about embeds.
+    type Row = Omit<BuiltIdea, "week_number"> & {
+      week:
+        | { week_number: number }
+        | { week_number: number }[]
+        | null;
+    };
+    const rows = data as unknown as Row[];
+    const normalized: BuiltIdea[] = rows.map((r) => {
+      const week = Array.isArray(r.week) ? r.week[0] : r.week;
+      return {
+        id: r.id,
+        title: r.title,
+        pitch: r.pitch,
+        handle: r.handle,
+        score: r.score,
+        final_score: r.final_score,
+        verdict: r.verdict,
+        mvp_url: r.mvp_url,
+        screenshot_url: r.screenshot_url,
+        updated_at: r.updated_at,
+        week_number: week?.week_number ?? null,
+      };
+    });
+    // Final ordering: week_number desc (nulls last), then updated_at desc.
+    // Doing this in JS — Postgres can't sort on an embedded column
+    // without a more elaborate view, and the dataset is tiny (<= 60).
+    normalized.sort((a, b) => {
+      const aw = a.week_number ?? -Infinity;
+      const bw = b.week_number ?? -Infinity;
+      if (aw !== bw) return bw - aw;
+      return (b.updated_at ?? "").localeCompare(a.updated_at ?? "");
+    });
+    return normalized;
   } catch {
     return [];
   }
@@ -71,7 +129,7 @@ export default async function BuiltRoute() {
   const jsonLd: JsonLdData = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: "pitch-pit · built MVPs",
+    name: "pitch-pit · Hall of Fame",
     url: `${SITE_URL}/built`,
     numberOfItems: ideas.length,
     itemListElement: ideas.map((idea, i) => ({
