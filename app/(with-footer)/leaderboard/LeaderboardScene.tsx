@@ -8,6 +8,7 @@ import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
 import { ShareMenu } from "@/components/idea/ShareMenu";
 import { type LeaderboardIdea } from "@/lib/idea-types";
+import { type WeekSummary } from "./types";
 import { JUDGES } from "@/lib/judges";
 import { createClient } from "@/lib/supabase/client";
 import { formatVoteCount } from "@/lib/format";
@@ -22,25 +23,31 @@ function ideaPath(id: string, title: string): string {
   return slug ? `/idea/${id}/${slug}` : `/idea/${id}`;
 }
 
-type Tab = "alltime" | "week";
+// Tab is either the synthetic "alltime" or a specific week number.
+// Encoded in the URL as `?week=N` (alltime = no param).
+type Tab = "alltime" | { kind: "week"; weekNumber: number };
+
+function tabKey(tab: Tab): string {
+  return tab === "alltime" ? "alltime" : `week-${tab.weekNumber}`;
+}
 
 /* ════════════════════════ Status palette ════════════════════════════
  * Semantic score color: oxblood for fallen, verdigris for built, gold
  * everywhere else. The thresholds match the design spec:
  *   - status === "built"      → verdigris-bright + BUILT pill
- *   - final_score ≤ 30 OR     → oxblood-bright (fallen)
- *     score ≤ 3
+ *   - score ≤ 3 (AI verdict)  → oxblood-bright (fallen)
  *   - default                  → gold-bright (the sharp ones)
- * Returns a CSS var name so consumers can compose with Tailwind arbitrary
- * value classes (e.g. `text-[var(--scene-gold-bright)]`).
+ *
+ * Threshold is on the AI score (0..10) — that's the "AI verdict" axis.
+ * `final_score` is no longer a useful threshold under the new formula
+ * because a high-AI-low-vote idea legitimately sits in the 30-50 band.
  * ────────────────────────────────────────────────────────────────────── */
 function scoreTone(idea: Pick<LeaderboardIdea, "final_score" | "score" | "status">):
   | "gold"
   | "oxblood"
   | "verdigris" {
   if (idea.status === "built") return "verdigris";
-  const final = idea.final_score ?? 0;
-  if (final <= 30 || idea.score <= 3) return "oxblood";
+  if (idea.score <= 3) return "oxblood";
   return "gold";
 }
 
@@ -50,33 +57,56 @@ function toneVar(tone: "gold" | "oxblood" | "verdigris"): string {
   return "var(--scene-gold-bright)";
 }
 
+/* Split the final_score into its AI half (0..50) and community half
+ * (0..50) for display. AI half is deterministic from the AI score:
+ * `score * 5`. Community half is whatever remains, clamped — handles
+ * legacy rows whose final_score predates the new formula without
+ * showing negative numbers. */
+function splitScore(idea: Pick<LeaderboardIdea, "final_score" | "score">): {
+  ai: number;
+  community: number;
+} {
+  const ai = Math.max(0, Math.min(50, Math.round(idea.score * 5)));
+  const final = idea.final_score ?? ai;
+  const community = Math.max(0, Math.min(50, final - ai));
+  return { ai, community };
+}
+
 export function LeaderboardScene({
   alltime,
-  week,
-  weekNumber,
+  weekIdeas,
+  weeks,
+  selectedWeek,
+  isFrozen,
   query = "",
 }: {
   alltime: LeaderboardIdea[];
-  week: LeaderboardIdea[];
-  weekNumber: number | null;
+  weekIdeas: LeaderboardIdea[];
+  weeks: WeekSummary[];
+  selectedWeek: WeekSummary | null;
+  isFrozen: boolean;
   query?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Tab state lives in the URL (`?tab=week`) so the native back button
-  // restores it alongside the search query. Default (no param) is alltime.
-  const tabParam = searchParams.get("tab");
-  const tab: Tab = tabParam === "week" ? "week" : "alltime";
+  // Tab derives from URL: `?week=N` selects a specific week (open or
+  // closed); no param falls back to all-time. The week-number → tab map
+  // is the source of truth so back-button navigation restores correctly.
+  const weekParam = searchParams.get("week");
+  const parsedWeek = weekParam ? Number.parseInt(weekParam, 10) : NaN;
+  const tab: Tab = Number.isFinite(parsedWeek)
+    ? { kind: "week", weekNumber: parsedWeek }
+    : "alltime";
   const setTab = (next: Tab) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (next === "alltime") params.delete("tab");
-    else params.set("tab", next);
+    if (next === "alltime") params.delete("week");
+    else params.set("week", String(next.weekNumber));
     const qs = params.toString();
     router.push(qs ? `/leaderboard?${qs}` : "/leaderboard");
   };
 
-  const ideas = tab === "alltime" ? alltime : week;
+  const ideas = tab === "alltime" ? alltime : weekIdeas;
   const [first, second, third, ...rest] = ideas;
 
   // Track when a realtime event last touched the board so we can flash the
@@ -196,26 +226,43 @@ export function LeaderboardScene({
           {/* SEARCH */}
           <SearchBox initial={query} />
 
-          {/* TABS */}
+          {/* TABS — All-Time + every known week. Past weeks render
+              from week_results (frozen rank/score). */}
           <Tabs
             active={tab}
             onChange={setTab}
-            counts={{ alltime: alltime.length, week: week.length }}
-            weekNumber={weekNumber}
+            weeks={weeks}
+            alltimeCount={alltime.length}
+            currentCount={weekIdeas.length}
+            selectedWeek={selectedWeek}
           />
 
+          {/* Frozen banner — shown when viewing a closed week. Tells the
+              viewer they're looking at history, not the live board. */}
+          {tab !== "alltime" && isFrozen && selectedWeek && (
+            <FrozenWeekBanner week={selectedWeek} />
+          )}
+
           {ideas.length === 0 ? (
-            <Empty tab={tab} />
+            <Empty tab={tab} isFrozen={isFrozen} />
           ) : (
             <>
               {/* PODIUM — top 3 hero row.
                   Visual order on desktop is rank 2 (left), rank 1 (center,
-                  raised + scaled), rank 3 (right). On mobile we collapse to
-                  a single column with rank 1 first so the giant numeral
+                  raised), rank 3 (right). On mobile we collapse to a
+                  single column with rank 1 first so the giant numeral
                   treatment is always the first thing visible. Empty slots
                   render placeholder cards so the 3-column grid never
-                  collapses or shifts column widths. */}
-              <div className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-4 sm:items-end">
+                  collapses or shifts column widths.
+
+                  Layout note: cards stack content vertically (numeral
+                  above metadata) so each ~300px column has full width
+                  for the title — sm:flex-row crushed long titles like
+                  "Kennedy AI" into a ~90px gutter next to the numeral.
+                  Center card rises with `lg:-mt-6` instead of `scale-110`;
+                  scale doesn't reserve layout space and was bleeding card 1
+                  into cards 2 & 3's columns. */}
+              <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-6 lg:gap-8 sm:items-end">
                 <PodiumSlot idea={second ?? null} rank={2} order="sm:order-1" />
                 <PodiumSlot idea={first ?? null} rank={1} order="order-first sm:order-2" />
                 <PodiumSlot idea={third ?? null} rank={3} order="sm:order-3" />
@@ -461,56 +508,155 @@ function LiveIndicator({ pulseAt }: { pulseAt: number }) {
   );
 }
 
+/* ════════════════════════ Tabs ══════════════════════════════════════
+ * All-Time + a tab per known week. The current open week renders with
+ * a "live" pulse; closed weeks get a tiny "✓" winner mark when one
+ * was picked. The strip horizontal-scrolls on overflow so a year of
+ * weeks doesn't blow up the layout.
+ * ────────────────────────────────────────────────────────────────────── */
 function Tabs({
   active,
   onChange,
-  counts,
-  weekNumber,
+  weeks,
+  alltimeCount,
+  currentCount,
+  selectedWeek,
 }: {
   active: Tab;
   onChange: (t: Tab) => void;
-  counts: Record<Tab, number>;
-  weekNumber: number | null;
+  weeks: WeekSummary[];
+  alltimeCount: number;
+  currentCount: number;
+  selectedWeek: WeekSummary | null;
 }) {
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "alltime", label: "All-Time" },
-    { id: "week", label: weekNumber ? `Week ${weekNumber}` : "This Week" },
-  ];
+  // Surface up to 6 most-recent weeks inline; older weeks remain
+  // accessible via direct URL (`?week=1`). Keeps the strip scannable.
+  const visibleWeeks = weeks.slice(0, 6);
+
+  const isAlltime = active === "alltime";
+  const activeWeekNumber =
+    typeof active === "object" ? active.weekNumber : null;
+
   return (
     <div
       role="tablist"
       aria-label="Leaderboard window"
-      className="mt-12 flex justify-center gap-2"
+      className="mt-12 flex justify-start gap-2 overflow-x-auto px-1 pb-1 sm:justify-center sm:overflow-visible"
     >
-      {tabs.map((t) => {
-        const isActive = t.id === active;
+      {/* All-Time pill */}
+      <button
+        type="button"
+        role="tab"
+        aria-selected={isAlltime}
+        onClick={() => onChange("alltime")}
+        className={cn(
+          "inline-flex shrink-0 items-center gap-2.5 rounded-full border px-5 py-2 transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-black",
+          isAlltime
+            ? "scene-display border-[var(--scene-gold)] bg-[var(--scene-gold)]/10 text-[1rem] tracking-tight text-[var(--scene-gold-bright)]"
+            : "scene-mono border-white/15 text-[0.65rem] uppercase tracking-[0.3em] text-white/55 hover:border-white/35 hover:text-white",
+        )}
+      >
+        <span>All-Time</span>
+        <span
+          className={cn(
+            "tabular-nums opacity-80",
+            isAlltime ? "scene-mono text-[0.65rem] tracking-[0.3em]" : "",
+          )}
+        >
+          {alltimeCount}
+        </span>
+      </button>
+
+      {visibleWeeks.map((w) => {
+        const isActive = activeWeekNumber === w.weekNumber;
+        const isCurrent = w.status === "open";
+        const count =
+          isActive && isCurrent ? currentCount : isActive ? currentCount : null;
         return (
           <button
-            key={t.id}
+            key={w.id}
             type="button"
             role="tab"
             aria-selected={isActive}
-            onClick={() => onChange(t.id)}
+            onClick={() => onChange({ kind: "week", weekNumber: w.weekNumber })}
             className={cn(
-              "inline-flex items-center gap-2.5 rounded-full border px-5 py-2 transition-colors",
+              "inline-flex shrink-0 items-center gap-2.5 rounded-full border px-5 py-2 transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-black",
               isActive
                 ? "scene-display border-[var(--scene-gold)] bg-[var(--scene-gold)]/10 text-[1rem] tracking-tight text-[var(--scene-gold-bright)]"
                 : "scene-mono border-white/15 text-[0.65rem] uppercase tracking-[0.3em] text-white/55 hover:border-white/35 hover:text-white",
             )}
           >
-            <span>{t.label}</span>
-            <span
-              className={cn(
-                "tabular-nums opacity-80",
-                isActive ? "scene-mono text-[0.65rem] tracking-[0.3em]" : "",
-              )}
-            >
-              {counts[t.id]}
-            </span>
+            {isCurrent && (
+              <span
+                aria-hidden
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  isActive
+                    ? "bg-[var(--scene-gold-bright)] motion-safe:animate-pulse"
+                    : "bg-[var(--scene-gold)]/70 motion-safe:animate-pulse",
+                )}
+              />
+            )}
+            <span>Week {w.weekNumber}</span>
+            {count != null && (
+              <span
+                className={cn(
+                  "tabular-nums opacity-80",
+                  isActive ? "scene-mono text-[0.65rem] tracking-[0.3em]" : "",
+                )}
+              >
+                {count}
+              </span>
+            )}
+            {!isCurrent && w.winnerIdeaId && (
+              <span
+                aria-label="winner picked"
+                className={cn(
+                  "scene-mono text-[0.65rem]",
+                  isActive
+                    ? "text-[var(--scene-gold-bright)]"
+                    : "text-[var(--scene-gold)]/70",
+                )}
+              >
+                ✦
+              </span>
+            )}
           </button>
         );
       })}
+      {selectedWeek &&
+        activeWeekNumber === selectedWeek.weekNumber &&
+        weeks.length > visibleWeeks.length && (
+          <span className="scene-mono shrink-0 self-center text-[0.55rem] uppercase tracking-[0.3em] text-white/35">
+            +{weeks.length - visibleWeeks.length} more
+          </span>
+        )}
+    </div>
+  );
+}
+
+/* ════════════════════════ FrozenWeekBanner ══════════════════════════
+ * Header strip that appears above the podium when viewing a closed
+ * week. Reinforces "this is history, not live" so a viewer isn't
+ * confused by the lack of a LIVE indicator on rank changes.
+ * ────────────────────────────────────────────────────────────────────── */
+function FrozenWeekBanner({ week }: { week: WeekSummary }) {
+  const closedAt = new Date(week.endAt);
+  const dateLabel = closedAt.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  return (
+    <div className="mt-8 flex justify-center">
+      <div className="scene-mono inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.02] px-3.5 py-1.5 text-[0.6rem] uppercase tracking-[0.3em] text-white/55">
+        <span aria-hidden className="text-[var(--scene-gold)]/70">
+          ◆
+        </span>
+        <span>Frozen · Closed {dateLabel}</span>
+      </div>
     </div>
   );
 }
@@ -545,27 +691,30 @@ function PodiumSlot({
     ? { textShadow: "0 0 36px rgba(255,184,0,0.35)" }
     : undefined;
   // Rank-differentiated numeral sizes: 1 largest, 2/3 progressively smaller.
+  // Sized to fit comfortably inside a ~290px wide column on lg (max-w-5xl /
+  // 3 cols - gaps). Larger values like 180px were colliding with neighboring
+  // columns and crushing the title gutter.
   const numeralSize = isFirst
-    ? "text-[96px] sm:text-[140px] lg:text-[180px]"
-    : "text-[64px] sm:text-[100px] lg:text-[140px]";
+    ? "text-[80px] sm:text-[112px] lg:text-[132px]"
+    : "text-[60px] sm:text-[88px] lg:text-[104px]";
 
   // Empty placeholder — keeps grid columns from collapsing.
   if (!idea) {
     return (
       <div
         className={cn(
-          "relative flex flex-col gap-4 px-6 py-8 sm:flex-row sm:items-start",
+          "relative flex flex-col items-center gap-3 px-6 py-8 text-center",
           order,
-          isFirst ? "lg:-mt-4 lg:scale-105" : "",
+          isFirst ? "lg:-mt-6" : "",
         )}
       >
         <div
-          className={cn("scene-numeral shrink-0 leading-none", numeralSize, "text-white/15")}
+          className={cn("scene-numeral leading-none", numeralSize, "text-white/15")}
           aria-hidden
         >
           {String(rank).padStart(2, "0")}
         </div>
-        <div className="flex flex-col justify-center gap-1">
+        <div className="flex flex-col items-center gap-1">
           <div className="scene-display text-xl text-white/35 sm:text-2xl">—</div>
           <p className="scene-mono text-[0.55rem] uppercase tracking-[0.35em] text-white/35">
             Awaiting
@@ -584,20 +733,23 @@ function PodiumSlot({
       href={ideaPath(idea.id, idea.title)}
       aria-label={`Rank ${rank}: ${idea.title}`}
       className={cn(
-        "group relative flex flex-col gap-4 rounded-2xl px-6 py-8 sm:flex-row sm:items-start",
+        "group relative flex flex-col items-center gap-4 rounded-2xl px-6 py-8 text-center",
         "border border-white/[0.06] bg-white/[0.015]",
         "transition-all duration-300",
         "hover:border-[var(--scene-gold)]/40 hover:bg-white/[0.025]",
         "active:scale-[0.99]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-4 focus-visible:ring-offset-black",
         order,
-        isFirst ? "lg:-mt-4 lg:scale-110" : "",
+        // Raise the center card. `lg:-mt-6` preserves layout space (margin
+        // doesn't bleed into neighbors) — `lg:scale-110` did not, and was
+        // visibly clipping cards 2 and 3.
+        isFirst ? "lg:-mt-6" : "",
       )}
     >
-      {/* Rank numeral — anchored left, title and metadata flow to the right */}
+      {/* Rank numeral — top, full card width */}
       <div
         className={cn(
-          "scene-numeral shrink-0 leading-none",
+          "scene-numeral leading-none",
           // Only rank 1 gets the foil sweep — keeps the moment
           // singular instead of three numerals fighting for the eye.
           isFirst && "scene-foil",
@@ -611,8 +763,8 @@ function PodiumSlot({
       </div>
 
       {/* Metadata column — title, score, votes, share */}
-      <div className="flex min-w-0 flex-col justify-center gap-3">
-        <h3 className="scene-display line-clamp-2 text-xl font-medium text-white sm:text-2xl">
+      <div className="flex w-full min-w-0 flex-col items-center justify-center gap-3">
+        <h3 className="scene-display line-clamp-2 break-words text-xl font-medium text-white sm:text-2xl">
           {idea.title}
         </h3>
 
@@ -632,11 +784,16 @@ function PodiumSlot({
           <span className="text-base tabular-nums text-white/45">/100</span>
         </div>
 
+        {/* Score split bar — two segments, each maxes at 50%.
+            AI (left) is gold, Community (right) is gold-bright.
+            Makes it visually obvious that AI alone caps at 50. */}
+        <ScoreSplitBar idea={idea} />
+
         <p className="scene-mono text-[0.65rem] uppercase tracking-[0.16em] text-white/55">
           {idea.vote_count === 0 ? (
-            <span className="text-white/55">AI-only · awaiting votes</span>
+            <span className="text-white/55">AI {idea.score}/10 · awaiting votes</span>
           ) : (
-            <>{formatVoteCount(idea.vote_count)} votes</>
+            <>{formatVoteCount(idea.vote_count)} {idea.vote_count === 1 ? "vote" : "votes"}</>
           )}
         </p>
 
@@ -660,6 +817,49 @@ function PodiumSlot({
         </div>
       </div>
     </Link>
+  );
+}
+
+/* ════════════════════════ ScoreSplitBar ═════════════════════════════
+ * Two-segment horizontal bar visualizing the AI half (capped 0..50)
+ * and the community half (also 0..50). Makes the scoring formula
+ * legible at a glance: AI alone never exceeds the midline, community
+ * fills the right half by vote share.
+ *
+ * Renders inline between the score and the meta line on PodiumSlot.
+ * ────────────────────────────────────────────────────────────────────── */
+function ScoreSplitBar({
+  idea,
+}: {
+  idea: Pick<LeaderboardIdea, "final_score" | "score">;
+}) {
+  const { ai, community } = splitScore(idea);
+  const aiPct = (ai / 50) * 100;
+  const commPct = (community / 50) * 100;
+  return (
+    <div
+      className="flex w-full max-w-[200px] flex-col gap-1"
+      aria-label={`Score breakdown: AI ${ai} of 50, community ${community} of 50`}
+    >
+      <div className="flex h-1 w-full gap-[2px] rounded-full">
+        <div className="relative h-full flex-1 overflow-hidden rounded-l-full bg-white/[0.05]">
+          <div
+            className="h-full bg-[var(--scene-gold)]/75 transition-[width] duration-500"
+            style={{ width: `${aiPct}%` }}
+          />
+        </div>
+        <div className="relative h-full flex-1 overflow-hidden rounded-r-full bg-white/[0.05]">
+          <div
+            className="h-full bg-[var(--scene-gold-bright)] transition-[width] duration-500"
+            style={{ width: `${commPct}%` }}
+          />
+        </div>
+      </div>
+      <div className="scene-mono flex items-center justify-between text-[0.5rem] uppercase tracking-[0.2em] text-white/45">
+        <span className="tabular-nums">AI {ai}</span>
+        <span className="tabular-nums">Crowd {community}</span>
+      </div>
+    </div>
   );
 }
 
@@ -838,24 +1038,40 @@ function JudgeBreakdown({
  * Both variants land the user on `/` (the homepage pitch pill) — the
  * natural next action when there's nothing yet to read.
  * ────────────────────────────────────────────────────────────────────── */
-function Empty({ tab }: { tab: Tab }) {
+function Empty({ tab, isFrozen }: { tab: Tab; isFrozen: boolean }) {
   const isAllTime = tab === "alltime";
+  const eyebrow = isAllTime
+    ? "· no victors yet ·"
+    : isFrozen
+      ? "· no entries this week ·"
+      : "· this week's pit is open ·";
+  const headline = isAllTime
+    ? "The pit is hungry."
+    : isFrozen
+      ? "This week passed quietly."
+      : "Nothing scored this week.";
+  const body = isAllTime
+    ? "Names appear here once the gamemaster has weighed them. Yours could be first."
+    : isFrozen
+      ? "No idea cleared scoring before the hourglass drained. The pit moved on."
+      : "The hourglass hasn't drained. First tribute through gets the top of the page.";
+
   return (
     <div className="mt-20 flex flex-col items-center gap-6 px-4 text-center sm:mt-24">
       <p className="scene-mono text-[0.55rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.65rem]">
-        {isAllTime ? "· no victors yet ·" : "· this week's pit is open ·"}
+        {eyebrow}
       </p>
       <h2 className="scene-display-italic max-w-2xl text-balance text-3xl leading-[1.05] text-white sm:text-5xl lg:text-6xl">
-        {isAllTime ? "The pit is hungry." : "Nothing scored this week."}
+        {headline}
       </h2>
       <p className="scene-display max-w-md text-balance text-base leading-snug text-white/72 sm:text-lg">
-        {isAllTime
-          ? "Names appear here once the gamemaster has weighed them. Yours could be first."
-          : "The hourglass hasn't drained. First tribute through gets the top of the page."}
+        {body}
       </p>
-      <Link href="/" className="cta-btn-primary mt-3 text-sm">
-        Pitch your idea <span aria-hidden>→</span>
-      </Link>
+      {!isFrozen && (
+        <Link href="/" className="cta-btn-primary mt-3 text-sm">
+          Pitch your idea <span aria-hidden>→</span>
+        </Link>
+      )}
     </div>
   );
 }

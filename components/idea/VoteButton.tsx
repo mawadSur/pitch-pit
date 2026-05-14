@@ -21,7 +21,18 @@ type CoinSpawn = {
   rotate: number;
 };
 
-export function VoteButton({ ideaId }: { ideaId: string }) {
+export function VoteButton({
+  ideaId,
+  weekStatus = "open",
+}: {
+  ideaId: string;
+  // The status of the week this idea belongs to. When != "open" the
+  // DB-level RLS policy (migration 025) will reject inserts on `votes`,
+  // so we render a disabled "Voting closed" surface instead. We still
+  // render the live vote_count so the historical tally stays visible.
+  weekStatus?: "open" | "closed" | "built";
+}) {
+  const isClosed = weekStatus !== "open";
   const router = useRouter();
   const [voteCount, setVoteCount] = useState<number | null>(null);
   const [userHasVoted, setUserHasVoted] = useState(false);
@@ -309,7 +320,22 @@ export function VoteButton({ ideaId }: { ideaId: string }) {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      {signedIn ? (
+      {isClosed ? (
+        <div
+          aria-disabled="true"
+          className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/[0.02] px-6 py-3 text-base font-medium text-white/55"
+          title="Voting closed for this week"
+        >
+          <TokenIcon active={false} />
+          <span>Voting closed</span>
+          <span
+            className="scene-mono ml-1 tabular-nums text-sm font-semibold text-white/45"
+            aria-label={`${display} tokens, voting closed`}
+          >
+            {display}
+          </span>
+        </div>
+      ) : signedIn ? (
         <motion.button
           ref={buttonRef}
           type="button"

@@ -47,6 +47,30 @@ const UNDEFINED_COLUMN = "42703";
 const SELECT_FALLBACK =
   "id,user_id,title,pitch,handle,score,final_score,vote_count,verdict,strengths,concerns,reasoning,build_recommended,status,mvp_url,screenshot_url,created_at,judge_scores";
 
+/* Resolve the status of the week this idea belongs to ("open" |
+ * "closed" | "built"). Drives the VoteButton lock — voting RLS
+ * (migration 025) only accepts inserts on open-week ideas, so the
+ * UI hides the button rather than letting the request 403.
+ *
+ * Defaults to "open" on any failure (missing week_id, migration 005
+ * not applied, query error) so a partial schema doesn't lock voting
+ * for a freshly-deployed clone. */
+async function fetchWeekStatusForIdea(
+  ideaId: string,
+): Promise<"open" | "closed" | "built"> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ideas")
+    .select("week:weeks!inner(status)")
+    .eq("id", ideaId)
+    .maybeSingle<{ week: { status: string } | { status: string }[] | null }>();
+  if (!data?.week) return "open";
+  const week = Array.isArray(data.week) ? data.week[0] : data.week;
+  const status = week?.status;
+  if (status === "closed" || status === "built") return status;
+  return "open";
+}
+
 // Build the canonical public URL for an idea. When the title yields
 // no usable slug (emoji-only, non-Latin script, whitespace), we keep
 // the URL slug-less rather than emit a trailing dangling segment.
@@ -158,6 +182,22 @@ export async function generateMetadata({
   // a backlinked URL has a stale or wrong slug.
   const url = `${SITE_URL}${ideaPath(idea.id, idea.title)}`;
 
+  // Built ideas get the polished BUILT-stamped OG card from
+  // `/api/og/[ideaId]`. Other statuses fall through to the
+  // colocated `opengraph-image.tsx` (generic scored-idea card) —
+  // explicitly returning no `images` here lets Next.js pick that up.
+  const builtOgImage =
+    idea.status === "built"
+      ? [
+          {
+            url: `${SITE_URL}/api/og/${idea.id}`,
+            width: 1200,
+            height: 630,
+            alt: `${idea.title} — built on pitch-pit`,
+          },
+        ]
+      : undefined;
+
   return {
     title,
     description,
@@ -166,11 +206,13 @@ export async function generateMetadata({
       description,
       url,
       type: "article",
+      ...(builtOgImage ? { images: builtOgImage } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      ...(builtOgImage ? { images: builtOgImage.map((i) => i.url) } : {}),
     },
     alternates: { canonical: url },
   };
@@ -193,12 +235,13 @@ export default async function IdeaPage({
   const sp = await searchParams;
   const supabase = await createClient();
 
-  const [idea, { data: { user } }, claimTokenForIdea, cookieStore] =
+  const [idea, { data: { user } }, claimTokenForIdea, cookieStore, weekStatus] =
     await Promise.all([
       fetchIdea(id),
       supabase.auth.getUser(),
       fetchClaimToken(id),
       cookies(),
+      fetchWeekStatusForIdea(id),
     ]);
 
   if (!idea) notFound();
@@ -281,6 +324,7 @@ export default async function IdeaPage({
         initialComments={comments}
         hasClaimCookie={hasClaimCookie}
         autoPromptClaim={autoPromptClaim}
+        weekStatus={weekStatus}
       />
     </div>
   );

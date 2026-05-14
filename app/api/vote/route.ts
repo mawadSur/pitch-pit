@@ -29,12 +29,18 @@ export async function POST(req: NextRequest) {
 
   const { ideaId } = parsed.data;
 
-  // Owner check (defense in depth — RLS also enforces this).
+  // Owner check + closed-week check (defense in depth — RLS migration 025
+  // enforces both at the DB layer too, but matching error semantics here
+  // gives the client a clear "Voting closed" surface instead of a generic
+  // RLS rejection).
   const { data: idea } = await supabase
     .from("ideas")
-    .select("user_id")
+    .select("user_id, week:weeks(status)")
     .eq("id", ideaId)
-    .maybeSingle();
+    .maybeSingle<{
+      user_id: string | null;
+      week: { status: string } | { status: string }[] | null;
+    }>();
 
   if (!idea) {
     return NextResponse.json({ error: "Idea not found." }, { status: 404 });
@@ -42,6 +48,14 @@ export async function POST(req: NextRequest) {
   if (idea.user_id === user.id) {
     return NextResponse.json(
       { error: "You can't vote for your own idea." },
+      { status: 403 },
+    );
+  }
+
+  const weekRow = Array.isArray(idea.week) ? idea.week[0] : idea.week;
+  if (weekRow && weekRow.status !== "open") {
+    return NextResponse.json(
+      { error: "Voting closed for this week." },
       { status: 403 },
     );
   }

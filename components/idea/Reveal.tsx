@@ -57,11 +57,15 @@ export function Reveal({
   initialComments = [],
   hasClaimCookie = false,
   autoPromptClaim = false,
+  weekStatus = "open",
 }: {
   idea: Idea;
   currentUserId: string | null;
   currentUser?: User | null;
   initialComments?: Comment[];
+  // Status of the week this idea belongs to. Drives the VoteButton's
+  // closed-week lock — open = live vote button, closed/built = disabled.
+  weekStatus?: "open" | "closed" | "built";
   // Server-resolved: did the requester arrive with a pp_claim_* cookie
   // whose value matches this idea's claim_token? Drives which claim CTA
   // we surface:
@@ -253,7 +257,7 @@ export function Reveal({
                 transition={{ duration: 0.6, delay: 1.4 }}
                 className="mt-10 flex flex-wrap items-center justify-center gap-3 lg:mt-0 lg:justify-start"
               >
-                <VoteButton ideaId={idea.id} />
+                <VoteButton ideaId={idea.id} weekStatus={weekStatus} />
                 <ShareMenu
                   idea={{
                     id: idea.id,

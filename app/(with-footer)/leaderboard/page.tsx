@@ -11,7 +11,10 @@ import {
 import { JsonLd, type JsonLdData } from "@/components/seo/JsonLd";
 import { titleToSlug } from "@/lib/slug";
 import { LeaderboardScene } from "./LeaderboardScene";
+import { type WeekSummary } from "./types";
 import "@/app/scene.css";
+
+export type { WeekSummary };
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pitchpit.app";
@@ -54,27 +57,48 @@ function escapeLike(input: string): string {
   return input.replace(/[%_]/g, (c) => `\\${c}`);
 }
 
-async function fetchBoards(query: string | null): Promise<{
+async function fetchBoards(
+  query: string | null,
+  selectedWeekNumber: number | null,
+): Promise<{
   alltime: LeaderboardIdea[];
-  week: LeaderboardIdea[];
-  weekNumber: number | null;
+  weekIdeas: LeaderboardIdea[];
+  weeks: WeekSummary[];
+  selectedWeek: WeekSummary | null;
+  isFrozen: boolean;
 }> {
   try {
     const supabase = await createClient();
 
-    // Find the current open week (or fall back to the most recent week)
-    const { data: openWeek } = await supabase
+    // Pull every week so the selector can render historical tabs.
+    // Cheap: tens of rows even after a year of weekly cycles.
+    const { data: weeksRows } = await supabase
       .from("weeks")
-      .select("id, week_number")
-      .eq("status", "open")
-      .order("week_number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .select("id, week_number, status, start_at, end_at, winner_idea_id")
+      .order("week_number", { ascending: false });
+
+    const weeks: WeekSummary[] = (weeksRows ?? []).map((w) => ({
+      id: w.id as string,
+      weekNumber: w.week_number as number,
+      status: w.status as WeekSummary["status"],
+      startAt: w.start_at as string,
+      endAt: w.end_at as string,
+      winnerIdeaId: (w.winner_idea_id as string | null) ?? null,
+    }));
+
+    // Resolve which week to render. Default to the most-recent open week.
+    // If a `?week=N` is supplied, honor it (clamped to known weeks).
+    const openWeek = weeks.find((w) => w.status === "open") ?? null;
+    const selectedWeek =
+      selectedWeekNumber != null
+        ? weeks.find((w) => w.weekNumber === selectedWeekNumber) ?? null
+        : openWeek;
 
     const trimmedQuery = query?.trim() ?? "";
     const searchPattern =
       trimmedQuery.length > 0 ? `%${escapeLike(trimmedQuery)}%` : null;
 
+    // ── All-time board (always live) ──────────────────────────────
     let allTimeQuery = supabase
       .from("ideas")
       .select(LEADERBOARD_SELECT)
@@ -82,69 +106,122 @@ async function fetchBoards(query: string | null): Promise<{
       .not("score", "is", null);
 
     if (searchPattern) {
-      // Match against title OR pitch text, case-insensitive.
       allTimeQuery = allTimeQuery.or(
         `title.ilike.${searchPattern},pitch.ilike.${searchPattern}`,
       );
     }
 
     allTimeQuery = allTimeQuery
-      // Sort by final_score (50% AI + 50% community), tiebreaker on AI score
       .order("final_score", { ascending: false, nullsFirst: false })
       .order("score", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(20);
 
-    let weekQuery = supabase
-      .from("ideas")
-      .select(LEADERBOARD_SELECT)
-      .in("status", VISIBLE_STATUSES as unknown as string[])
-      .not("score", "is", null);
+    // ── Per-week board ────────────────────────────────────────────
+    // Open week → live ideas table. Closed week → frozen week_results
+    // joined back to ideas for display fields.
+    const isFrozen = selectedWeek?.status !== "open" && selectedWeek != null;
 
-    if (openWeek?.id) {
-      // Filter to the current open week
-      weekQuery = weekQuery.eq("week_id", openWeek.id);
-    } else {
-      // Fallback: last 7 days (for projects that haven't run migration 005 yet)
-      const weekStart = new Date(
-        Date.now() - 7 * 24 * 60 * 60 * 1000,
-      ).toISOString();
-      weekQuery = weekQuery.gte("created_at", weekStart);
-    }
+    let weekIdeas: LeaderboardIdea[] = [];
 
-    if (searchPattern) {
-      weekQuery = weekQuery.or(
-        `title.ilike.${searchPattern},pitch.ilike.${searchPattern}`,
-      );
-    }
+    if (selectedWeek && !isFrozen) {
+      let weekQuery = supabase
+        .from("ideas")
+        .select(LEADERBOARD_SELECT)
+        .in("status", VISIBLE_STATUSES as unknown as string[])
+        .not("score", "is", null)
+        .eq("week_id", selectedWeek.id);
 
-    const [allTimeRes, weekRes] = await Promise.all([
-      allTimeQuery,
-      weekQuery
+      if (searchPattern) {
+        weekQuery = weekQuery.or(
+          `title.ilike.${searchPattern},pitch.ilike.${searchPattern}`,
+        );
+      }
+
+      const { data } = await weekQuery
         .order("final_score", { ascending: false, nullsFirst: false })
         .order("score", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(10),
-    ]);
+        .limit(20);
+      weekIdeas = (data ?? []) as LeaderboardIdea[];
+    } else if (selectedWeek && isFrozen) {
+      // Frozen: read from week_results, then hydrate display fields.
+      // PostgREST embedded resource — single round-trip.
+      const { data } = await supabase
+        .from("week_results")
+        .select(
+          `rank,
+           final_score,
+           ai_score,
+           vote_count,
+           idea:ideas!inner(${LEADERBOARD_SELECT})`,
+        )
+        .eq("week_id", selectedWeek.id)
+        .order("rank", { ascending: true })
+        .limit(20);
+
+      const rows = (data ?? []) as Array<{
+        rank: number;
+        final_score: number;
+        ai_score: number;
+        vote_count: number;
+        idea: LeaderboardIdea | LeaderboardIdea[];
+      }>;
+      // PostgREST returns embedded as either object or array depending on
+      // FK cardinality inference. We always get one idea per row, but the
+      // type can still be the array form. Normalize and override live
+      // fields with snapshot values so the rendered card is true history.
+      const hydrated: LeaderboardIdea[] = [];
+      for (const r of rows) {
+        const idea = Array.isArray(r.idea) ? r.idea[0] : r.idea;
+        if (!idea) continue;
+        hydrated.push({
+          ...idea,
+          final_score: r.final_score,
+          score: r.ai_score,
+          vote_count: r.vote_count,
+        });
+      }
+      // Apply the search filter client-side for frozen weeks. The dataset
+      // is at most 20 rows, so this is trivial.
+      weekIdeas = searchPattern
+        ? hydrated.filter((row) =>
+            row.title.toLowerCase().includes(trimmedQuery.toLowerCase()),
+          )
+        : hydrated;
+    }
+
+    const allTimeRes = await allTimeQuery;
 
     return {
       alltime: (allTimeRes.data ?? []) as LeaderboardIdea[],
-      week: (weekRes.data ?? []) as LeaderboardIdea[],
-      weekNumber: openWeek?.week_number ?? null,
+      weekIdeas,
+      weeks,
+      selectedWeek,
+      isFrozen,
     };
   } catch {
-    return { alltime: [], week: [], weekNumber: null };
+    return {
+      alltime: [],
+      weekIdeas: [],
+      weeks: [],
+      selectedWeek: null,
+      isFrozen: false,
+    };
   }
 }
 
 export default async function LeaderboardRoute({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; week?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, week: weekParam } = await searchParams;
   const query = q ?? null;
-  const { alltime, week, weekNumber } = await fetchBoards(query);
+  const parsedWeek = weekParam ? Number.parseInt(weekParam, 10) : NaN;
+  const selectedWeekNumber = Number.isFinite(parsedWeek) ? parsedWeek : null;
+  const { alltime, weekIdeas, weeks, selectedWeek, isFrozen } =
+    await fetchBoards(query, selectedWeekNumber);
 
   // ItemList structured data — top 10 by final score. Search engines
   // can render this as a "list of N" rich result. We pull from the
@@ -193,8 +270,10 @@ export default async function LeaderboardRoute({
       <JsonLd data={jsonLd} />
       <LeaderboardScene
         alltime={alltime}
-        week={week}
-        weekNumber={weekNumber}
+        weekIdeas={weekIdeas}
+        weeks={weeks}
+        selectedWeek={selectedWeek}
+        isFrozen={isFrozen}
         query={query ?? ""}
       />
     </div>
