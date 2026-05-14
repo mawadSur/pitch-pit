@@ -6,15 +6,10 @@ import {
   isDispatchConfigured,
   mintCallbackToken,
 } from "@/lib/build-dispatch";
+import { verifyCronAuth } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function verifyCronAuth(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get("authorization") === `Bearer ${secret}`;
-}
 
 export async function GET(req: NextRequest) {
   if (!verifyCronAuth(req)) {

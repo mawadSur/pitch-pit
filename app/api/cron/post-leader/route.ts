@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postTweet, readXCredsFromEnv } from "@/lib/social/x";
 import { titleToSlug } from "@/lib/slug";
+import { verifyCronAuth } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,12 +13,6 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://pitchpit.app";
 // Sun=0, Thu=4, Sat=6 — three weekly advertising beats during the open week.
 // The Vercel cron fires daily; this filter is what shapes the cadence.
 const POST_DAYS_UTC = new Set([0, 4, 6]);
-
-function verifyCronAuth(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get("authorization") === `Bearer ${secret}`;
-}
 
 function formatTweet(idea: {
   title: string;

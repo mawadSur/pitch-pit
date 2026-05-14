@@ -2,17 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postTweet, readXCredsFromEnv } from "@/lib/social/x";
 import { titleToSlug } from "@/lib/slug";
+import { verifyCronAuth } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://pitchpit.app";
-
-function verifyCronAuth(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get("authorization") === `Bearer ${secret}`;
-}
 
 function formatTweet(idea: {
   title: string;
