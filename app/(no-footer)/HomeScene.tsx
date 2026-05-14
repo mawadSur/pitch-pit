@@ -24,6 +24,7 @@ import { PitchCoach } from "./PitchCoach";
 import { PitchAttachments, type Attachment } from "./PitchAttachments";
 import { SUBMIT_LIMITS } from "@/lib/score-schema";
 import type { VerdictCard } from "./types";
+import { HeroWinner, type WinnerHero } from "./HeroWinner";
 
 // Re-export so callers (app/(no-footer)/page.tsx) that already import
 // VerdictCard from "./HomeScene" don't need their import path updated.
@@ -54,9 +55,11 @@ const AntiAbusePromise = dynamic(() =>
 const FinalCTA = dynamic(() =>
   import("./FinalCTA").then((m) => m.FinalCTA),
 );
-const LastWeekVerdicts = dynamic(() =>
-  import("./LastWeekVerdicts").then((m) => m.LastWeekVerdicts),
-);
+// LastWeekVerdicts is intentionally NOT imported here. Step 1 of the
+// May 2026 roadmap replaced it on `/` with <HeroWinner /> above the
+// fold. The component file still ships in the repo because it may
+// surface on other routes (e.g. /built or a future /winners gallery);
+// the homepage just no longer renders it.
 
 type HomeSceneProps = {
   pitchedThisSeason: number;
@@ -65,14 +68,25 @@ type HomeSceneProps = {
   /** Recent scored submissions for the bottom "Latest tributes" row. Pre-
       filtered by the server to entries created within the last 7 days. */
   latestIdeas: TickerEntry[];
+  /** Latest built/building idea — drives the full-bleed HeroWinner
+   *  block above the fold. Null when no winner exists; HeroWinner
+   *  renders a "First winner ships Monday" placeholder instead. */
+  winner: WinnerHero | null;
 };
 
 export function HomeScene({
   pitchedThisSeason,
   built,
-  verdicts,
+  verdicts: _verdicts,
   latestIdeas,
+  winner,
 }: HomeSceneProps) {
+  // verdicts is kept on the prop surface so app/(no-footer)/page.tsx's
+  // existing fetch + thread doesn't have to change shape on this step,
+  // but the homepage no longer renders <LastWeekVerdicts /> — see the
+  // comment above the (removed) dynamic import. The underscore rename
+  // suppresses the unused-prop lint.
+  void _verdicts;
   return (
     <MotionConfig reducedMotion="user">
       <>
@@ -103,6 +117,15 @@ export function HomeScene({
         >
           <Panel1 />
         </HeroPanel>
+
+        {/* HeroWinner — full-bleed block immediately under the pitch
+            input hero. Returning visitors see the live/last build
+            within one scroll-flick of landing — proves the pact is
+            real before the cinematic explanation panels kick in.
+            Renders a placeholder when no built/building idea exists
+            so the slot is never empty. Replaces the old
+            LastWeekVerdicts grid (step 1 of the May 2026 roadmap). */}
+        <HeroWinner winner={winner} />
 
         {/* Panel 2 — Judge. Same 200vh treatment so the frames-2 sequence
             (90 frames) plays out in the centered viewport while pinned. */}
@@ -140,11 +163,12 @@ export function HomeScene({
            sections use simpler reveal animations and stop pinning so
            founders can absorb the offer at their own pace. */}
         <HowItWorks />
-        {/* Last week's verdicts — only renders when at least one
-            scored idea exists. Sits between HowItWorks and
-            WeeklyStakes so it reads as evidence after the explanation
-            and before the rules. */}
-        {verdicts.length > 0 && <LastWeekVerdicts verdicts={verdicts} />}
+        {/* The old "Last week's verdicts" 3-card grid used to render
+            here; it's been promoted into a single full-bleed
+            <HeroWinner /> block above the fold (rendered between
+            Panel 1 and Panel 2 — see comment there). LastWeekVerdicts.tsx
+            stays in the repo for now in case it ships on another
+            route. */}
         <WeeklyStakes
           pitchedThisSeason={pitchedThisSeason}
           built={built}
