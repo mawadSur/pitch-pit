@@ -2,12 +2,8 @@
 
 import NextImage from "next/image";
 import { useEffect, useRef, useState } from "react";
-import {
-  useInView,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-} from "framer-motion";
+import { useInView, useMotionValueEvent, useScroll } from "framer-motion";
+import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
 
 const PAD = (n: number) => String(n).padStart(3, "0");
 
@@ -86,12 +82,15 @@ export function HeroPanel({
   // before it draws anything anyway.
   const [largeEnough, setLargeEnough] = useState(false);
 
-  // `framer-motion`'s `useReducedMotion()` listens to the OS-level
-  // `prefers-reduced-motion` media query. The `MotionConfig reducedMotion="user"`
-  // up the tree only gates framer-motion's `animate` props — the manual
-  // scroll-driven canvas scrub below has its own state and frame work, so
-  // it needs its own gate. Returns `null` during SSR + the first paint,
-  // which we treat as "not reduced" until the client check runs.
+  // Local `useReducedMotion()` hook (lib/hooks/useReducedMotion.ts) reads the
+  // OS-level `prefers-reduced-motion` media query. The `MotionConfig
+  // reducedMotion="user"` up the tree only gates framer-motion's `animate`
+  // props — the manual scroll-driven canvas scrub below has its own state
+  // and frame work, so it needs its own gate. SSR-safe: returns `false`
+  // during SSR + the first paint, then upgrades on the first effect run.
+  // When `true`, we skip the entire frame-preload + canvas pipeline (see
+  // `canvasActive` below) and leave the static at-rest <NextImage> visible
+  // for the panel's full scroll range.
   const prefersReducedMotion = useReducedMotion();
 
   // Perf-M8: viewport visibility gate for the per-frame scrub handler.

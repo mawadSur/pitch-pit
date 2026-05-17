@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBuildNotification } from "@/lib/email";
 import {
@@ -19,9 +20,14 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 
-  // 1. Idempotently close the current open week. This Postgres function picks
-  //    the highest-final_score idea as winner_idea_id and opens a fresh week.
-  //    Safe to call repeatedly — no-op if no open week.
+  // 1. Idempotently close the current open week. Dual-fired by design:
+  //    GitHub Actions hits this route at Tue 05:05 UTC (.github/workflows/
+  //    cron-close-week-and-build.yml), and pg_cron also calls
+  //    close_current_week() directly at Tue 05:04 UTC (migration 026).
+  //    Both exist as belt-and-suspenders — the SQL takes `for update` on
+  //    the open week row, so whichever fires second is a safe no-op. This
+  //    route exists in addition to pg_cron because pg_cron only runs the
+  //    SQL close; the email + repository_dispatch in steps 7-8 need HTTP.
   const { error: rpcErr } = await supabase.rpc("close_current_week");
   if (rpcErr) {
     return NextResponse.json(
@@ -116,6 +122,10 @@ export async function GET(req: NextRequest) {
     emailSent = true;
   } catch (err) {
     console.error("[close-week-and-build] Email send failed:", err);
+    Sentry.captureException(err, {
+      tags: { feature: "email", route: "cron/close-week-and-build" },
+      extra: { ideaId: idea.id, ideaTitle: idea.title },
+    });
   }
 
   // 8. Fire repository_dispatch to the GitHub builder. Best-effort — if

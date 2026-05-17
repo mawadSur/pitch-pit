@@ -1,6 +1,41 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
+
+// Content-Security-Policy: explicit allowlist for every fetch destination
+// the app uses today. Keep this in sync with the deps that inject scripts
+// or open sockets:
+//   • script-src: Vercel Analytics + Speed Insights inject runtime scripts;
+//     Cloudflare Turnstile loads from challenges.cloudflare.com.
+//     'unsafe-inline' + 'unsafe-eval' are required by Next.js' inline
+//     hydration bootstrap and the dev-mode webpack runtime.
+//   • style-src: Next.js + Tailwind emit inline <style> blocks.
+//   • img-src: Supabase storage CDN, Google OAuth avatars
+//     (lh3.googleusercontent.com — wildcard'd via *.googleusercontent.com),
+//     and arbitrary https: hosts for OG image fetches; data:/blob: cover
+//     base64 inlines + canvas-generated blobs.
+//   • font-src: Geist + Fraunces are self-hosted; data: covers any inlined fonts.
+//   • connect-src: Supabase REST + Realtime websocket; Sentry ingest;
+//     Vercel Insights beacon; Anthropic API for any future client-side calls
+//     (today /api/score is server-only, but keep the allowance now to avoid
+//     a future surprise breakage).
+//   • frame-src: Turnstile renders its challenge in an iframe.
+//   • frame-ancestors 'none': nobody embeds us — defense in depth atop
+//     the X-Frame-Options: DENY header below.
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.vercel-insights.com https://*.vercel-scripts.com https://challenges.cloudflare.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https: *.supabase.co *.googleusercontent.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io https://*.vercel-insights.com https://api.anthropic.com",
+  "frame-src https://challenges.cloudflare.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const securityHeaders = [
   // Browsers should never serve over HTTP after the first HTTPS hit.
   // 2 years + subdomains + preload-eligible.
@@ -8,6 +43,8 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
+  // Locked-down resource allowlist — see cspDirectives above for rationale.
+  { key: "Content-Security-Policy", value: cspDirectives },
   // Disallow framing — kills clickjacking. Even stricter than X-Frame-Options.
   { key: "X-Frame-Options", value: "DENY" },
   // Don't sniff MIME types — only trust Content-Type from the server.
