@@ -59,5 +59,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.warn("[sitemap] idea enumeration failed", e);
   }
 
-  return [...staticEntries, ...ideaEntries];
+  // Recap pages — one per closed/built week. Recaps are immutable
+  // editorial artifacts so they get a higher priority than idea pages
+  // and never need re-crawling.
+  let recapEntries: MetadataRoute.Sitemap = [];
+  try {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from("weeks")
+      .select("week_number, end_at")
+      .in("status", ["closed", "built"])
+      .order("week_number", { ascending: false });
+
+    if (data) {
+      recapEntries = data.map((row) => ({
+        url: `${SITE_URL}/recap/${row.week_number}`,
+        lastModified: row.end_at ? new Date(row.end_at) : now,
+        changeFrequency: "yearly",
+        priority: 0.6,
+      }));
+    }
+  } catch (e) {
+    console.warn("[sitemap] recap enumeration failed", e);
+  }
+
+  return [...staticEntries, ...recapEntries, ...ideaEntries];
 }

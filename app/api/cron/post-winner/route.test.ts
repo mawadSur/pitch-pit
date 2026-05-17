@@ -49,6 +49,7 @@ type State = {
   week?: WeekRow | null;
   idea?: IdeaRow | null;
   existingPost?: SocialPostRow | null;
+  existingLog?: SocialPostRow | null;
 };
 
 let state: State = {};
@@ -59,6 +60,22 @@ let lastSocialInsert: {
   payload: { text: string; ideaId: string; weekNumber: number };
 } | null = null;
 let lastSocialPostsLookup: { channel?: string; event_key?: string } = {};
+let lastLogInsert: {
+  channel: string;
+  template: string;
+  week_id: string | null;
+  idea_id: string | null;
+  external_id: string | null;
+  body: string;
+  status: string;
+  error?: string | null;
+} | null = null;
+let lastLogLookup: {
+  channel?: string;
+  template?: string;
+  week_id?: string;
+  status?: string;
+} = {};
 
 const postTweetMock =
   vi.fn<(text: string, creds: unknown) => Promise<{ id: string }>>();
@@ -129,6 +146,44 @@ vi.mock("@/lib/supabase/admin", () => ({
           },
         };
       }
+      if (table === "social_post_log") {
+        return {
+          select: () => {
+            const captured: {
+              channel?: string;
+              template?: string;
+              week_id?: string;
+              status?: string;
+            } = {};
+            const builder: Record<string, unknown> = {};
+            builder.eq = (col: string, val: string) => {
+              if (col === "channel") captured.channel = val;
+              if (col === "template") captured.template = val;
+              if (col === "week_id") captured.week_id = val;
+              if (col === "status") captured.status = val;
+              return builder;
+            };
+            builder.maybeSingle = async () => {
+              lastLogLookup = captured;
+              return { data: state.existingLog ?? null, error: null };
+            };
+            return builder;
+          },
+          insert: async (row: {
+            channel: string;
+            template: string;
+            week_id: string | null;
+            idea_id: string | null;
+            external_id: string | null;
+            body: string;
+            status: string;
+            error?: string | null;
+          }) => {
+            lastLogInsert = row;
+            return { error: null };
+          },
+        };
+      }
       return {};
     },
   }),
@@ -169,6 +224,8 @@ describe("GET /api/cron/post-winner", () => {
     state = {};
     lastSocialInsert = null;
     lastSocialPostsLookup = {};
+    lastLogInsert = null;
+    lastLogLookup = {};
     postTweetMock.mockReset();
     readXCredsFromEnvMock.mockReset();
     process.env.CRON_SECRET = CRON_SECRET;
@@ -255,6 +312,24 @@ describe("GET /api/cron/post-winner", () => {
       channel: "x",
       event_key: `winner-week-${CLOSED_WEEK_WITH_WINNER.week_number}`,
     });
+
+    // social_post_log idempotency lookup keyed by (channel, template, week_id, status).
+    expect(lastLogLookup).toEqual({
+      channel: "x",
+      template: "winner",
+      week_id: CLOSED_WEEK_WITH_WINNER.id,
+      status: "posted",
+    });
+
+    // social_post_log row was written alongside the social_posts row.
+    expect(lastLogInsert).not.toBeNull();
+    expect(lastLogInsert!.channel).toBe("x");
+    expect(lastLogInsert!.template).toBe("winner");
+    expect(lastLogInsert!.week_id).toBe(CLOSED_WEEK_WITH_WINNER.id);
+    expect(lastLogInsert!.idea_id).toBe(WINNER_IDEA.id);
+    expect(lastLogInsert!.external_id).toBe("tweet-winner-789");
+    expect(lastLogInsert!.body).toBe(tweetText);
+    expect(lastLogInsert!.status).toBe("posted");
   });
 
   it("dry-run skip: when X creds are absent, never calls postTweet and returns the would-be text", async () => {
