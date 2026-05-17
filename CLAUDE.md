@@ -13,7 +13,7 @@ npm run test:e2e     # playwright (specs in e2e/)
 supabase db push     # apply migrations in supabase/migrations/ to remote
 ```
 
-Test coverage is partial: vitest covers a handful of lib helpers (`content-filter`, `slug`, `extract-json`, `score-schema`, `week-cycle`) and three API routes (`vote`, `claim-idea`, `pitch-coach`). Playwright has smoke + judge-flow specs only — no signed-in vote test, no `/api/score` happy path, no admin gate test. The build is still a real verification gate — `npm run build` catches type errors and lint failures.
+Test coverage is meaningful but uneven. Vitest covers ~12 lib helpers (`content-filter`, `slug`, `extract-json`, `score-schema`, `week-cycle`, `ratelimit`, `turnstile`, `user-quota`, `build-prompt`, `email`, `judges/*`) and ~11 API routes (`vote`, `claim-idea`, `pitch-coach`, `pitch-upload`, `draft`, `comments`, `comments/[id]`, `build-callback`, all 4 cron routes). Playwright has smoke + judge-flow specs only — gaps: no e2e for submit→score→reveal, signed-in vote, admin gate, or `/recap` pages. The build is still a real verification gate — `npm run build` catches type errors and lint failures.
 
 ## Product
 
@@ -27,7 +27,7 @@ The codebase has two aesthetics layered on the same backend. Don't conflate them
 
 **Minimalist cinematic** (the user-facing surface): `/`, `/submit`, `/idea/[id]`, `/leaderboard`, `/built`, `/rules`, `/login`. Black void + warm gold (#FFB800) accents + glass cards + scroll-driven frame sequences. Three-axis typography: **Fraunces** variable serif (display + verdict + score numerals via `--font-display` and the `.scene-display` / `.scene-display-italic` / `.scene-numeral` utility classes), **Inter** for body, **Geist Mono** for caption / label / status pills. Status colors beyond gold: `--scene-oxblood` (fallen, ≤3), `--scene-verdigris` (built — final state), `--scene-slate` (passable, 4–6). Tokens scoped under `.scene` in `app/scene.css`.
 
-**Capitol theatrical** (legacy operator surface): `/feed`, `/admin`. Cinzel + Cormorant Garamond fonts, gold-on-charcoal palette, ornamental dividers. The remaining tokens live as CSS variables in `app/globals.css` (`--ink-*`, `--gold`, `--blood`, `--parchment`, etc.) and feed global chrome — scrollbar, body background, default h1-h4 font, selection. `design-system/MASTER.md` documents this aesthetic but is **stale** — it describes the old Capitol homepage that has since been replaced.
+**Capitol theatrical** (legacy operator surface): `/feed`, `/admin`. Cinzel + Cormorant Garamond fonts, gold-on-charcoal palette, ornamental dividers. The remaining tokens live as CSS variables in `app/globals.css` (`--ink-*`, `--gold`, `--blood`, `--parchment`, etc.) and feed global chrome — scrollbar, body background, default h1-h4 font, selection.
 
 > **Capitol palette is legacy.** The Tailwind utilities (`text-parchment`, `font-display`, `tracking-decree`, `shadow-forge`, `animate-torchlight`, etc.) were removed from `tailwind.config.ts` because grep confirmed they were unused — `/admin` and `/feed` rely on inline styles + the surviving CSS variables instead. Don't reach for the legacy tokens in new code; use the minimalist `.scene` tokens. The Capitol header (`components/Header.tsx`) was deleted in cleanup. Minimalist routes render `<MinimalistHeader />` from `components/scene/`; the legacy operator routes render bare. Footer rendering is driven by route groups now (see "Route groups" below) — no pathname checks.
 
@@ -78,11 +78,15 @@ Tables: `users` (mirrors `auth.users`), `ideas`, `votes`, `build_queue`. Migrati
 - Regular reads use `lib/supabase/server.ts` (cookie-aware ssr client)
 - Browser writes/realtime use `lib/supabase/client.ts`
 
-## AI scoring
+## AI scoring (judge flow)
 
-`POST /api/score` — body validated by `submitSchema` (`lib/score-schema.ts`, min 60 / max 3500 chars). Calls Claude Sonnet 4.6 (`claude-sonnet-4-6`) with the gstack-style prompt from `lib/score-prompt.ts`. The prompt enforces structured JSON output (validated by `scoreSchema`); the response is inserted via service-role and the new id returned. The client redirects to `/idea/[id]` to show the reveal.
+Submit → score → reveal happens in three hops, not one. There is no `/api/score` route.
 
-The prompt has `cache_control: { type: "ephemeral" }` set on the system block — when it grows past the cache threshold this becomes free.
+1. **`POST /api/draft`** — body validated by `submitSchema` (`lib/score-schema.ts`, min 60 / max 3500 chars). This route is fast (`maxDuration = 10`) and does NOT call Anthropic. It runs bot protection (Turnstile + `lib/content-filter` + IP throttle for anon via `limitAnonDrafts`), per-user weekly quota (`lib/user-quota`, `WEEKLY_LIMIT`), persists a draft row, and returns `{ token }`.
+2. **Client routes to `/judge/[token]`** — that page is three async server components (the three judges) rendered behind Suspense boundaries. Each judge calls Anthropic via `lib/judges/render-judgment.ts` and is cached via `lib/judges/cached-render.ts`. The user watches the verdicts stream in.
+3. **`POST /api/claim-idea`** — the auth wall lives here, not at submit. Anonymous visitors can stage a draft and watch the judges, but to attach the resulting idea to their account (which then shows up on `/idea/[id]`) they must be signed in. `lib/judges/persist-judgment.ts` writes the canonical `ideas` row; `/api/claim-idea` verifies the draft cookie hash (migration 023) and binds it to the user.
+
+The Anthropic prompts have `cache_control: { type: "ephemeral" }` set on their system blocks — when usage grows past the cache threshold these become free.
 
 ## Auth
 
@@ -103,9 +107,16 @@ Both redirect to `/auth/callback` (`app/auth/callback/route.ts`) which calls `ex
 `.env.local.example` is the manifest:
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — public, used by browser + server clients
+- `NEXT_PUBLIC_SITE_URL` — canonical origin (`https://pitchpit.app`); read by sitemap, robots, OG, social cron text. Do not use the hyphenated form.
 - `SUPABASE_SERVICE_ROLE_KEY` — server only, used by admin client
 - `ANTHROPIC_API_KEY` — server only, used by `/api/score`
 - `ADMIN_PASSWORD` — gates `/admin` via middleware basic auth
+- `CRON_SECRET` — Bearer token validated by `lib/cron-auth.ts`. Required for every `/api/cron/*` route. Must be set in BOTH Vercel prod env AND GitHub Actions repo secrets (the GH Actions workflows in `.github/workflows/cron-*.yml` send it as `Authorization: Bearer $CRON_SECRET`).
+- `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET` — OAuth 1.0a creds for posting tweets (read by `lib/social/x.ts`). When unset, the social crons return `skipped: missing-x-creds` instead of posting.
+
+## Crons / scheduling
+
+Cron jobs are driven by GitHub Actions workflows under `.github/workflows/cron-*.yml`, NOT by `vercel.json`. Each workflow `curl`s the corresponding `/api/cron/*` route with the Bearer secret. We migrated off Vercel Cron because Hobby tier caps at one fire/day and we need 6 schedules including a daily and two same-minute pairs. Routes are GET handlers; idempotency is enforced server-side via `social_posts` (legacy) and `social_post_log` (forensic) ledgers. There is also a pg_cron entry for `close_current_week()` at Tue 05:04 UTC — the GH Actions wrapper at 05:05 UTC is belt-and-suspenders and a no-op via `for update` lock if pg_cron already closed the week.
 
 ## Conventions worth knowing
 
