@@ -65,6 +65,16 @@ let lastSocialInsert: {
   payload: { text: string; ideaId: string; weekNumber: number };
 } | null = null;
 let lastSocialPostsLookup: { channel?: string; event_key?: string } = {};
+let lastLogInsert: {
+  channel: string;
+  template: string;
+  week_id: string | null;
+  idea_id: string | null;
+  external_id: string | null;
+  body: string;
+  status: string;
+  error?: string | null;
+} | null = null;
 
 // X module mocks.
 const postTweetMock =
@@ -141,6 +151,23 @@ vi.mock("@/lib/supabase/admin", () => ({
           },
         };
       }
+      if (table === "social_post_log") {
+        return {
+          insert: async (row: {
+            channel: string;
+            template: string;
+            week_id: string | null;
+            idea_id: string | null;
+            external_id: string | null;
+            body: string;
+            status: string;
+            error?: string | null;
+          }) => {
+            lastLogInsert = row;
+            return { error: null };
+          },
+        };
+      }
       return {};
     },
   }),
@@ -183,6 +210,7 @@ describe("GET /api/cron/post-leader", () => {
     state = {};
     lastSocialInsert = null;
     lastSocialPostsLookup = {};
+    lastLogInsert = null;
     postTweetMock.mockReset();
     readXCredsFromEnvMock.mockReset();
     process.env.CRON_SECRET = CRON_SECRET;
@@ -296,6 +324,16 @@ describe("GET /api/cron/post-leader", () => {
       channel: "x",
       event_key: `current-leader-week-${OPEN_WEEK.week_number}-${THURSDAY_DATE_STR}`,
     });
+
+    // social_post_log row was written alongside the social_posts row.
+    expect(lastLogInsert).not.toBeNull();
+    expect(lastLogInsert!.channel).toBe("x");
+    expect(lastLogInsert!.template).toBe("leader");
+    expect(lastLogInsert!.week_id).toBe(OPEN_WEEK.id);
+    expect(lastLogInsert!.idea_id).toBe(LEADER_IDEA.id);
+    expect(lastLogInsert!.external_id).toBe("tweet-id-123");
+    expect(lastLogInsert!.body).toBe(tweetText);
+    expect(lastLogInsert!.status).toBe("posted");
   });
 
   it("dry-run skip: when X creds are absent, never calls postTweet and returns the would-be text", async () => {
@@ -398,9 +436,15 @@ describe("GET /api/cron/post-leader", () => {
     expect(body.error).toBe("x-post-failed");
     expect(body.message).toBe("X API 403: locked");
 
-    // The tweet attempt happened, but no DB row was written —
-    // otherwise idempotency would block a future retry.
+    // The tweet attempt happened, but no social_posts row was written —
+    // otherwise idempotency would block a future retry. The failed
+    // attempt IS recorded in social_post_log for forensics.
     expect(postTweetMock).toHaveBeenCalledTimes(1);
     expect(lastSocialInsert).toBeNull();
+    expect(lastLogInsert).not.toBeNull();
+    expect(lastLogInsert!.template).toBe("leader");
+    expect(lastLogInsert!.status).toBe("failed");
+    expect(lastLogInsert!.external_id).toBeNull();
+    expect(lastLogInsert!.error).toBe("X API 403: locked");
   });
 });

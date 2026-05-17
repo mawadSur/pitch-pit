@@ -200,6 +200,19 @@ function Entry({ idea, index }: { idea: BuiltIdea; index: number }) {
           >
             Read the judgment →
           </Link>
+          {/* Recap link — surfaces the editorial /recap/[weekN] page
+              when a week number is known. Skipped for legacy rows whose
+              week_id pre-dates migration 005, since their recap would
+              404. The mono caption stays the same as "Read the judgment"
+              for visual rhythm; the tap target also clears WCAG 2.5.5. */}
+          {idea.week_number != null && (
+            <Link
+              href={`/recap/${idea.week_number}`}
+              className="scene-mono inline-flex min-h-11 items-center rounded-full px-4 py-2 text-[0.55rem] uppercase tracking-[0.32em] text-white/55 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+            >
+              View recap →
+            </Link>
+          )}
           <span className="inline-flex h-11 w-11 items-center justify-center">
             <ShareMenu
               idea={{

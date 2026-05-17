@@ -122,9 +122,24 @@ export async function GET(req: NextRequest) {
     const result = await postTweet(text, creds);
     externalId = result.id;
   } catch (e) {
+    const message = (e as Error).message;
     console.error("[cron/post-leader] X post failed", e);
+    // Record the failed attempt in the structured log so an operator can
+    // see X outages without grepping Vercel logs. social_posts stays
+    // unwritten — its (channel, event_key) row is the idempotency token,
+    // and we want a retry to still go out today if X recovers.
+    await supabase.from("social_post_log").insert({
+      channel: "x",
+      template: "leader",
+      week_id: week.id,
+      idea_id: idea.id,
+      external_id: null,
+      body: text,
+      status: "failed",
+      error: message,
+    });
     return NextResponse.json(
-      { error: "x-post-failed", message: (e as Error).message },
+      { error: "x-post-failed", message },
       { status: 500 },
     );
   }
@@ -134,6 +149,16 @@ export async function GET(req: NextRequest) {
     event_key: eventKey,
     external_id: externalId,
     payload: { text, ideaId: idea.id, weekNumber: week.week_number },
+  });
+
+  await supabase.from("social_post_log").insert({
+    channel: "x",
+    template: "leader",
+    week_id: week.id,
+    idea_id: idea.id,
+    external_id: externalId,
+    body: text,
+    status: "posted",
   });
 
   return NextResponse.json({ posted: true, externalId, eventKey });

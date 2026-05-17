@@ -59,7 +59,30 @@ export async function GET(req: NextRequest) {
 
   const eventKey = `winner-week-${week.week_number}`;
 
-  // Idempotency: have we already posted for this week?
+  // Idempotency: one winner tweet per week. We check the structured
+  // social_post_log first — keyed by (channel, template, week_id) — so a
+  // cron retry can't double-tweet even if the legacy social_posts row got
+  // pruned.
+  const { data: existingLog } = await supabase
+    .from("social_post_log")
+    .select("id, external_id")
+    .eq("channel", "x")
+    .eq("template", "winner")
+    .eq("week_id", week.id)
+    .eq("status", "posted")
+    .maybeSingle();
+
+  if (existingLog) {
+    return NextResponse.json({
+      skipped: "already-posted",
+      eventKey,
+      externalId: existingLog.external_id,
+    });
+  }
+
+  // Belt-and-suspenders: also honour the legacy social_posts ledger so
+  // pre-existing rows (before the log migration shipped) still block a
+  // second tweet.
   const { data: existing } = await supabase
     .from("social_posts")
     .select("id, external_id")
@@ -99,9 +122,23 @@ export async function GET(req: NextRequest) {
     const result = await postTweet(text, creds);
     externalId = result.id;
   } catch (e) {
+    const message = (e as Error).message;
     console.error("[cron/post-winner] X post failed", e);
+    // Record the failed attempt so we have forensics on X outages.
+    // No social_posts row — we only "consume" the event_key on success
+    // so a future retry can still go out once X recovers.
+    await supabase.from("social_post_log").insert({
+      channel: "x",
+      template: "winner",
+      week_id: week.id,
+      idea_id: idea.id,
+      external_id: null,
+      body: text,
+      status: "failed",
+      error: message,
+    });
     return NextResponse.json(
-      { error: "x-post-failed", message: (e as Error).message },
+      { error: "x-post-failed", message },
       { status: 500 },
     );
   }
@@ -111,6 +148,16 @@ export async function GET(req: NextRequest) {
     event_key: eventKey,
     external_id: externalId,
     payload: { text, ideaId: idea.id, weekNumber: week.week_number },
+  });
+
+  await supabase.from("social_post_log").insert({
+    channel: "x",
+    template: "winner",
+    week_id: week.id,
+    idea_id: idea.id,
+    external_id: externalId,
+    body: text,
+    status: "posted",
   });
 
   return NextResponse.json({ posted: true, externalId, eventKey });

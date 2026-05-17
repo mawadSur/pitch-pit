@@ -60,3 +60,4 @@ marketing.md
 agentdb.rvf
 agentdb.rvf.lock
 ruvector.db
+.env*.local
