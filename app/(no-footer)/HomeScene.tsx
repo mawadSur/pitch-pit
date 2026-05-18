@@ -128,10 +128,14 @@ export function HomeScene({
         <HeroWinner winner={winner} />
 
         {/* Panel 2 — Judge. Same 200vh treatment so the frames-2 sequence
-            (90 frames) plays out in the centered viewport while pinned. */}
+            (90 frames) plays out in the centered viewport while pinned.
+            `mobileFramesPath` points HeroPanel at a 640w sibling sequence
+            for sub-768px viewports — same frame count, smaller files, locked
+            in once on mount (no mid-scroll resize swap). */}
         <HeroPanel
           image="/scene/transition-poster.avif"
           framesPath="/scene/frames-2"
+          mobileFramesPath="/scene/frames-2-mobile"
           frameCount={FRAMES_2_COUNT}
           heightVh={200}
           alt=""
@@ -145,10 +149,12 @@ export function HomeScene({
             scrubs 90 frames from /scene/frames-3 (extracted from
             public/scene/last.mp4) across the pinned portion. The at-rest
             image is the first frame of the sequence so the panel→canvas
-            handoff is byte-identical at the boundary. */}
+            handoff is byte-identical at the boundary. `mobileFramesPath`
+            mirrors panel 2: 640w sibling sequence for sub-768px viewports. */}
         <HeroPanel
           image="/scene/frames-3/001.avif"
           framesPath="/scene/frames-3"
+          mobileFramesPath="/scene/frames-3-mobile"
           frameCount={FRAMES_3_COUNT}
           heightVh={200}
           alt=""
