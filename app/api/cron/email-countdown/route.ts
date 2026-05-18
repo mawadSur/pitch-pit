@@ -4,6 +4,7 @@ import { sendResendBatch, type ResendMessage } from "@/lib/email";
 import { renderEmail } from "@/lib/email-templates/render";
 import { DigestCountdown } from "@/lib/email-templates/digest-countdown";
 import { verifyCronAuth } from "@/lib/cron-auth";
+import { writeHeartbeat } from "@/lib/cron-heartbeat";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
     .eq("status", "active");
 
   if (error) {
+    await writeHeartbeat(supabase, "email-countdown", "error", error.message);
     return NextResponse.json(
       { error: "subscriber-fetch-failed", message: error.message },
       { status: 500 },
@@ -50,6 +52,7 @@ export async function GET(req: NextRequest) {
   }>;
 
   if (subscribers.length === 0) {
+    await writeHeartbeat(supabase, "email-countdown");
     return NextResponse.json({ skipped: "no-subscribers", attempted: 0 });
   }
 
@@ -73,6 +76,7 @@ export async function GET(req: NextRequest) {
 
   const result = await sendResendBatch(messages);
 
+  await writeHeartbeat(supabase, "email-countdown");
   return NextResponse.json({
     attempted: result.attempted,
     succeeded: result.succeeded,

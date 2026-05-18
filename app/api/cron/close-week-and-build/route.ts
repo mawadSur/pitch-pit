@@ -8,6 +8,7 @@ import {
   mintCallbackToken,
 } from "@/lib/build-dispatch";
 import { verifyCronAuth } from "@/lib/cron-auth";
+import { writeHeartbeat } from "@/lib/cron-heartbeat";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,6 +31,12 @@ export async function GET(req: NextRequest) {
   //    SQL close; the email + repository_dispatch in steps 7-8 need HTTP.
   const { error: rpcErr } = await supabase.rpc("close_current_week");
   if (rpcErr) {
+    await writeHeartbeat(
+      supabase,
+      "close-week-and-build",
+      "error",
+      rpcErr.message,
+    );
     return NextResponse.json(
       { error: "close_current_week-failed", message: rpcErr.message },
       { status: 500 },
@@ -47,6 +54,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (!closedWeek || !closedWeek.winner_idea_id) {
+    await writeHeartbeat(supabase, "close-week-and-build");
     return NextResponse.json({ skipped: "no-closed-week-with-winner" });
   }
 
@@ -60,6 +68,12 @@ export async function GET(req: NextRequest) {
     .single();
 
   if (ideaFetchErr || !idea) {
+    await writeHeartbeat(
+      supabase,
+      "close-week-and-build",
+      "error",
+      ideaFetchErr?.message ?? "winner-fetch-failed",
+    );
     return NextResponse.json(
       { error: "winner-fetch-failed", message: ideaFetchErr?.message },
       { status: 500 },
@@ -69,6 +83,7 @@ export async function GET(req: NextRequest) {
   // 4. Idempotency: if the winner is already in build/built state, don't
   //    re-transition and don't re-email.
   if (idea.status === "building" || idea.status === "built") {
+    await writeHeartbeat(supabase, "close-week-and-build");
     return NextResponse.json({
       closed: closedWeek.week_number,
       winner: { id: idea.id, title: idea.title, status: idea.status },
@@ -83,6 +98,12 @@ export async function GET(req: NextRequest) {
     .update({ status: "building" })
     .eq("id", idea.id);
   if (ideaErr) {
+    await writeHeartbeat(
+      supabase,
+      "close-week-and-build",
+      "error",
+      ideaErr.message,
+    );
     return NextResponse.json(
       { error: "update-idea-failed", message: ideaErr.message },
       { status: 500 },
@@ -107,6 +128,12 @@ export async function GET(req: NextRequest) {
     { onConflict: "idea_id" },
   );
   if (queueErr) {
+    await writeHeartbeat(
+      supabase,
+      "close-week-and-build",
+      "error",
+      queueErr.message,
+    );
     return NextResponse.json(
       { error: "queue-failed", message: queueErr.message },
       { status: 500 },
@@ -150,6 +177,7 @@ export async function GET(req: NextRequest) {
     dispatchError = "dispatch-not-configured";
   }
 
+  await writeHeartbeat(supabase, "close-week-and-build");
   return NextResponse.json({
     closed: closedWeek.week_number,
     winner: {

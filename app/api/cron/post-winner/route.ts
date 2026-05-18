@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { postTweet, readXCredsFromEnv } from "@/lib/social/x";
 import { titleToSlug } from "@/lib/slug";
 import { verifyCronAuth } from "@/lib/cron-auth";
+import { writeHeartbeat } from "@/lib/cron-heartbeat";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (!week) {
+    await writeHeartbeat(supabase, "post-winner");
     return NextResponse.json({ skipped: "no-closed-week-with-winner" });
   }
 
@@ -73,6 +75,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (existingLog) {
+    await writeHeartbeat(supabase, "post-winner");
     return NextResponse.json({
       skipped: "already-posted",
       eventKey,
@@ -91,6 +94,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (existing) {
+    await writeHeartbeat(supabase, "post-winner");
     return NextResponse.json({ skipped: "already-posted", eventKey });
   }
 
@@ -101,6 +105,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (!idea) {
+    await writeHeartbeat(supabase, "post-winner");
     return NextResponse.json({ skipped: "winner-idea-missing" });
   }
 
@@ -114,6 +119,7 @@ export async function GET(req: NextRequest) {
       eventKey,
       text,
     });
+    await writeHeartbeat(supabase, "post-winner");
     return NextResponse.json({ skipped: "missing-x-creds", eventKey, text });
   }
 
@@ -137,6 +143,7 @@ export async function GET(req: NextRequest) {
       status: "failed",
       error: message,
     });
+    await writeHeartbeat(supabase, "post-winner", "error", message);
     return NextResponse.json(
       { error: "x-post-failed", message },
       { status: 500 },
@@ -160,5 +167,6 @@ export async function GET(req: NextRequest) {
     status: "posted",
   });
 
+  await writeHeartbeat(supabase, "post-winner");
   return NextResponse.json({ posted: true, externalId, eventKey });
 }

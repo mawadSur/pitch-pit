@@ -77,6 +77,11 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     rpc: async (name: string) => {
       rpcCalls.push(name);
+      // record_cron_heartbeat is a fire-and-forget observability write; the
+      // route's writeHeartbeat helper swallows errors. We always succeed it
+      // here so a failing rpcError state for `close_current_week` doesn't
+      // accidentally exercise the heartbeat error path too.
+      if (name === "record_cron_heartbeat") return { error: null };
       return { error: state.rpcError ?? null };
     },
     from: (table: string) => {
@@ -255,7 +260,12 @@ describe("GET /api/cron/close-week-and-build", () => {
     });
 
     // 1. The close_current_week RPC was invoked.
-    expect(rpcCalls).toEqual(["close_current_week"]);
+    // The route also writes a heartbeat via the record_cron_heartbeat RPC
+    // before returning; filter that out so the assertion focuses on the
+    // business RPC. Heartbeat presence is covered in cron-heartbeat tests.
+    expect(rpcCalls.filter((n) => n !== "record_cron_heartbeat")).toEqual([
+      "close_current_week",
+    ]);
 
     // 2. The idea was patched to 'building'.
     expect(lastIdeaUpdate).toEqual({ status: "building" });
@@ -305,7 +315,12 @@ describe("GET /api/cron/close-week-and-build", () => {
 
     // RPC still runs (it's a no-op when there's no open week, and this is
     // the documented "safe to call repeatedly" contract).
-    expect(rpcCalls).toEqual(["close_current_week"]);
+    // The route also writes a heartbeat via the record_cron_heartbeat RPC
+    // before returning; filter that out so the assertion focuses on the
+    // business RPC. Heartbeat presence is covered in cron-heartbeat tests.
+    expect(rpcCalls.filter((n) => n !== "record_cron_heartbeat")).toEqual([
+      "close_current_week",
+    ]);
 
     // But the idempotency guard short-circuited before update/queue/email.
     expect(lastIdeaUpdate).toBeNull();
@@ -343,7 +358,12 @@ describe("GET /api/cron/close-week-and-build", () => {
 
     // The RPC still ran (idempotent close-week call). We just had nothing
     // to act on afterwards.
-    expect(rpcCalls).toEqual(["close_current_week"]);
+    // The route also writes a heartbeat via the record_cron_heartbeat RPC
+    // before returning; filter that out so the assertion focuses on the
+    // business RPC. Heartbeat presence is covered in cron-heartbeat tests.
+    expect(rpcCalls.filter((n) => n !== "record_cron_heartbeat")).toEqual([
+      "close_current_week",
+    ]);
 
     // No idea update, no queue write, no email.
     expect(lastIdeaUpdate).toBeNull();
@@ -362,7 +382,12 @@ describe("GET /api/cron/close-week-and-build", () => {
     expect(body.error).toBe("close_current_week-failed");
     expect(body.message).toBe("RPC blew up");
 
-    expect(rpcCalls).toEqual(["close_current_week"]);
+    // The route also writes a heartbeat via the record_cron_heartbeat RPC
+    // before returning; filter that out so the assertion focuses on the
+    // business RPC. Heartbeat presence is covered in cron-heartbeat tests.
+    expect(rpcCalls.filter((n) => n !== "record_cron_heartbeat")).toEqual([
+      "close_current_week",
+    ]);
     expect(lastIdeaUpdate).toBeNull();
     expect(sendBuildNotificationMock).not.toHaveBeenCalled();
   });
