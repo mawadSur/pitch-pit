@@ -233,10 +233,20 @@ test.describe("submit → score → reveal", () => {
     // both prove the route resolved and the navigation contract is
     // intact. A real Supabase + Anthropic stack would show the
     // deliberation header instead.
+    //
+    // Locator note: "Three judges" appears in both the <h1> on the
+    // judge route AND in the lede paragraph on other surfaces. The
+    // Next.js route announcer also mirrors the page <title> as a
+    // live region, so a bare getByText() would resolve to multiple
+    // nodes and trip strict mode. `.first()` collapses the match to
+    // any-one-of, which is exactly the contract we want: ANY of the
+    // three substrings being visible proves the route resolved.
     await expect(
-      page.getByText(
-        /Deliberation in progress|Three judges|never reached the arena/i,
-      ),
+      page
+        .getByText(
+          /Deliberation in progress|Three judges|never reached the arena/i,
+        )
+        .first(),
     ).toBeVisible({ timeout: 15_000 });
 
     // Tripwire: if this ever flips true, an Anthropic call has been

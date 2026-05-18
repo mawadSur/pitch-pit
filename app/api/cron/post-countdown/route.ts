@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postTweet, readXCredsFromEnv } from "@/lib/social/x";
 import { verifyCronAuth } from "@/lib/cron-auth";
+import { writeHeartbeat } from "@/lib/cron-heartbeat";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (!week) {
+    await writeHeartbeat(supabase, "post-countdown");
     return NextResponse.json({ skipped: "no-open-week" });
   }
 
@@ -65,6 +67,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (existing) {
+    await writeHeartbeat(supabase, "post-countdown");
     return NextResponse.json({
       skipped: "already-posted",
       weekId: week.id,
@@ -91,6 +94,7 @@ export async function GET(req: NextRequest) {
       weekId: week.id,
       text,
     });
+    await writeHeartbeat(supabase, "post-countdown");
     return NextResponse.json({
       skipped: "missing-x-creds",
       weekId: week.id,
@@ -109,6 +113,7 @@ export async function GET(req: NextRequest) {
       body: text,
       status: "posted",
     });
+    await writeHeartbeat(supabase, "post-countdown");
     return NextResponse.json({
       posted: true,
       externalId: result.id,
@@ -128,7 +133,10 @@ export async function GET(req: NextRequest) {
       error: message,
     });
     // Return 200 with posted:false so Vercel doesn't retry-spam (and
-    // double-tweet if X recovered between attempts).
+    // double-tweet if X recovered between attempts). The cron ran end-to-end
+    // even though the tweet failed, so this still counts as a heartbeat —
+    // record an 'error' so the alert-silence route can see degraded health.
+    await writeHeartbeat(supabase, "post-countdown", "error", message);
     return NextResponse.json({ posted: false, error: message, weekId: week.id });
   }
 }

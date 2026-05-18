@@ -45,9 +45,16 @@ test.describe("public surface smoke", () => {
     await page.goto("/");
     const textarea = page.locator("textarea");
     await textarea.fill("only a few words");
-    // The form must not allow submitting until 60+ chars are present.
-    // We assert by counting how many chars away the user is — the live
-    // counter is part of the homepage UX.
-    await expect(page.getByText(/more to submit|\d+\/1500/i)).toBeVisible();
+    // The form must not allow submitting until 60+ chars (SUBMIT_LIMITS.pitchMin)
+    // are present. The live counter under the textarea reads "<N> more to
+    // enter the pit · <length>/<SUBMIT_LIMITS.pitchMax>". Spec previously
+    // matched "more to submit | \d+/1500" — both phrases are stale (copy
+    // changed to "enter the pit" and the ceiling moved to 3500 in
+    // lib/score-schema.ts). Match the current wording AND a length-N/3500
+    // shape so a future copy tweak that keeps the ratio readable still
+    // passes here.
+    await expect(
+      page.getByText(/more to enter the pit|\d+\/3500/i),
+    ).toBeVisible();
   });
 });

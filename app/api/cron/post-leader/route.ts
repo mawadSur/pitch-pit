@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { postTweet, readXCredsFromEnv } from "@/lib/social/x";
 import { titleToSlug } from "@/lib/slug";
 import { verifyCronAuth } from "@/lib/cron-auth";
+import { writeHeartbeat } from "@/lib/cron-heartbeat";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,13 +50,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  const supabase = createAdminClient();
+
   const now = new Date();
   const dayOfWeek = now.getUTCDay();
   if (!POST_DAYS_UTC.has(dayOfWeek)) {
+    await writeHeartbeat(supabase, "post-leader");
     return NextResponse.json({ skipped: "not-a-post-day", dayOfWeek });
   }
-
-  const supabase = createAdminClient();
 
   // Open week (the one currently accepting votes)
   const { data: week } = await supabase
@@ -67,6 +69,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (!week) {
+    await writeHeartbeat(supabase, "post-leader");
     return NextResponse.json({ skipped: "no-open-week" });
   }
 
@@ -85,6 +88,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (!idea) {
+    await writeHeartbeat(supabase, "post-leader");
     return NextResponse.json({ skipped: "no-leader-yet" });
   }
 
@@ -103,6 +107,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (existing) {
+    await writeHeartbeat(supabase, "post-leader");
     return NextResponse.json({ skipped: "already-posted", eventKey });
   }
 
@@ -114,6 +119,7 @@ export async function GET(req: NextRequest) {
       eventKey,
       text,
     });
+    await writeHeartbeat(supabase, "post-leader");
     return NextResponse.json({ skipped: "missing-x-creds", eventKey, text });
   }
 
@@ -138,6 +144,7 @@ export async function GET(req: NextRequest) {
       status: "failed",
       error: message,
     });
+    await writeHeartbeat(supabase, "post-leader", "error", message);
     return NextResponse.json(
       { error: "x-post-failed", message },
       { status: 500 },
@@ -161,5 +168,6 @@ export async function GET(req: NextRequest) {
     status: "posted",
   });
 
+  await writeHeartbeat(supabase, "post-leader");
   return NextResponse.json({ posted: true, externalId, eventKey });
 }

@@ -27,10 +27,22 @@ const hasUpstash =
 // when it collects route metadata. Skip the assert during that phase so
 // builds don't require the env to be set in CI; the check still fires the
 // first time a route imports this module at actual request-handling time.
+//
+// CI Playwright runs `next start` (NODE_ENV=production) without Upstash
+// credentials, which trips this assert and crashes every middleware-matched
+// route with a 500 before tests can exercise the actual gate behavior. Set
+// `ALLOW_IN_MEMORY_RATELIMIT=1` in the test job to opt into the per-worker
+// fallback. The variable must NEVER be set in real production — the assert
+// is the only thing keeping Vercel deploys honest about distributed limits.
+const allowMemoryRatelimit =
+  process.env.ALLOW_IN_MEMORY_RATELIMIT === "1" ||
+  process.env.ALLOW_IN_MEMORY_RATELIMIT === "true";
+
 if (
   process.env.NODE_ENV === "production" &&
   process.env.NEXT_PHASE !== "phase-production-build" &&
-  !hasUpstash
+  !hasUpstash &&
+  !allowMemoryRatelimit
 ) {
   throw new Error(
     "ratelimit: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN required in production",

@@ -5,6 +5,7 @@ import { renderEmail } from "@/lib/email-templates/render";
 import { DigestWinner } from "@/lib/email-templates/digest-winner";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { titleToSlug } from "@/lib/slug";
+import { writeHeartbeat } from "@/lib/cron-heartbeat";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -46,6 +47,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (!week || !week.winner_idea_id) {
+    await writeHeartbeat(supabase, "email-winner");
     return NextResponse.json({ skipped: "no-closed-week-with-winner" });
   }
 
@@ -56,6 +58,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (!idea) {
+    await writeHeartbeat(supabase, "email-winner");
     return NextResponse.json({ skipped: "winner-idea-missing" });
   }
 
@@ -77,6 +80,7 @@ export async function GET(req: NextRequest) {
     .eq("status", "active");
 
   if (error) {
+    await writeHeartbeat(supabase, "email-winner", "error", error.message);
     return NextResponse.json(
       { error: "subscriber-fetch-failed", message: error.message },
       { status: 500 },
@@ -89,6 +93,7 @@ export async function GET(req: NextRequest) {
   }>;
 
   if (subscribers.length === 0) {
+    await writeHeartbeat(supabase, "email-winner");
     return NextResponse.json({ skipped: "no-subscribers", attempted: 0 });
   }
 
@@ -119,6 +124,7 @@ export async function GET(req: NextRequest) {
 
   const result = await sendResendBatch(messages);
 
+  await writeHeartbeat(supabase, "email-winner");
   return NextResponse.json({
     weekNumber: week.week_number,
     winnerId: idea.id,

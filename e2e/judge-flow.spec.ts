@@ -84,26 +84,29 @@ test.describe("judge flow", () => {
     expect(res.status()).toBeLessThan(500);
   });
 
-  test("anonymous submit redirects to /login (auth wall)", async ({ page }) => {
-    // Submissions now require auth — the auth wall in HomeScene checks
-    // supabase.auth.getUser() and bounces unauthenticated users to /login
-    // with a `next` param pointing back to / with ?resume=1, so the
-    // restored draft auto-submits after the user signs in. This test
-    // exercises that bounce; the signed-in happy path needs a real
-    // Supabase session and lives outside this smoke suite.
+  test("anonymous submit hands off to /judge/[token] (no auth wall)", async ({
+    page,
+  }) => {
+    // Architectural change (commit 47f6fde — anonymous-first): the auth
+    // wall that used to bounce unauthenticated users from the homepage
+    // to /login was deliberately removed. /api/draft now accepts anon
+    // submissions, mints an HttpOnly claim cookie, and the user only
+    // hits the auth wall later at /api/claim-idea. See the comment block
+    // in HomeScene.tsx around the submit() handler. This spec locks in
+    // the new contract: anon submit reaches /judge/[token].
     await stubTurnstile(page);
 
-    // Even though the auth wall short-circuits before /api/draft is
-    // called, mock it anyway so a regression that bypasses the wall
-    // would land in /judge/[token] (visible failure) rather than
-    // 500-ing the prod schema. If this route gets hit, the test fails.
+    // /api/draft is mocked so the route doesn't need a real Supabase
+    // (the homepage POSTs here after Turnstile resolves and expects a
+    // `{ token }` envelope back to drive router.push).
+    const FIXTURE_TOKEN = "anon-fixture-token-deadbeef";
     let draftCalled = false;
     await page.route("**/api/draft", async (route) => {
       draftCalled = true;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ token: "should-not-reach-here" }),
+        body: JSON.stringify({ token: FIXTURE_TOKEN }),
       });
     });
 
@@ -121,17 +124,18 @@ test.describe("judge flow", () => {
     // directly.
     await textarea.press("Enter");
 
-    // Auth wall bounces to /login with the resume-aware next param.
-    await page.waitForURL(/\/login\?next=/, { timeout: 10_000 });
-    expect(page.url()).toMatch(/\/login\?next=.*resume%3D1/);
-    expect(draftCalled).toBe(false);
+    // No /login redirect — anon path is the happy path now. Navigation
+    // lands on /judge/[token] with the fixture token from the mock.
+    await page.waitForURL(`**/judge/${FIXTURE_TOKEN}`, { timeout: 15_000 });
+    expect(page.url()).toContain(`/judge/${FIXTURE_TOKEN}`);
+    expect(draftCalled).toBe(true);
 
-    // Draft preserved in localStorage so the post-login resume effect
-    // can restore + auto-submit when the user comes back. This is the
-    // mechanism that closes the loop — verify it's intact.
+    // On success the homepage clears the saved draft from localStorage
+    // (the resume-after-login path no longer needs it). Verify that
+    // contract so a regression that leaves drafts piling up surfaces.
     const stored = await page.evaluate(() =>
       window.localStorage.getItem("pitch-pit:home-pitch-draft"),
     );
-    expect(stored).toBe(pitch);
+    expect(stored).toBeNull();
   });
 });

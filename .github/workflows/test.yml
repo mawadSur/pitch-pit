@@ -54,6 +54,13 @@ jobs:
     # Supabase + Sentry SDKs throw at module-load time if these are missing.
     # The smoke specs only verify page rendering and 404 behavior, no DB or
     # auth, so the values can be sentinel strings.
+    #
+    # ALLOW_IN_MEMORY_RATELIMIT opts into lib/ratelimit's per-worker memory
+    # fallback under NODE_ENV=production. Without this, `next start` aborts
+    # middleware module-load when Upstash credentials are absent, which
+    # crashes every /admin and /api/draft test with a 500. CI tests don't
+    # need distributed rate-limiting; production deploys must NEVER set
+    # this variable.
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-stub-anon-key
@@ -61,6 +68,7 @@ jobs:
       ANTHROPIC_API_KEY: ci-stub-anthropic-key
       ADMIN_PASSWORD: ci-stub-admin-password
       NEXT_PUBLIC_SITE_URL: http://localhost:3100
+      ALLOW_IN_MEMORY_RATELIMIT: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
