@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postTweet, readXCredsFromEnv } from "@/lib/social/x";
 import { titleToSlug } from "@/lib/slug";
@@ -124,6 +125,10 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     const message = (e as Error).message;
     console.error("[cron/post-leader] X post failed", e);
+    Sentry.captureException(e, {
+      tags: { feature: "social-post", channel: "x", template: "leader" },
+      extra: { eventKey, ideaId: idea?.id, weekNumber: week.week_number },
+    });
     // Record the failed attempt in the structured log so an operator can
     // see X outages without grepping Vercel logs. social_posts stays
     // unwritten — its (channel, event_key) row is the idempotency token,

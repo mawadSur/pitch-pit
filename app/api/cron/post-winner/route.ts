@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postTweet, readXCredsFromEnv } from "@/lib/social/x";
 import { titleToSlug } from "@/lib/slug";
@@ -124,6 +125,10 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     const message = (e as Error).message;
     console.error("[cron/post-winner] X post failed", e);
+    Sentry.captureException(e, {
+      tags: { feature: "social-post", channel: "x", template: "winner" },
+      extra: { eventKey, ideaId: idea?.id, weekNumber: week.week_number },
+    });
     // Record the failed attempt so we have forensics on X outages.
     // No social_posts row — we only "consume" the event_key on success
     // so a future retry can still go out once X recovers.
