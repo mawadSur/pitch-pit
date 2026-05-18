@@ -1,59 +1,76 @@
-import { headers } from "next/headers";
+import type { User } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 
-// Constant-time string compare. We avoid Node's crypto.timingSafeEqual
-// because middleware runs on the Edge runtime where the Node crypto
-// module is unavailable; this loop works in both runtimes. A length
-// mismatch returns false immediately — fine here because the expected
-// header is fixed-length and attacker-known once they look at the
-// Basic-Auth scheme; the secret is the password inside, not the length.
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-export type AdminAuthResult =
-  | { ok: true }
-  | { ok: false; reason: "not-configured" | "unauthorized" };
-
-// Single source of truth for "is this request authorized as admin".
-// Used by middleware (gate /admin paths) and by Server Actions (gate
-// every action in app/admin/actions.ts). Don't inline this logic
-// anywhere else — keeping the credential format + compare semantics
-// here means the two surfaces can't drift.
-export function verifyAdminAuthHeader(
-  authHeader: string | null | undefined,
-): AdminAuthResult {
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) return { ok: false, reason: "not-configured" };
-  const expected = "Basic " + btoa(`admin:${password}`);
-  if (!authHeader) return { ok: false, reason: "unauthorized" };
-  return constantTimeEqual(authHeader, expected)
-    ? { ok: true }
-    : { ok: false, reason: "unauthorized" };
-}
-
-// Call this at the top of every privileged Server Action.
+// DEPRECATED: ADMIN_PASSWORD env var is no longer used.
 //
-// WHY: Next.js Server Actions are POSTed to the current page route with
-// a `Next-Action: <hash>` header. The middleware matcher is path-bound
-// (`/admin`, `/admin/:path*`, `/api/draft`) — so an action imported by
-// the admin UI can be invoked by POSTing to ANY OTHER page route with
-// the same Next-Action hash, bypassing the Basic-Auth gate entirely.
-// The mutation then runs with the service-role client and the attacker
-// gets full RLS bypass. Calling this guard inside the action itself
-// closes that path.
-export async function requireAdminFromServerAction(): Promise<
-  { ok: true } | { ok: false; error: string }
-> {
-  const h = await headers();
-  const result = verifyAdminAuthHeader(h.get("authorization"));
-  if (result.ok) return { ok: true };
-  if (result.reason === "not-configured") {
-    return { ok: false, error: "Admin auth is not configured." };
+// /admin used to gate via HTTP Basic Auth (middleware + this helper read
+// process.env.ADMIN_PASSWORD). As of migration 032 / this file, admin
+// access is gated by:
+//
+//   1. A Supabase session cookie (middleware ensures the user is signed in,
+//      else redirects to /login?next=/admin), AND
+//   2. public.users.is_admin = true on the signed-in user (checked here
+//      via requireAdmin() with the cookie-aware Supabase client).
+//
+// The ADMIN_PASSWORD env var can be removed from Vercel after this lands;
+// nothing in the code reads it any more. Leaving the env var in place is
+// harmless — it is simply ignored.
+//
+// IMPORTANT: This file is imported by Server Components and Server Actions
+// (Node runtime). It must NOT be imported by middleware.ts — middleware
+// runs on the Edge runtime where the Next cookies() helper used by
+// lib/supabase/server.ts is not available in the same shape. Middleware
+// does its own lightweight session-cookie check; the DB-backed is_admin
+// check happens here, in the page/action layer.
+
+/**
+ * Look up whether a given user id has the admin bit set.
+ *
+ * Uses the cookie-aware server Supabase client (RLS-bound) — public.users
+ * is publicly readable per migration 001, so this select works for any
+ * signed-in caller. Returns false on any error (missing row, RLS denial,
+ * Supabase outage) — fail closed.
+ */
+export async function isAdmin(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("users")
+      .select("is_admin")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !data) return false;
+    return data.is_admin === true;
+  } catch {
+    return false;
   }
-  return { ok: false, error: "Unauthorized." };
+}
+
+/**
+ * Gate for server-side admin code paths (admin page, admin server actions).
+ *
+ * Reads the current session via the cookie-aware Supabase client, confirms
+ * the user is signed in, then checks public.users.is_admin. Returns the
+ * Supabase auth User on success, or null on any failure — the caller decides
+ * how to respond (redirect to /login, render 403, return {error}, etc.).
+ *
+ * Why two-step (auth then DB): getUser() validates the session JWT against
+ * Supabase. is_admin then confirms the privilege bit. Either step failing
+ * means "not an admin", and we don't want to leak which one failed.
+ */
+export async function requireAdmin(): Promise<User | null> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+    if (error || !user) return null;
+    const admin = await isAdmin(user.id);
+    if (!admin) return null;
+    return user;
+  } catch {
+    return null;
+  }
 }

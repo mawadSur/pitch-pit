@@ -1,60 +1,83 @@
 import { test, expect } from "@playwright/test";
 
-// E2E for the /admin Basic Auth gate (middleware.ts → lib/admin-auth.ts).
-// HTTP-level only — no browser needed. The middleware expects:
+// E2E for the /admin auth gate.
 //
-//   Authorization: Basic base64("admin:<ADMIN_PASSWORD>")
+// As of migration 032, /admin is gated by Supabase magic-link + the
+// `users.is_admin` column — NOT by HTTP Basic Auth any more. The
+// middleware (middleware.ts) handles the session check at the Edge:
 //
-// (username is the literal string "admin"; the password is from env).
-// On miss it returns 401 with `WWW-Authenticate: Basic realm="pitch-pit-admin"`.
+//   - No Supabase session cookie → 307 redirect to
+//     /login?next=%2Fadmin (login then bounces back)
+//   - Session present → middleware lets the request through and the
+//     page itself runs requireAdmin() which checks is_admin. A
+//     signed-in non-admin renders a 403-style page (still served as
+//     HTTP 200 because Next renders a normal React tree, but the body
+//     contains the "not an admin" copy).
 //
-// CI sets ADMIN_PASSWORD=ci-stub-admin-password for the Playwright job, so
-// the "correct password" case below uses that value. When running locally,
-// export the same value before `npx playwright test` to keep this spec
-// deterministic. If ADMIN_PASSWORD is unset entirely, middleware returns
-// 503 ("not-configured") rather than 401 — that's a separate failure mode
-// and out of scope for this gate-behavior spec.
+// This spec is HTTP-level only and does not actually sign in — that
+// would require either seeding a session cookie or a full magic-link
+// dance, both of which are out of scope for a gate-behavior smoke test.
+// The deeper "signed-in non-admin gets 403" assertion is intentionally
+// left for a future fixture-backed test; here we only verify the
+// middleware redirect for anonymous callers, which is the most common
+// failure mode and the one that used to be a 401 challenge.
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "ci-stub-admin-password";
-
-function basicAuthHeader(user: string, pass: string): string {
-  // btoa exists in modern Node (>=16) and matches the middleware's encoder.
-  return "Basic " + btoa(`${user}:${pass}`);
-}
-
-test.describe("/admin basic auth gate", () => {
-  test("rejects request with no Authorization header (401 + WWW-Authenticate)", async ({
+test.describe("/admin auth gate", () => {
+  test("anon request redirects to /login with next=/admin", async ({
     request,
   }) => {
-    const res = await request.get("/admin");
-    expect(res.status()).toBe(401);
-    // The WWW-Authenticate header is what makes browsers prompt for
-    // credentials — it's load-bearing UX, not just a status code.
-    const challenge = res.headers()["www-authenticate"];
-    expect(challenge).toBeTruthy();
-    expect(challenge).toMatch(/^Basic\s+realm=/i);
+    // maxRedirects: 0 keeps Playwright on the first hop so we can
+    // inspect the redirect itself (status + Location header) rather
+    // than following it through to the rendered login page.
+    const res = await request.get("/admin", { maxRedirects: 0 });
+
+    expect(res.status()).toBeGreaterThanOrEqual(300);
+    expect(res.status()).toBeLessThan(400);
+
+    const location = res.headers()["location"];
+    expect(location).toBeTruthy();
+    // The middleware emits an absolute-or-relative URL. Either way it
+    // must point at /login and carry the next= return target.
+    expect(location).toMatch(/\/login\b/);
+    expect(decodeURIComponent(location)).toContain("next=/admin");
   });
 
-  test("rejects request with wrong password (401)", async ({ request }) => {
-    const res = await request.get("/admin", {
-      headers: {
-        Authorization: basicAuthHeader("admin", "definitely-not-the-password"),
-      },
-    });
-    expect(res.status()).toBe(401);
-  });
-
-  test("accepts request with correct admin:password (not 401)", async ({
+  test("anon request to a nested admin path also redirects to /login", async ({
     request,
   }) => {
+    const res = await request.get("/admin/anything", { maxRedirects: 0 });
+
+    expect(res.status()).toBeGreaterThanOrEqual(300);
+    expect(res.status()).toBeLessThan(400);
+
+    const location = res.headers()["location"];
+    expect(location).toBeTruthy();
+    expect(location).toMatch(/\/login\b/);
+    // The nested path is preserved through the redirect so the user
+    // lands back where they were trying to go after sign-in.
+    expect(decodeURIComponent(location)).toContain("next=/admin/anything");
+  });
+
+  test("Basic Auth header is no longer accepted (no 200 shortcut)", async ({
+    request,
+  }) => {
+    // Pre-migration this exact header would have let the request
+    // through. Post-migration it is irrelevant — middleware ignores
+    // it entirely and still bounces anons to /login. This test
+    // documents the regression we're guarding against: a stale
+    // bookmark using Basic Auth must not silently grant access.
     const res = await request.get("/admin", {
       headers: {
-        Authorization: basicAuthHeader("admin", ADMIN_PASSWORD),
+        Authorization: "Basic " + btoa("admin:anything"),
       },
+      maxRedirects: 0,
     });
-    // Anything that ISN'T 401 means the gate let us through. The page
-    // itself may 200, redirect, or even 500 if Supabase env vars aren't
-    // wired in this environment — none of that is the gate's job.
-    expect(res.status()).not.toBe(401);
+
+    expect(res.status()).not.toBe(200);
+    expect(res.status()).toBeGreaterThanOrEqual(300);
+    expect(res.status()).toBeLessThan(400);
+
+    const location = res.headers()["location"];
+    expect(location).toMatch(/\/login\b/);
   });
 });
