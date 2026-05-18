@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postTweet, readXCredsFromEnv } from "@/lib/social/x";
 import { verifyCronAuth } from "@/lib/cron-auth";
@@ -122,6 +123,15 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     const message = (e as Error).message;
     console.error("[cron/post-countdown] X post failed", e);
+    Sentry.captureException(e, {
+      tags: { feature: "social-post", channel: "x", template: "countdown" },
+      extra: {
+        weekId: week.id,
+        weekNumber: week.week_number,
+        hoursLeft,
+        pitchCount: pitchCount ?? 0,
+      },
+    });
     await supabase.from("social_post_log").insert({
       channel: "x",
       template: "countdown",
