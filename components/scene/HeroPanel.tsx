@@ -4,6 +4,7 @@ import NextImage from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useInView, useMotionValueEvent, useScroll } from "framer-motion";
 import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 const PAD = (n: number) => String(n).padStart(3, "0");
 
@@ -34,6 +35,14 @@ interface HeroPanelProps {
   image: string;
   /** Path to the frame sequence (eg "/scene/frames-1"). Omit for image-only. */
   framesPath?: string;
+  /**
+   * Mobile-resolution variant of `framesPath` (eg "/scene/frames-1-mobile").
+   * When provided AND the viewport reads as mobile on first paint, the
+   * canvas loads frames from here instead of `framesPath`. Frame count stays
+   * the same — same `frameCount`, same per-frame indices, just smaller files.
+   * Omit to fall back to `framesPath` on every viewport.
+   */
+  mobileFramesPath?: string;
   /** Total frame count in the sequence (matches the JPEG file count). */
   frameCount?: number;
   alt?: string;
@@ -59,6 +68,7 @@ const SWAP_THRESHOLD = 0.005;
 export function HeroPanel({
   image,
   framesPath,
+  mobileFramesPath,
   frameCount,
   alt = "",
   tone = "dark",
@@ -76,11 +86,6 @@ export function HeroPanel({
   const rafIdRef = useRef<number | null>(null);
 
   const [scrolled, setScrolled] = useState(false);
-  // Default false: on mobile, the canvas DOM should never appear at any
-  // point. Desktop has a 1-frame "wrong" state before the matchMedia check
-  // upgrades this to true — invisible since the canvas needs frame loads
-  // before it draws anything anyway.
-  const [largeEnough, setLargeEnough] = useState(false);
 
   // Local `useReducedMotion()` hook (lib/hooks/useReducedMotion.ts) reads the
   // OS-level `prefers-reduced-motion` media query. The `MotionConfig
@@ -93,6 +98,36 @@ export function HeroPanel({
   // for the panel's full scroll range.
   const prefersReducedMotion = useReducedMotion();
 
+  // Mobile-frame switch. The hook itself live-updates on viewport changes,
+  // but we deliberately snapshot the first non-default reading into a ref
+  // and use it as the canonical source for the canvas frame URLs. Swapping
+  // the frame-path array mid-scrub would force a full re-preload + decode
+  // and stutter the scroll, so we lock in once and accept the edge case
+  // where a user rotates their device or resizes a window mid-session.
+  // The default `useIsMobile()` value is `false`, matching the SSR/first-
+  // paint surface; the first effect run below upgrades it.
+  const isMobileLive = useIsMobile();
+  const mobileLockedRef = useRef<boolean | null>(null);
+  const [mobileLocked, setMobileLocked] = useState<boolean | null>(null);
+  useEffect(() => {
+    // Capture the FIRST measurement after mount. After that, ignore further
+    // updates so a viewport resize doesn't blow up the frame cache.
+    if (mobileLockedRef.current !== null) return;
+    mobileLockedRef.current = isMobileLive;
+    setMobileLocked(isMobileLive);
+  }, [isMobileLive]);
+
+  // Path actually fed to the canvas. Pre-lock: `null` → effect below bails
+  // out until `mobileLocked` settles (one tick after mount). This avoids
+  // briefly preloading the desktop sequence on mobile only to discard it
+  // when the matchMedia upgrade fires.
+  const activeFramesPath =
+    mobileLocked === null
+      ? null
+      : mobileLocked && mobileFramesPath
+        ? mobileFramesPath
+        : (framesPath ?? null);
+
   // Perf-M8: viewport visibility gate for the per-frame scrub handler.
   // Without this, all three sticky panels keep running `useMotionValueEvent`
   // at scroll-rate even when offscreen — panels 2 and 3 fire 60 events/sec
@@ -102,22 +137,15 @@ export function HeroPanel({
   // Combined with the existing reduced-motion gate below.
   const inView = useInView(wrapRef, { margin: "100%" });
 
-  const hasFrames = !!framesPath && !!frameCount && frameCount > 0;
-  // Mobile: skip the canvas entirely to save memory + cpu. The static image
-  // stays visible across the whole panel; no scrubbing on small screens.
-  // Reduced-motion users also keep the static at-rest image — the canvas
-  // scrub is the very motion they asked the OS not to play.
-  const canvasActive = hasFrames && largeEnough && !prefersReducedMotion;
-
-  // Detect viewport ≥ 768px for canvas activation
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(min-width: 768px)");
-    const onChange = () => setLargeEnough(mq.matches);
-    onChange();
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
+  const hasFrames = !!activeFramesPath && !!frameCount && frameCount > 0;
+  // Canvas activates as soon as we have a locked-in path and frame count.
+  // Mobile now runs the canvas too (with smaller frames via mobileFramesPath)
+  // — the old "disable canvas under 768px" branch was costing mobile users
+  // the cinematic without saving bandwidth (the at-rest 1024w hero image
+  // was still being shipped). Reduced-motion users continue to keep the
+  // static at-rest image; the canvas scrub is the very motion they asked
+  // the OS not to play.
+  const canvasActive = hasFrames && !prefersReducedMotion;
 
   // Fraction of section scroll that the panel is pinned for.
   //   heightVh = 100 → pinFraction = 0   (no extra scroll, scrub spans full range)
@@ -137,7 +165,7 @@ export function HeroPanel({
   // landing — frames 31+ aren't visible until the user has scrolled into
   // the upper half of the section anyway.
   useEffect(() => {
-    if (!canvasActive || !framesPath || !frameCount) return;
+    if (!canvasActive || !activeFramesPath || !frameCount) return;
     let cancelled = false;
     framesRef.current = new Array(frameCount).fill(null);
 
@@ -151,7 +179,7 @@ export function HeroPanel({
     const loadOne = (i: number) => {
       const img = new Image();
       img.decoding = "async";
-      img.src = `${framesPath}/${PAD(i + 1)}.avif`;
+      img.src = `${activeFramesPath}/${PAD(i + 1)}.avif`;
       const idx = i;
       const ready = () => commit(idx, img);
       img
@@ -194,9 +222,12 @@ export function HeroPanel({
     // scheduleDraw is intentionally omitted from deps. It only reads from
     // refs (no reactive state), so its reference identity changing on
     // every render shouldn't re-run this effect — that would tear down
-    // and re-spin the frame loaders mid-scrub.
+    // and re-spin the frame loaders mid-scrub. activeFramesPath is locked
+    // once on mount via mobileLockedRef, so it's stable for the panel's
+    // lifetime in practice — the dep is here for correctness, not because
+    // we expect it to fire twice.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasActive, framesPath, frameCount]);
+  }, [canvasActive, activeFramesPath, frameCount]);
 
   // ── canvas sizing + resize handling ───────────────────────
   useEffect(() => {
