@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdminFromServerAction } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { sendBuildNotification } from "@/lib/email";
 
 const ADMIN_PATHS = ["/admin", "/feed", "/leaderboard", "/built"] as const;
@@ -17,8 +17,14 @@ function revalidateAll(ideaId?: string) {
 }
 
 export async function greenlightIdea(ideaId: string) {
-  const auth = await requireAdminFromServerAction();
-  if (!auth.ok) return { error: auth.error };
+  // requireAdmin() returns the Supabase user object on success, null
+  // otherwise. We don't distinguish "no session" from "session but not
+  // admin" here — both collapse to a single Unauthorized error.
+  // This guard MUST run in every action because Next Server Actions
+  // can be POSTed to any route's Next-Action endpoint (not just /admin),
+  // which means middleware's path-bound auth gate alone is not enough.
+  const adminUser = await requireAdmin();
+  if (!adminUser) return { error: "Unauthorized." };
   if (!ideaId) return { error: "Missing tribute id." };
   const supabase = createAdminClient();
 
@@ -43,8 +49,14 @@ export async function greenlightIdea(ideaId: string) {
 }
 
 export async function rejectIdea(ideaId: string) {
-  const auth = await requireAdminFromServerAction();
-  if (!auth.ok) return { error: auth.error };
+  // requireAdmin() returns the Supabase user object on success, null
+  // otherwise. We don't distinguish "no session" from "session but not
+  // admin" here — both collapse to a single Unauthorized error.
+  // This guard MUST run in every action because Next Server Actions
+  // can be POSTed to any route's Next-Action endpoint (not just /admin),
+  // which means middleware's path-bound auth gate alone is not enough.
+  const adminUser = await requireAdmin();
+  if (!adminUser) return { error: "Unauthorized." };
   if (!ideaId) return { error: "Missing tribute id." };
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -57,8 +69,14 @@ export async function rejectIdea(ideaId: string) {
 }
 
 export async function startBuilding(ideaId: string) {
-  const auth = await requireAdminFromServerAction();
-  if (!auth.ok) return { error: auth.error };
+  // requireAdmin() returns the Supabase user object on success, null
+  // otherwise. We don't distinguish "no session" from "session but not
+  // admin" here — both collapse to a single Unauthorized error.
+  // This guard MUST run in every action because Next Server Actions
+  // can be POSTed to any route's Next-Action endpoint (not just /admin),
+  // which means middleware's path-bound auth gate alone is not enough.
+  const adminUser = await requireAdmin();
+  if (!adminUser) return { error: "Unauthorized." };
   if (!ideaId) return { error: "Missing tribute id." };
   const supabase = createAdminClient();
   const now = new Date().toISOString();
@@ -95,8 +113,14 @@ export async function startBuilding(ideaId: string) {
 }
 
 export async function markBuilt(formData: FormData) {
-  const auth = await requireAdminFromServerAction();
-  if (!auth.ok) return { error: auth.error };
+  // requireAdmin() returns the Supabase user object on success, null
+  // otherwise. We don't distinguish "no session" from "session but not
+  // admin" here — both collapse to a single Unauthorized error.
+  // This guard MUST run in every action because Next Server Actions
+  // can be POSTed to any route's Next-Action endpoint (not just /admin),
+  // which means middleware's path-bound auth gate alone is not enough.
+  const adminUser = await requireAdmin();
+  if (!adminUser) return { error: "Unauthorized." };
 
   const ideaId = String(formData.get("ideaId") ?? "");
   const mvpUrl = String(formData.get("mvpUrl") ?? "").trim();

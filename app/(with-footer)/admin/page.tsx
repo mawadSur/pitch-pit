@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/admin-auth";
 import { AdminClient, type AdminIdea } from "@/components/admin/AdminClient";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import "@/app/scene.css";
@@ -59,7 +60,46 @@ async function fetchSets() {
   }
 }
 
+// Belt-and-suspenders: middleware.ts bounces anons to /login. This page
+// then enforces the is_admin bit. If a signed-in non-admin slips past
+// middleware (or hits the page via a stale build), they get a 403 here.
+// Server actions in ./actions.ts run requireAdmin() independently so they
+// can't be invoked out-of-band either.
+function ForbiddenPage() {
+  return (
+    <main
+      id="main"
+      tabIndex={-1}
+      className="scene relative isolate flex min-h-dvh items-center justify-center"
+    >
+      <div className="max-w-md px-6 text-center">
+        <p className="scene-mono text-[0.65rem] uppercase tracking-[0.4em] text-[var(--scene-gold)]">
+          403
+        </p>
+        <h1 className="mt-3 text-2xl font-medium text-white">
+          You are signed in, but not an admin.
+        </h1>
+        <p className="mt-4 text-sm text-white/60">
+          If you should have access, ask an existing admin to set
+          <code className="mx-1 rounded bg-white/10 px-1 py-0.5 scene-mono text-xs">
+            users.is_admin = true
+          </code>
+          on your account.
+        </p>
+      </div>
+    </main>
+  );
+}
+
 export default async function AdminPage() {
+  // Middleware bounces anon callers to /login. requireAdmin() then
+  // enforces the is_admin bit DB-side. Either failure mode lands on
+  // the 403 page below — we don't distinguish "signed in but not admin"
+  // from "session expired between middleware and page render" because
+  // neither should be a common path.
+  const user = await requireAdmin();
+  if (!user) return <ForbiddenPage />;
+
   const sets = await fetchSets();
 
   return (
