@@ -13,10 +13,10 @@ import { CountdownClock } from "@/components/scene/CountdownClock";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { InputMilestoneFX } from "@/components/scene/InputMilestoneFX";
 import { FoilSweep } from "@/components/scene/FoilSweep";
-import { HourglassSand } from "@/components/scene/HourglassSand";
-import { WanderingSpotlight } from "@/components/scene/WanderingSpotlight";
-import { CursorTrail } from "@/components/scene/CursorTrail";
-import { HomeCursor } from "@/components/scene/HomeCursor";
+// Atmospheric flair (HourglassSand, WanderingSpotlight, CursorTrail,
+// HomeCursor) is lazy-loaded below — it runs framer-motion timers and
+// pointer-tracking that don't need to be on the LCP critical path.
+import { HomeFlair } from "./HomeFlair";
 import { LiveTicker, type TickerEntry } from "@/components/scene/LiveTicker";
 import { Turnstile, type TurnstileHandle } from "@/components/Turnstile";
 import { SubmittingOverlay } from "./SubmittingOverlay";
@@ -91,12 +91,9 @@ export function HomeScene({
     <MotionConfig reducedMotion="user">
       <>
         <MinimalistHeader />
-        {/* Custom cursor — homepage only. Tiny gold circle that follows
-            the pointer, snaps to a crosshair over the input pill / submit
-            tile. Bails on touch + reduced-motion + non-home routes.
-            Rendered outside <main> so it remains positioned even as the
-            cinematic panels mount/unmount their canvases. */}
-        <HomeCursor />
+        {/* HomeCursor + atmospheric effects are bundled into <HomeFlair />
+            (rendered inside Panel1 below) and lazy-mounted post-LCP so
+            their JS doesn't block the hero's first paint. */}
 
       <main id="main" tabIndex={-1} className="scene relative bg-black">
         {/* Panel 1 — Capture. Image-only single 100vh hero. The frame-scrub
@@ -456,40 +453,51 @@ function Panel1() {
   const inputShellRef = useRef<HTMLDivElement | null>(null);
 
   return (
-    // Layout-1: floor at 640px tall so the kicker / countdown / input
-    // never overlap on iPhone SE-class viewports (568px height with the
-    // address bar shown). Above that, the absolute % offsets fan out
-    // naturally to the section height.
-    <div ref={panelRef} className="relative h-full min-h-[640px] w-full">
-      {/* Atmospheric flair layer — diffuse drifting gold spotlight, slow
-          gold-sand drift over the painted hourglass, and a tiny cursor
-          trail. All pointer-events-none, all aria-hidden, all live
-          behind the cinematic content (z-5..z-8). Reduced-motion pins
-          spotlight to centered glow and skips sand + trail entirely. */}
-      <WanderingSpotlight />
-      <HourglassSand />
-      <CursorTrail panelRef={panelRef} />
+    // Vertical flow: kicker+h1+countdown pinned to the top, form in the
+    // middle (centered in remaining space), bottom counter pinned to the
+    // bottom. Previous layout absolutely-positioned each block at a
+    // top:% offset, which collided on common laptop heights (~691px):
+    // the h1 ran into the countdown, and the bottom counter ran into
+    // the pitch coach once it had content. Flex flow lets sections
+    // push each other instead of overlap.
+    //
+    // Floor at 640px so iPhone SE-class viewports still have enough
+    // room for all three groups before falling back to scroll.
+    <div
+      ref={panelRef}
+      className="relative flex h-full min-h-[640px] w-full flex-col"
+    >
+      {/* Atmospheric flair — diffuse drifting gold spotlight, slow
+          gold-sand drift over the painted hourglass, tiny cursor trail,
+          and the custom homepage cursor. All pointer-events-none, all
+          aria-hidden, all live behind the cinematic content
+          (z-5..z-8). Lazy-mounted post-LCP via requestIdleCallback so
+          their framer-motion timers + pointer tracking don't compete
+          with the hero's first paint. Reduced-motion pins spotlight to
+          centered glow and skips sand + trail entirely (handled inside
+          each component). */}
+      <HomeFlair panelRef={panelRef} />
 
-      {/* TOP — kicker + headline (above the image's hourglass).
-          Panel 1 is what greets a first-time visitor — the entrance
-          animation was sliding everything up on load, which read as
-          a layout shift more than a deliberate reveal. Switched to
-          opacity-only so the content lands in place without movement.
-          Panels 2/3 keep their scroll-triggered y-reveals — those fire
-          when the user has already chosen to scroll into them. */}
+      {/* TOP — kicker + headline + countdown grouped as one cohesive
+          "urgency block" above the hourglass. Panel 1 is what greets a
+          first-time visitor — the entrance animation was sliding
+          everything up on load, which read as a layout shift more than
+          a deliberate reveal. Switched to opacity-only so the content
+          lands in place without movement. Panels 2/3 keep their
+          scroll-triggered y-reveals — those fire when the user has
+          already chosen to scroll into them. */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.7 }}
-        className="absolute inset-x-0 top-[max(96px,7%)] flex flex-col items-center px-6 text-center"
-        style={{ zIndex: 10 }}
+        className="relative z-10 flex flex-col items-center px-6 pt-[max(80px,6vh)] text-center"
       >
         <p className="scene-mono text-[0.78rem] uppercase tracking-[0.42em] text-white/55 sm:text-[0.92rem]">
           ↘ The pit closes Monday at midnight EST
         </p>
         {/* Mobile h1 dropped from 2rem→1.625rem (and mt-5→mt-3) so the
-            headline never wraps into the countdown at top-[32%]. The
-            sm: breakpoint restores the larger display sizing on tablet+. */}
+            headline doesn't crowd the countdown below. The sm:
+            breakpoint restores the larger display sizing on tablet+. */}
         <h1 className="mt-3 max-w-3xl text-balance text-[1.625rem] font-medium leading-[1.08] text-white sm:mt-5 sm:text-5xl sm:leading-[1.04] lg:text-6xl">
           Pitch your idea. The{" "}
           <FoilSweep>
@@ -499,33 +507,21 @@ function Panel1() {
           </FoilSweep>{" "}
           gets built.
         </h1>
+        {/* Countdown sits directly under the h1, semantically paired
+            with the kicker line ("the pit closes Monday at midnight").
+            Lives inside the same flex group so it can never overlap
+            the headline regardless of viewport height. */}
+        <div className="mt-5 sm:mt-7">
+          <CountdownClock />
+        </div>
       </motion.div>
 
-      {/* MID-UPPER — countdown. Originally at top-[42%] to sit below
-          the bg image's hourglass at ~30%. Bumped to top-[32%] so the
-          form below has clearance to grow the pitch coach upward when
-          the user types — without pushing the input off-screen. The
-          slight overlap with the hourglass is acceptable since the
-          cinematic bg crossfades to the canvas as soon as the user
-          starts scrolling anyway. */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.7, delay: 0.15 }}
-        className="absolute inset-x-0 top-[32%] mx-auto flex max-w-md flex-col items-center px-6"
-        style={{ zIndex: 10 }}
-      >
-        <CountdownClock />
-      </motion.div>
-
-      {/* MID — real input. At-rest target around the upper-center of the
-          panel — high enough that the pitch coach (which grows the form
-          upward as a sibling in normal flow) doesn't push the input
-          off the bottom subtitle, low enough that the at-rest layout
-          doesn't feel top-heavy. top-[52%] threads that needle: empty
-          pitch lands the input slightly past mid-viewport; coach open
-          shifts it to ~70%/viewport on desktop, ~85% on iPhone SE —
-          still clear of the bottom subtitle at bottom-[8%] (=92%). */}
+      {/* MIDDLE — form. `my-auto` parks it in the middle of the
+          remaining slack between the top group and the bottom group.
+          When the pitch coach populates and the form grows, the slack
+          shrinks symmetrically above and below; once content exceeds
+          viewport, the bottom group is pushed past the fold rather
+          than overlapping the form. */}
       <motion.form
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -538,8 +534,7 @@ function Panel1() {
         // the input is visibly wider, matching the size bump the user
         // requested. Inner padding is also bumped 10% on the input
         // shell below.
-        className="absolute inset-x-0 top-[48%] mx-auto w-full max-w-[740px] px-6 sm:top-[52%]"
-        style={{ zIndex: 10 }}
+        className="relative z-10 mx-auto my-auto w-full max-w-[740px] px-6 py-6"
       >
         {/* Pitch coach — above the input. Quality checks, AI follow-ups,
             and an opt-in "polish my pitch" enhancer. Visible once the
@@ -678,8 +673,7 @@ function Panel1() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.7, delay: 0.45 }}
-        className="absolute inset-x-0 bottom-[3%] flex flex-col items-center gap-3 px-6 text-center sm:bottom-[8%] sm:gap-5"
-        style={{ zIndex: 10 }}
+        className="relative z-10 flex flex-col items-center gap-3 px-6 pb-[max(24px,3vh)] text-center sm:gap-5 sm:pb-[max(48px,6vh)]"
       >
         <p
           id="pitch-error"

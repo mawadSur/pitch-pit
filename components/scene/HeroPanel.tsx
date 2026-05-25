@@ -84,6 +84,11 @@ export function HeroPanel({
   const currentIdxRef = useRef(0);
   const lastDrawnIdxRef = useRef(-1);
   const rafIdRef = useRef<number | null>(null);
+  // One-shot guard so the preload effect doesn't re-init the frames
+  // array when `inView` toggles (e.g. user scrolls out of, then back
+  // into, the panel). We want the preload to start once the panel is
+  // first within range and then keep the already-loaded frames.
+  const preloadStartedRef = useRef(false);
 
   const [scrolled, setScrolled] = useState(false);
 
@@ -159,13 +164,22 @@ export function HeroPanel({
   });
 
   // ── preload + decode every frame, in two batches ──────────
-  // Batch 1 (frames 1..30): fire immediately so the scrub starts instantly.
-  // Batch 2 (frames 31..end): defer until the user starts scrolling, or 4s
-  // elapse (whichever comes first). Cuts initial-byte download in half on
-  // landing — frames 31+ aren't visible until the user has scrolled into
+  // Batch 1 (frames 1..30): fire as soon as the panel is within one
+  // viewport of the user's scroll position (the same `inView` margin
+  // the scrub handler uses). Previously fired immediately on mount,
+  // which kicked off ~1.5MB of offscreen AVIF downloads for the
+  // below-fold panels (2 + 3) while the user was still seeing Panel 1
+  // — dragging hero LCP to ~4.3s on slower networks.
+  // Batch 2 (frames 31..end): defer until the user starts scrolling, or
+  // 4s elapse (whichever comes first). Cuts initial-byte download in
+  // half — frames 31+ aren't visible until the user has scrolled into
   // the upper half of the section anyway.
   useEffect(() => {
     if (!canvasActive || !activeFramesPath || !frameCount) return;
+    if (!inView) return;
+    // One-shot: once started, don't re-init on inView toggle.
+    if (preloadStartedRef.current) return;
+    preloadStartedRef.current = true;
     let cancelled = false;
     framesRef.current = new Array(frameCount).fill(null);
 
@@ -191,7 +205,8 @@ export function HeroPanel({
         });
     };
 
-    // Batch 1 — first 30 frames immediately
+    // Batch 1 — first 30 frames immediately (now gated by inView via
+    // the early-return above).
     const FIRST_BATCH = Math.min(30, frameCount);
     for (let i = 0; i < FIRST_BATCH; i++) loadOne(i);
 
@@ -227,7 +242,7 @@ export function HeroPanel({
     // lifetime in practice — the dep is here for correctness, not because
     // we expect it to fire twice.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasActive, activeFramesPath, frameCount]);
+  }, [canvasActive, activeFramesPath, frameCount, inView]);
 
   // ── canvas sizing + resize handling ───────────────────────
   useEffect(() => {
@@ -325,17 +340,28 @@ export function HeroPanel({
     scheduleDraw();
   });
 
+  // Image-only panels (no framesPath) don't need the sticky-pin
+  // mechanic that scrub panels use to play their canvas. Letting them
+  // grow naturally with their content avoids clipping when the inner
+  // layout (e.g. a tall pitch-coach) needs more than one viewport's
+  // worth of vertical room. Scrub panels keep the rigid h-screen /
+  // overflow-hidden combo their canvas math depends on.
+  const isImageOnly = !framesPath || !frameCount;
+  const sectionStyle: React.CSSProperties = isImageOnly
+    ? { minHeight: `${heightVh}vh`, overscrollBehaviorX: "none" }
+    : { height: `${heightVh}vh`, overscrollBehaviorX: "none" };
+  const wrapClass = isImageOnly
+    ? "relative min-h-screen bg-black"
+    : "sticky top-0 h-screen overflow-hidden bg-black";
+
   return (
     <section
       ref={sectionRef}
       id={id}
       className="relative"
-      style={{ height: `${heightVh}vh`, overscrollBehaviorX: "none" }}
+      style={sectionStyle}
     >
-      <div
-        ref={wrapRef}
-        className="sticky top-0 h-screen overflow-hidden bg-black"
-      >
+      <div ref={wrapRef} className={wrapClass}>
         {/* Static "at-rest" image — visible at section entry only */}
         <div
           aria-hidden={scrolled}
