@@ -56,8 +56,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, pitch, handle, turnstile_token, request_id, image_urls } =
-    parsed.data;
+  const {
+    title,
+    pitch,
+    handle,
+    turnstile_token,
+    request_id,
+    image_urls,
+    private_details,
+  } = parsed.data;
 
   // Capture the requester IP up front — we use it for both Turnstile
   // and (when no session) the anonymous IP throttle. getClientIp prefers
@@ -274,6 +281,13 @@ export async function POST(req: NextRequest) {
     // (migration 015). Spread guard mirrors the request_id pattern so
     // a deploy without the migration still accepts text-only pitches.
     ...(image_urls.length > 0 ? { image_urls } : {}),
+    // Private "secret sauce" — only set when non-empty (migration 035).
+    // Spread-guarded like the others so a pre-035 environment still
+    // accepts submissions (the field is silently dropped). Stays on the
+    // draft only; never carried to the public ideas row.
+    ...(private_details && private_details.length > 0
+      ? { private_details }
+      : {}),
     // Carry the anon claim secret only when minted. Spread-guarded for
     // pre-migration-018 environments — see the retry path on
     // undefined_column below.

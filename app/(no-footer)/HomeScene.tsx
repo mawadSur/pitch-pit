@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, MotionConfig, AnimatePresence } from "framer-motion";
 import * as Sentry from "@sentry/nextjs";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Lock, ChevronDown } from "lucide-react";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { HeroPanel } from "@/components/scene/HeroPanel";
 import { CountdownClock } from "@/components/scene/CountdownClock";
@@ -213,6 +213,11 @@ function Panel1() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  // Optional private "secret sauce" — fed to the judges, never published.
+  // Intentionally NOT persisted to localStorage (unlike the pitch draft):
+  // the whole point is that this text stays close, so we don't leave it
+  // sitting in the browser store between sessions.
+  const [privateDetails, setPrivateDetails] = useState("");
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const turnstileRef = useRef<TurnstileHandle | null>(null);
@@ -374,6 +379,12 @@ function Panel1() {
             image_urls: attachments
               .filter((a) => !a.uploading && !a.error && a.url)
               .map((a) => a.url),
+            // Private founder context — only sent when filled. Server
+            // stores it on the draft, feeds it to the judges, and never
+            // copies it to the public idea (see migration 035).
+            ...(privateDetails.trim()
+              ? { private_details: privateDetails.trim() }
+              : {}),
           }),
         });
         if (!res.ok) {
@@ -655,6 +666,18 @@ function Panel1() {
           />
         </div>
 
+        {/* Optional private details — the "secret sauce" disclosure. Kept
+            collapsed by default so the hero stays clean for the majority
+            who don't need it; eases the idea-theft reservation for the
+            minority who do. */}
+        <div className="mt-3">
+          <PrivateDetailsField
+            value={privateDetails}
+            onChange={setPrivateDetails}
+            disabled={pending}
+          />
+        </div>
+
         {/* Template chips removed — they were colliding with the bottom
             counter on shorter viewports. ExpressLane was also relocated
             out of the form (see below the bottom counter) to keep the
@@ -848,6 +871,69 @@ function Panel3() {
           </Link>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+/* ════════════════════════ Private details ("secret sauce") ══════════
+ * Collapsed-by-default disclosure under the attachments row. Lets a
+ * founder hand the judges context they don't want published — the
+ * wedge, the unfair advantage. The value is lifted into Panel1 state and
+ * POSTed as `private_details`; the server keeps it on the ephemeral draft
+ * and never copies it to the public idea (migration 035). Directly eases
+ * the idea-theft reservation the AntiAbusePromise section names.
+ * ────────────────────────────────────────────────────────────────────── */
+function PrivateDetailsField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+}) {
+  // Open automatically if it already has content (e.g. the user typed,
+  // collapsed, reopened) so a non-empty field is never hidden.
+  const [open, setOpen] = useState(false);
+  const isOpen = open || value.length > 0;
+  const remaining = SUBMIT_LIMITS.privateDetailsMax - value.length;
+
+  return (
+    <div className="text-left">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={isOpen}
+        className="scene-mono inline-flex items-center gap-2 py-1.5 text-[0.65rem] uppercase tracking-[0.28em] text-white/45 transition-colors hover:text-white/75 focus-visible:outline-none focus-visible:text-white/85"
+      >
+        <Lock aria-hidden className="h-3 w-3" />
+        Add private details
+        <ChevronDown
+          aria-hidden
+          className={`h-3 w-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="mt-2">
+          <textarea
+            value={value}
+            onChange={(e) =>
+              onChange(e.target.value.slice(0, SUBMIT_LIMITS.privateDetailsMax))
+            }
+            disabled={disabled}
+            rows={3}
+            maxLength={SUBMIT_LIMITS.privateDetailsMax}
+            placeholder="The wedge, the unfair advantage, the part you'd never post in public. Only the judges see this — it shapes your score but is never published."
+            aria-label="Private details, shared only with the judges"
+            className="scene-input-shell w-full resize-y px-4 py-3 text-sm text-white/90 placeholder:text-white/35"
+            style={{ minHeight: "4.5rem" }}
+          />
+          <p className="scene-mono mt-1.5 text-[0.6rem] uppercase tracking-[0.24em] text-white/40">
+            Only the judges see this · never published · {remaining} left
+          </p>
+        </div>
+      )}
     </div>
   );
 }

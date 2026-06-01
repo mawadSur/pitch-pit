@@ -24,6 +24,7 @@ export async function renderJudgment(
   title: string,
   pitch: string,
   imageUrls: string[] = [],
+  privateDetails?: string | null,
 ): Promise<ScoreResult> {
   const judge = getJudge(judgeId);
   const client = new Anthropic();
@@ -47,7 +48,10 @@ export async function renderJudgment(
         },
       ],
       messages: [
-        { role: "user", content: userMessageContent(title, pitch, imageUrls) },
+        {
+          role: "user",
+          content: userMessageContent(title, pitch, imageUrls, privateDetails),
+        },
       ],
     },
     { signal: AbortSignal.timeout(25_000) },

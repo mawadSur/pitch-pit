@@ -32,6 +32,11 @@ type Draft = {
   // (drafts have a 24h TTL and may already be GC'd at claim time). null
   // for signed-in submissions and pre-018 environments.
   claim_token?: string | null;
+  // Private "secret sauce" (migration 035). Fed to the judges to
+  // influence the score, then DISCARDED. Deliberately NOT part of
+  // baseInsert below — it must never reach the public ideas row. null
+  // when the founder left it blank or on pre-035 environments.
+  private_details?: string | null;
 };
 
 // Idempotently persist the ideas row for this draft. If the draft already
@@ -71,6 +76,9 @@ export async function persistJudgment(
     ? "\\x" + createHash("sha256").update(draft.claim_token).digest("hex")
     : null;
 
+  // NOTE: draft.private_details is intentionally absent from this insert.
+  // The "secret sauce" influenced the score during judging and must never
+  // land in the publicly-readable ideas table. Do not add it here.
   const baseInsert = {
     title: draft.title,
     pitch: draft.pitch,
@@ -252,6 +260,7 @@ export async function loadDraftByToken(token: string): Promise<DraftLookup> {
     expires_at: string;
     image_urls?: string[] | null;
     claim_token?: string | null;
+    private_details?: string | null;
   };
 
   let data: DraftRow | null = null;
@@ -259,7 +268,7 @@ export async function loadDraftByToken(token: string): Promise<DraftLookup> {
 
   const rich = await supabase
     .from("draft_pitches")
-    .select(`${DRAFT_BASE_COLUMNS}, image_urls, claim_token`)
+    .select(`${DRAFT_BASE_COLUMNS}, image_urls, claim_token, private_details`)
     .eq("access_token", token)
     .maybeSingle();
   data = rich.data as DraftRow | null;
@@ -315,10 +324,17 @@ export async function loadDraftByToken(token: string): Promise<DraftLookup> {
   // guard works without a TS or PostgREST surprise. claim_token falls
   // through as null when the column is missing or the draft is signed-in.
   const draft: Draft = {
-    ...(rest as Omit<Draft, "image_urls" | "claim_token">),
+    ...(rest as Omit<
+      Draft,
+      "image_urls" | "claim_token" | "private_details"
+    >),
     image_urls: (rest as { image_urls?: string[] | null }).image_urls ?? [],
     claim_token:
       (rest as { claim_token?: string | null }).claim_token ?? null,
+    // Undefined on pre-035 environments (the column was dropped from the
+    // SELECT by the 42703 fallback) — normalize to null.
+    private_details:
+      (rest as { private_details?: string | null }).private_details ?? null,
   };
   return { status: "ok", draft };
 }

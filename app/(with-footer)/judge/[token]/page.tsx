@@ -81,11 +81,15 @@ export default async function JudgeRoute({
   // is missing (pre-migration-015 fallback path), so passing it through
   // here is safe even on a stale schema.
   const images = draft.image_urls ?? [];
+  // Private "secret sauce" (migration 035) flows into every judge's prompt
+  // to influence the score. It is never rendered in PitchSpecs and never
+  // persisted to the ideas row — judging is the only thing that sees it.
+  const priv = draft.private_details ?? null;
   const promises: Record<JudgeId, Promise<import("@/lib/score-schema").ScoreResult>> =
     {
-      gstack: renderJudgmentCached(draft.id, "gstack", draft.title, draft.pitch, images),
-      vee: renderJudgmentCached(draft.id, "vee", draft.title, draft.pitch, images),
-      robbins: renderJudgmentCached(draft.id, "robbins", draft.title, draft.pitch, images),
+      gstack: renderJudgmentCached(draft.id, "gstack", draft.title, draft.pitch, images, priv),
+      vee: renderJudgmentCached(draft.id, "vee", draft.title, draft.pitch, images, priv),
+      robbins: renderJudgmentCached(draft.id, "robbins", draft.title, draft.pitch, images, priv),
     };
 
   return (

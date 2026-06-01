@@ -10,16 +10,17 @@ import type { JudgeId } from "./shared";
 // On subsequent calls (e.g. page refresh): reads the cached entry and
 // returns immediately.
 //
-// imageUrls: optional. When the user attached images, these are sent
-// to Claude as multimodal content blocks. The cache is draft-scoped, so
-// the same draft id always passes the same images — no need to factor
-// imageUrls into the cache key.
+// imageUrls / privateDetails: optional. Images become multimodal content
+// blocks; privateDetails is appended as a private text block. Both are
+// fixed per draft, so the draft-scoped cache key needs no extra factors —
+// the same draft id always replays the same inputs.
 export async function renderJudgmentCached(
   draftId: string,
   judgeId: JudgeId,
   title: string,
   pitch: string,
   imageUrls: string[] = [],
+  privateDetails?: string | null,
 ): Promise<ScoreResult> {
   const supabase = createAdminClient();
 
@@ -43,7 +44,13 @@ export async function renderJudgmentCached(
     // fall through and re-render.
   }
 
-  const result = await renderJudgment(judgeId, title, pitch, imageUrls);
+  const result = await renderJudgment(
+    judgeId,
+    title,
+    pitch,
+    imageUrls,
+    privateDetails,
+  );
 
   // Merge — read-modify-write. Postgres jsonb_set would be safer for
   // concurrent writes, but the three judges land at slightly different
