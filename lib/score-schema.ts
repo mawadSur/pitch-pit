@@ -65,6 +65,18 @@ export const submitSchema = z.object({
     .array(imageUrlSchema)
     .max(3, "Maximum 3 images per pitch.")
     .default([]),
+  // Optional private "secret sauce" — context the founder wants the
+  // judges to weigh but NOT publish (wedge, unfair advantage, the bit
+  // they'd never post in public). Lives only on the ephemeral draft,
+  // feeds the AI prompt, and is never copied to the public ideas row
+  // (see migration 035 + lib/judges/persist-judgment.ts). Empty string
+  // accepted so the field stays optional for existing callers.
+  private_details: z
+    .string()
+    .trim()
+    .max(2000, "Keep private details under 2000 characters.")
+    .optional()
+    .or(z.literal("")),
 });
 
 export type SubmitInput = z.infer<typeof submitSchema>;
@@ -87,4 +99,5 @@ export const SUBMIT_LIMITS = {
   pitchMin: 60,
   pitchMax: 3500,
   handleMax: 50,
+  privateDetailsMax: 2000,
 } as const;

@@ -129,6 +129,17 @@ export function HeroWinner({ winner }: HeroWinnerProps) {
                   </Link>
                 )}
               </div>
+
+              {/* Proof caption — turns the trophy into evidence. The whole
+                  product hinges on "is the free build real?"; this line
+                  answers it and de-risks ownership in one breath. Gated on
+                  isBuilt: the "shipped" claim is false while still building. */}
+              {winner.isBuilt && winner.mvpUrl && (
+                <p className="scene-mono mt-6 text-[0.6rem] uppercase tracking-[0.32em] text-white/45 sm:text-[0.65rem]">
+                  We promised a free build. This is it — no equity, shipped
+                  under their name.
+                </p>
+              )}
             </div>
 
             {/* Score numeral — anchored top-right on large screens,
