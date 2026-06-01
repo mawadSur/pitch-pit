@@ -505,7 +505,7 @@ function Panel1() {
               winner
             </span>
           </FoilSweep>{" "}
-          gets built.
+          gets built for free.
         </h1>
         {/* Countdown sits directly under the h1, semantically paired
             with the kicker line ("the pit closes Monday at midnight").

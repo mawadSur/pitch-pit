@@ -8,6 +8,10 @@ import { SectionKicker, CheckMark } from "./_section-helpers";
 export function AntiAbusePromise() {
   const guards = [
     {
+      title: "You own your idea. Always.",
+      body: "Posting here is validation, not surrender. We never claim equity, rights, or ownership — and if you win, the MVP we build ships under your name and belongs to you. Want to keep the secret sauce close? Pitch the problem and your angle; you don't have to hand over the blueprint to compete.",
+    },
+    {
       title: "Prompt-injection screening",
       body: "Submissions that try to manipulate the reviewer (\"ignore previous instructions\", system tokens, jailbreak attempts) are rejected before they reach Claude. Your honest pitch isn't competing against tricks.",
     },
@@ -39,8 +43,9 @@ export function AntiAbusePromise() {
           Your pitch competes against ideas — not noise.
         </h2>
         <p className="mt-5 text-base leading-relaxed text-white/65 sm:text-lg">
-          We run four screens before any submission reaches the leaderboard.
-          Real founders deserve a real signal.
+          What&rsquo;s yours stays yours — and we screen out the noise before
+          any submission reaches the leaderboard. Real founders deserve a real
+          signal.
         </p>
 
         <ul className="mt-14 space-y-5">

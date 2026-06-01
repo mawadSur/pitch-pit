@@ -34,7 +34,7 @@ export function LiveTicker({ entries }: { entries: TickerEntry[] }) {
           id="live-ticker-heading"
           className="scene-mono text-[0.65rem] uppercase tracking-[0.42em] text-[var(--scene-gold)] sm:text-[0.7rem]"
         >
-          ↘ Latest tributes
+          ↘ Latest pitches
         </p>
 
         <ul className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
