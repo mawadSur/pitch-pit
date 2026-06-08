@@ -33,9 +33,13 @@ export async function POST(req: NextRequest) {
   // enforces both at the DB layer too, but matching error semantics here
   // gives the client a clear "Voting closed" surface instead of a generic
   // RLS rejection).
+  // The `weeks!ideas_week_id_fkey` hint is required: two FKs link `ideas` and
+  // `weeks` (`ideas.week_id → weeks.id` and `weeks.winner_idea_id → ideas.id`),
+  // so a bare `weeks(status)` embed is ambiguous and PostgREST errors out. That
+  // made `idea` null and turned every vote into a 404 "Idea not found."
   const { data: idea } = await supabase
     .from("ideas")
-    .select("user_id, week:weeks(status)")
+    .select("user_id, week:weeks!ideas_week_id_fkey(status)")
     .eq("id", ideaId)
     .maybeSingle<{
       user_id: string | null;
