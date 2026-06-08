@@ -60,8 +60,14 @@ export const metadata: Metadata = {
 // against built rows where the build_callback hasn't written the URL
 // yet — a built entry without an mvp_url has nothing for the user to
 // click through to and would render as an empty card.
+// NOTE: the `week:weeks!ideas_week_id_fkey` embed MUST name the FK explicitly.
+// There are two FKs between `ideas` and `weeks` (`ideas.week_id → weeks.id`
+// from migration 005, and `weeks.winner_idea_id → ideas.id`), so a bare
+// `weeks(...)` embed is ambiguous and PostgREST rejects it with "more than one
+// relationship was found". That error was caught by fetchBuilt()'s try/catch
+// and silently returned [], leaving the Hall of Fame permanently empty.
 const SELECT =
-  "id,title,pitch,handle,score,final_score,verdict,mvp_url,screenshot_url,updated_at,week:weeks(week_number)";
+  "id,title,pitch,handle,score,final_score,verdict,mvp_url,screenshot_url,updated_at,week:weeks!ideas_week_id_fkey(week_number)";
 
 async function fetchBuilt(): Promise<BuiltIdea[]> {
   try {
