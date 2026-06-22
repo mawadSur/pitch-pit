@@ -1,8 +1,7 @@
 name: cron / email-countdown
 
 # Sunday 23:00 UTC countdown email to subscribers — "the pit closes tomorrow."
-# Runs same minute as cron-post-countdown; the two are independent and minor
-# drift between them is fine. Route auth-gated by Bearer CRON_SECRET.
+# Route auth-gated by Bearer CRON_SECRET.
 
 on:
   schedule:

@@ -34,9 +34,7 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Most recently closed week with a winner picked. Mirrors the same
-  // query used by /api/cron/post-winner so the email + tweet announce
-  // the same idea.
+  // Most recently closed week with a winner picked.
   const { data: week } = await supabase
     .from("weeks")
     .select("id, week_number, winner_idea_id")
