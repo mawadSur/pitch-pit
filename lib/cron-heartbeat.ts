@@ -6,9 +6,6 @@ import * as Sentry from "@sentry/nextjs";
 // route module. Keep in sync with .github/workflows/cron-*.yml.
 export const CRON_JOB_NAMES = [
   "close-week-and-build",
-  "post-leader",
-  "post-winner",
-  "post-countdown",
   "email-countdown",
   "email-winner",
 ] as const;
@@ -22,12 +19,6 @@ export type CronJobName = (typeof CRON_JOB_NAMES)[number];
 export const EXPECTED_INTERVALS_S: Record<CronJobName, number> = {
   // Weekly: Tuesday 05:05 UTC
   "close-week-and-build": 7 * 24 * 60 * 60,
-  // Daily: 17:00 UTC
-  "post-leader": 24 * 60 * 60,
-  // Weekly: matches close-week-and-build cadence
-  "post-winner": 7 * 24 * 60 * 60,
-  // Weekly: Sunday 23:00 UTC
-  "post-countdown": 7 * 24 * 60 * 60,
   // Weekly: Sunday 23:00 UTC
   "email-countdown": 7 * 24 * 60 * 60,
   // Weekly: Monday-morning fan-out

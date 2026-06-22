@@ -107,16 +107,15 @@ Both redirect to `/auth/callback` (`app/auth/callback/route.ts`) which calls `ex
 `.env.local.example` is the manifest:
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — public, used by browser + server clients
-- `NEXT_PUBLIC_SITE_URL` — canonical origin (`https://pitchpit.app`); read by sitemap, robots, OG, social cron text. Do not use the hyphenated form.
+- `NEXT_PUBLIC_SITE_URL` — canonical origin (`https://pitchpit.app`); read by sitemap, robots, OG, email cron text. Do not use the hyphenated form.
 - `SUPABASE_SERVICE_ROLE_KEY` — server only, used by admin client
 - `ANTHROPIC_API_KEY` — server only, used by `/api/score`
 - `ADMIN_PASSWORD` — gates `/admin` via middleware basic auth
 - `CRON_SECRET` — Bearer token validated by `lib/cron-auth.ts`. Required for every `/api/cron/*` route. Must be set in BOTH Vercel prod env AND GitHub Actions repo secrets (the GH Actions workflows in `.github/workflows/cron-*.yml` send it as `Authorization: Bearer $CRON_SECRET`).
-- `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET` — OAuth 1.0a creds for posting tweets (read by `lib/social/x.ts`). When unset, the social crons return `skipped: missing-x-creds` instead of posting.
 
 ## Crons / scheduling
 
-Cron jobs are driven by GitHub Actions workflows under `.github/workflows/cron-*.yml`, NOT by `vercel.json`. Each workflow `curl`s the corresponding `/api/cron/*` route with the Bearer secret. We migrated off Vercel Cron because Hobby tier caps at one fire/day and we need 6 schedules including a daily and two same-minute pairs. Routes are GET handlers; idempotency is enforced server-side via `social_posts` (legacy) and `social_post_log` (forensic) ledgers. There is also a pg_cron entry for `close_current_week()` at Tue 05:04 UTC — the GH Actions wrapper at 05:05 UTC is belt-and-suspenders and a no-op via `for update` lock if pg_cron already closed the week.
+Cron jobs are driven by GitHub Actions workflows under `.github/workflows/cron-*.yml`, NOT by `vercel.json`. Each workflow `curl`s the corresponding `/api/cron/*` route with the Bearer secret. We migrated off Vercel Cron because Hobby tier caps at one fire/day and we run several weekly schedules. Routes are GET handlers. There is also a pg_cron entry for `close_current_week()` at Tue 05:04 UTC — the GH Actions wrapper at 05:05 UTC is belt-and-suspenders and a no-op via `for update` lock if pg_cron already closed the week.
 
 ## Conventions worth knowing
 

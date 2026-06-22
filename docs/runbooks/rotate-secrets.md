@@ -33,15 +33,15 @@ the old value is invalidated, or you'll trip a 401/500 in flight.
 
 **Verify**
 - Re-run any cron workflow manually from the Actions tab (e.g.
-  `cron-post-leader.yml` → Run workflow). Expect HTTP 200.
+  `cron-alert-silence.yml` → Run workflow). Expect HTTP 200.
 - Alternatively `curl -H "Authorization: Bearer <new>"
-  https://pitch-pit.vercel.app/api/cron/post-leader` → 200; with the
+  https://pitch-pit.vercel.app/api/cron/alert-silence` → 200; with the
   old secret → 401.
 
 **Blast radius**
 - Mismatch = every cron route returns 401 → no week-close, no winner
-  email, no social posts. Visible in `cron_heartbeats` (silence) and
-  GitHub Actions (red runs).
+  email. Visible in `cron_heartbeats` (silence) and GitHub Actions
+  (red runs).
 
 **Cadence**
 - Quarterly, or immediately on any GitHub repo permission change.
@@ -135,45 +135,6 @@ the old value is invalidated, or you'll trip a 401/500 in flight.
 
 **Cadence**
 - Annually, or immediately if the key appears in any log/screenshot.
-
----
-
-## 5. X (Twitter) API credentials
-
-`X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET`
-
-**Where it lives**
-- Vercel → Environment Variables (Production), server-only.
-- Read by `lib/social/x.ts` for OAuth 1.0a request signing on the
-  `cron-post-leader` and `cron-post-winner` routes.
-- Issued by X Developer Portal → Projects & Apps → your app.
-
-**Rotation**
-1. X Developer Portal → your app → **Keys and tokens** tab.
-2. To rotate the API key pair: click **Regenerate** under "API Key and
-   Secret". Old pair dies immediately.
-3. To rotate the access token pair: click **Regenerate** under "Access
-   Token and Secret". Make sure the app's **User authentication
-   settings** still grant Read+Write — regenerating sometimes downgrades
-   to Read.
-4. Update all four values in Vercel (Production). Update all four in
-   one save to keep the OAuth signature consistent.
-5. Redeploy Production.
-
-**Verify**
-- Trigger `cron-post-leader.yml` manually from GitHub Actions.
-- Check `social_post_log` row for `success=true` and a valid
-  `tweet_id`.
-- Check the X account directly for the post.
-
-**Blast radius**
-- Mismatched pair = OAuth signature fails → 401 from X → social posts
-  silently skipped. Logged to `social_post_log` and Sentry. No user
-  impact, but the weekly leader/winner promotion goes dark until
-  fixed.
-
-**Cadence**
-- Annually for keys, or immediately on app permission change.
 
 ---
 
