@@ -7,6 +7,7 @@ import { fraunces } from "@/lib/fonts/fraunces";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Reveal, type Idea } from "@/components/idea/Reveal";
+import { RefCapture } from "@/components/idea/RefCapture";
 import type { Comment } from "@/components/idea/Comments";
 import { HourglassWatermark } from "@/components/scene/HourglassWatermark";
 import { titleToSlug } from "@/lib/slug";
@@ -312,6 +313,9 @@ export default async function IdeaPage({
       style={{ display: "contents" }}
     >
       <JsonLd data={jsonLd} />
+      {/* Captures ?ref=<idea_id> into the pp_ref cookie, then strips it from
+          the URL. Renders null (Tactic 1, referral attribution). */}
+      <RefCapture />
       {/* Brand-presence chrome — fixed top-right hourglass with two
           falling grains. Pauses on blur / tab-hidden / reduced-motion.
           Tucked below the sticky header (z<header z-index) and out of

@@ -38,7 +38,12 @@ function buildAbsoluteUrl(ideaId: string, title: string): string {
   // Empty slug (emoji-only / non-Latin titles) falls back to the bare
   // /idea/<uuid>, which the page itself won't redirect to a slug.
   const slug = titleToSlug(title);
-  const path = slug ? `/idea/${ideaId}/${slug}` : `/idea/${ideaId}`;
+  // Carry ?ref=<idea_id> on every shared link so a referred visitor's later
+  // vote can be attributed back to this idea (Tactic 1). The ref rides every
+  // share channel because they all embed this URL.
+  const path = slug
+    ? `/idea/${ideaId}/${slug}?ref=${ideaId}`
+    : `/idea/${ideaId}?ref=${ideaId}`;
   if (typeof window !== "undefined") {
     return `${window.location.origin}${path}`;
   }

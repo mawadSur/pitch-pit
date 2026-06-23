@@ -12,9 +12,20 @@ import {
   Text,
 } from "@react-email/components";
 
-// Sunday-evening reminder template: "6 hours left to pitch this week."
+// Sunday-evening reminder template: "6 hours left — here's the race."
 // Fires from /api/cron/email-countdown at Sun 23:00 UTC (≈Sun 6 PM EST).
 // One subscriber per render — Resend's batch endpoint handles fan-out.
+//
+// Goes ONLY to opted-in marketing subscribers (status = 'active'). It is
+// NOT sent to non-consented past voters — that would require a separate
+// consent review (see the route's TODO(consent)).
+//
+// The body now leads with the LIVE race: the open week's top-3 by
+// final_score as deep links (with ?utm_source=countdown) and the
+// #1↔#2 point gap, so the CTA is "go vote", not just "the clock is
+// running". When the route can't supply contenders yet (week just opened,
+// nothing scored) the block is omitted and the original deadline copy
+// stands on its own.
 //
 // Style constraints:
 //   - Inline CSS only. Email clients (Gmail, Outlook) strip <style> tags
@@ -25,9 +36,21 @@ import {
 //   - Black bg + gold accents — minimalist aesthetic, NOT the legacy
 //     Capitol palette.
 
+export interface CountdownContender {
+  rank: number;
+  title: string;
+  // Deep link to /idea/<id>/<slug>?utm_source=countdown (built by route).
+  url: string;
+  finalScore: number;
+}
+
 interface DigestCountdownProps {
   siteUrl: string;
   unsubscribeUrl: string;
+  // Open-week top-3 by final_score. Empty when nothing is scored yet.
+  contenders?: CountdownContender[];
+  // #1 ↔ #2 point gap. Null when fewer than two scored contenders exist.
+  leadGap?: number | null;
 }
 
 const COLORS = {
@@ -48,11 +71,24 @@ const FONT_SANS =
 export function DigestCountdown({
   siteUrl,
   unsubscribeUrl,
+  contenders = [],
+  leadGap = null,
 }: DigestCountdownProps) {
+  const hasRace = contenders.length > 0;
+  const gapLine =
+    leadGap != null
+      ? leadGap === 0
+        ? "The top two are dead even."
+        : `The lead is just ${leadGap} point${leadGap === 1 ? "" : "s"}.`
+      : null;
+  const previewText = gapLine
+    ? `${gapLine} Six hours left to vote. Pit closes Monday midnight EST.`
+    : "The pit closes Monday at midnight EST. Six hours.";
+
   return (
     <Html>
       <Head />
-      <Preview>The pit closes Monday at midnight EST. Six hours.</Preview>
+      <Preview>{previewText}</Preview>
       <Body
         style={{
           backgroundColor: COLORS.bg,
@@ -95,11 +131,23 @@ export function DigestCountdown({
               color: COLORS.text,
             }}
           >
-            Six hours left to{" "}
-            <span style={{ fontStyle: "italic", color: COLORS.gold }}>
-              pitch
-            </span>{" "}
-            this week.
+            {hasRace ? (
+              <>
+                Six hours left to{" "}
+                <span style={{ fontStyle: "italic", color: COLORS.gold }}>
+                  vote
+                </span>
+                .
+              </>
+            ) : (
+              <>
+                Six hours left to{" "}
+                <span style={{ fontStyle: "italic", color: COLORS.gold }}>
+                  pitch
+                </span>{" "}
+                this week.
+              </>
+            )}
           </Heading>
 
           <Text
@@ -110,10 +158,94 @@ export function DigestCountdown({
               margin: "0 0 28px 0",
             }}
           >
-            The pit closes Monday at midnight EST. One idea wins. We build
-            its MVP — for free, under the founder&rsquo;s name — and
-            broadcast it. The hourglass is in its last grain.
+            {hasRace && gapLine ? (
+              <>
+                {gapLine} The pit closes Monday at midnight EST — your vote
+                is half the score. One idea wins a free MVP build under the
+                founder&rsquo;s name.
+              </>
+            ) : (
+              <>
+                The pit closes Monday at midnight EST. One idea wins. We
+                build its MVP — for free, under the founder&rsquo;s name —
+                and broadcast it. The hourglass is in its last grain.
+              </>
+            )}
           </Text>
+
+          {/* Live race — open-week top-3 as deep links. Omitted entirely
+              when nothing is scored yet. */}
+          {hasRace && (
+            <Section
+              style={{
+                backgroundColor: COLORS.panel,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: "12px",
+                padding: "24px 28px",
+                margin: "0 0 24px 0",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: "11px",
+                  letterSpacing: "0.32em",
+                  textTransform: "uppercase",
+                  color: COLORS.goldDim,
+                  margin: "0 0 16px 0",
+                }}
+              >
+                The race right now
+              </Text>
+              {contenders.map((c, i) => (
+                <Section
+                  key={c.url}
+                  style={{
+                    margin: i === contenders.length - 1 ? "0" : "0 0 14px 0",
+                  }}
+                >
+                  <Link
+                    href={c.url}
+                    style={{
+                      color: COLORS.text,
+                      textDecoration: "none",
+                      fontSize: "16px",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: FONT_SERIF,
+                        color: COLORS.gold,
+                        marginRight: "10px",
+                      }}
+                    >
+                      #{c.rank}
+                    </span>
+                    {c.title}
+                    <span
+                      style={{
+                        color: COLORS.textMuted,
+                        marginLeft: "8px",
+                        fontSize: "14px",
+                      }}
+                    >
+                      · {c.finalScore}/100
+                    </span>
+                  </Link>
+                </Section>
+              ))}
+              <Text
+                style={{
+                  fontSize: "13px",
+                  lineHeight: 1.6,
+                  color: COLORS.textMuted,
+                  margin: "16px 0 0 0",
+                }}
+              >
+                Tap any contender to read the pitch and cast your vote.
+              </Text>
+            </Section>
+          )}
 
           <Section
             style={{
@@ -149,10 +281,15 @@ export function DigestCountdown({
             </Text>
           </Section>
 
-          {/* Primary CTA */}
+          {/* Primary CTA — "cast your vote" into the live leaderboard when
+              there's a race, otherwise the classic "pitch your idea". */}
           <Section style={{ textAlign: "center", margin: "0 0 40px 0" }}>
             <Button
-              href={siteUrl}
+              href={
+                hasRace
+                  ? `${siteUrl}/leaderboard?utm_source=countdown`
+                  : siteUrl
+              }
               style={{
                 backgroundColor: COLORS.gold,
                 color: "#1a0f00",
@@ -166,7 +303,7 @@ export function DigestCountdown({
                 display: "inline-block",
               }}
             >
-              Pitch your idea →
+              {hasRace ? "Cast your vote →" : "Pitch your idea →"}
             </Button>
           </Section>
 

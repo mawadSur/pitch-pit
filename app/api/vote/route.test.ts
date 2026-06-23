@@ -22,11 +22,18 @@ type State = {
 let state: State = {};
 let lastUpsert: { user_id: string; idea_id: string } | null = null;
 let lastDelete: { user_id: string; idea_id: string } | null = null;
+let lastRpc: { name: string; args: unknown } | null = null;
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: () => ({
     auth: {
       getUser: async () => ({ data: { user: state.user ?? null } }),
+    },
+    // Referral attribution RPC (Tactic 1). Records the call so tests can
+    // assert it fires only when a valid pp_ref cookie is present.
+    rpc: async (name: string, args: unknown) => {
+      lastRpc = { name, args };
+      return { data: null, error: null };
     },
     from: (table: string) => {
       if (table === "ideas") {
@@ -113,8 +120,17 @@ vi.mock("@/lib/supabase/server", () => ({
 
 import { POST } from "./route";
 
-function makeReq(body: unknown): Request {
-  return { json: async () => body } as unknown as Request;
+// The route reads the `pp_ref` referral cookie via NextRequest.cookies, so the
+// mock request must expose a RequestCookies-shaped `cookies.get`. Pass `ref` to
+// simulate a voter who arrived through a shared idea link.
+function makeReq(body: unknown, ref?: string): Request {
+  return {
+    json: async () => body,
+    cookies: {
+      get: (name: string) =>
+        name === "pp_ref" && ref ? { value: ref } : undefined,
+    },
+  } as unknown as Request;
 }
 
 const IDEA_ID = "550e8400-e29b-41d4-a716-446655440000";
@@ -124,6 +140,7 @@ describe("POST /api/vote", () => {
     state = {};
     lastUpsert = null;
     lastDelete = null;
+    lastRpc = null;
   });
 
   it("returns 401 when not signed in", async () => {
@@ -162,6 +179,30 @@ describe("POST /api/vote", () => {
     expect(body.voted).toBe(true);
     expect(lastUpsert).toEqual({ user_id: "user-a", idea_id: IDEA_ID });
     expect(lastDelete).toBeNull();
+    // No referral cookie → attribution RPC must not fire.
+    expect(lastRpc).toBeNull();
+  });
+
+  it("attributes the referrer when a valid pp_ref cookie is present", async () => {
+    state.user = { id: "user-a" };
+    state.idea = { user_id: "user-b" };
+    state.existingVote = false;
+    const REF = "11111111-2222-3333-4444-555555555555";
+    const res = await POST(makeReq({ ideaId: IDEA_ID }, REF) as never);
+    expect(res.status).toBe(200);
+    expect(lastRpc).toEqual({
+      name: "attribute_vote_referrer",
+      args: { p_idea_id: IDEA_ID, p_ref: REF },
+    });
+  });
+
+  it("ignores a pp_ref cookie that points at the voted idea (self-referral)", async () => {
+    state.user = { id: "user-a" };
+    state.idea = { user_id: "user-b" };
+    state.existingVote = false;
+    const res = await POST(makeReq({ ideaId: IDEA_ID }, IDEA_ID) as never);
+    expect(res.status).toBe(200);
+    expect(lastRpc).toBeNull();
   });
 
   it("retracts an existing vote (toggle off)", async () => {
