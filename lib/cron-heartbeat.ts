@@ -8,6 +8,7 @@ export const CRON_JOB_NAMES = [
   "close-week-and-build",
   "email-countdown",
   "email-winner",
+  "email-voter-results",
 ] as const;
 
 export type CronJobName = (typeof CRON_JOB_NAMES)[number];
@@ -23,7 +24,21 @@ export const EXPECTED_INTERVALS_S: Record<CronJobName, number> = {
   "email-countdown": 7 * 24 * 60 * 60,
   // Weekly: Monday-morning fan-out
   "email-winner": 7 * 24 * 60 * 60,
+  // Weekly: per-voter results email. Consent-gated and disabled by default
+  // (workflow `schedule:` is commented out; the route no-ops unless
+  // VOTER_RESULTS_EMAIL_ENABLED === "true"). Registered here so the route
+  // can heartbeat once enabled, but excluded from alert-silence via
+  // INTENTIONALLY_DISABLED_JOBS below so it doesn't false-alarm while off.
+  "email-voter-results": 7 * 24 * 60 * 60,
 };
+
+// Jobs registered above (so they can heartbeat once enabled) that are
+// intentionally switched off right now. alert-silence skips these, so a
+// deliberately-disabled cron doesn't fire a recurring "cron-silent"
+// warning. Remove a job from this set when you enable its schedule.
+export const INTENTIONALLY_DISABLED_JOBS: ReadonlySet<CronJobName> = new Set([
+  "email-voter-results",
+]);
 
 // Writes a heartbeat row via the `record_cron_heartbeat` RPC (defined in
 // migration 028). The RPC handles the atomic upsert + run_count /

@@ -9,6 +9,10 @@ const bodySchema = z.object({
   ideaId: z.string().uuid(),
 });
 
+// Validates the pp_ref cookie before it reaches the referral RPC.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // POST /api/vote — toggles a vote for the current user.
 // If the user has already voted, the vote is retracted. Otherwise a new
 // vote is inserted. RLS enforces "no self-votes" at the DB layer.
@@ -88,6 +92,23 @@ export async function POST(req: NextRequest) {
   }
 
   if (inserted && inserted.length > 0) {
+    // Best-effort referral attribution (Tactic 1). If this voter arrived via
+    // a shared idea link, RefCapture stashed the referring idea id in the
+    // `pp_ref` cookie. Credit the referrer — write-once, scoped to this
+    // voter's own row inside the SECURITY DEFINER RPC. Wrapped + swallowed so
+    // attribution can never fail or materially slow the vote, and so this is
+    // safe to ship before migration 037 (`attribute_vote_referrer`) lands.
+    const ref = req.cookies.get("pp_ref")?.value;
+    if (ref && UUID_RE.test(ref) && ref !== ideaId) {
+      try {
+        await supabase.rpc("attribute_vote_referrer", {
+          p_idea_id: ideaId,
+          p_ref: ref,
+        });
+      } catch {
+        // RPC missing (migration not yet applied) or any other error — ignore.
+      }
+    }
     return NextResponse.json({ voted: true });
   }
 

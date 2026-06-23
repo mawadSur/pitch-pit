@@ -8,13 +8,12 @@ import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { Hourglass } from "@/components/scene/Hourglass";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Timeline } from "@/components/idea/Timeline";
-import { VoteButton } from "@/components/idea/VoteButton";
 import { Comments, type Comment } from "@/components/idea/Comments";
 import { OtherTakes } from "@/components/idea/OtherTakes";
 import { AttachmentGallery } from "@/components/idea/AttachmentGallery";
+import { RallyCard, VoteShareZone } from "@/components/idea/RallyZone";
 import type { ScoreResult } from "@/lib/score-schema";
 import type { JudgeId } from "@/lib/judges";
-import { ShareMenu } from "@/components/idea/ShareMenu";
 import { useRouter } from "next/navigation";
 import { formatVoteCount } from "@/lib/format";
 import { titleToSlug } from "@/lib/slug";
@@ -93,6 +92,21 @@ export function Reveal({
     month: "short",
     day: "numeric",
   });
+
+  // Shared payload for every share surface on this page (the primary CTA,
+  // the post-vote nudge, and the owner rally card) so they all emit the
+  // same rich copy. Structurally a ShareableIdea — the consuming props
+  // enforce the type at each call site.
+  const shareIdea = {
+    id: idea.id,
+    title: idea.title,
+    verdict: idea.verdict,
+    finalScore: idea.final_score ?? 0,
+    aiScore: idea.score,
+    voteCount: idea.vote_count,
+    strengths: idea.strengths,
+    concerns: idea.concerns,
+  };
 
   const [back, setBack] = useState<{ href: string; label: string }>({
     href: "/leaderboard",
@@ -250,28 +264,34 @@ export function Reveal({
               {/* community vote + share — primary CTA above the analysis
                   so a reader can act on the verdict without scrolling to
                   the bottom of the right column. On lg+ left-aligned to
-                  match the column rhythm. */}
+                  match the column rhythm. The VoteShareZone wraps both so
+                  a post-vote share nudge + the subordinate email capture
+                  can hang off the same block. */}
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 1.4 }}
-                className="mt-10 flex flex-wrap items-center justify-center gap-3 lg:mt-0 lg:justify-start"
+                className="mt-10 lg:mt-0"
               >
-                <VoteButton ideaId={idea.id} weekStatus={weekStatus} />
-                <ShareMenu
-                  idea={{
-                    id: idea.id,
-                    title: idea.title,
-                    verdict: idea.verdict,
-                    finalScore: idea.final_score ?? 0,
-                    aiScore: idea.score,
-                    voteCount: idea.vote_count,
-                    strengths: idea.strengths,
-                    concerns: idea.concerns,
-                  }}
-                  variant="primary"
+                <VoteShareZone
+                  ideaId={idea.id}
+                  weekStatus={weekStatus}
+                  shareIdea={shareIdea}
                 />
               </motion.div>
+
+              {/* rally-your-voters card — only for the owner while the week
+                  is open. Best-effort: hides cleanly if the snapshot fetch
+                  fails (see RallyCard). */}
+              {idea.user_id !== null &&
+                idea.user_id === currentUserId &&
+                weekStatus === "open" && (
+                  <RallyCard
+                    ideaId={idea.id}
+                    ideaTitle={idea.title}
+                    shareIdea={shareIdea}
+                  />
+                )}
 
               {/* claim-anonymous CTA — signed-in viewer on an unclaimed
                   idea. autoPromptClaim fires when they came back from
@@ -633,7 +653,6 @@ function ClaimYours({
     </div>
   );
 }
-
 
 function ScoreReveal({
   finalScore,

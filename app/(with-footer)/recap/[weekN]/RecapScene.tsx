@@ -5,6 +5,7 @@ import { motion, MotionConfig } from "framer-motion";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Particles } from "@/components/scene/Particles";
 import { ShareMenu } from "@/components/idea/ShareMenu";
+import { EmailCapture } from "@/components/idea/EmailCapture";
 import { titleToSlug } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
@@ -142,6 +143,23 @@ export function RecapScene({
               build={build}
               bucket={buildBucket}
             />
+
+            {/* Weekly-winner email capture — recap pages are a natural place
+                to convert a reader into a subscriber: they just watched a
+                week play out, so "get next week's winner by email" lands. */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-10% 0px" }}
+              transition={{ duration: 0.6 }}
+              className="mt-24 border-t border-white/[0.08] pt-10"
+            >
+              <EmailCapture
+                source="recap"
+                headline="get next week's winner by email"
+                className="max-w-md"
+              />
+            </motion.div>
 
             <FooterNav weekNumber={week.weekNumber} winner={winner} />
           </div>

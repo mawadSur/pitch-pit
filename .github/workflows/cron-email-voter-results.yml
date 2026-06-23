@@ -1,0 +1,47 @@
+name: cron / email-voter-results
+
+# Per-voter "how your pick placed" result email for the most recently
+# closed week. Route auth-gated by Bearer CRON_SECRET.
+#
+# ⚠️ AUDIENCE = VOTERS, NOT MARKETING SUBSCRIBERS. This reaches users who
+# cast a vote but may never have opted into marketing email. It MUST stay
+# manual-only (workflow_dispatch) until a consent review signs off, AND the
+# route is independently gated by the VOTER_RESULTS_EMAIL_ENABLED env flag
+# (default-disabled — set it to "true" in the Vercel prod env only after the
+# consent review). Both gates must be cleared before any send happens.
+#
+# DO NOT uncomment the schedule below without that review. When the review
+# passes, mirror the email-winner cadence (e.g. "0 14 * * 2", an hour after
+# the winner announcement) and confirm VOTER_RESULTS_EMAIL_ENABLED=true.
+
+on:
+  # schedule:
+  #   # DISABLED pending consent review — see header. Suggested cadence:
+  #   # Tuesday 14:00 UTC, one hour after email-winner.
+  #   - cron: "0 14 * * 2"
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-email-voter-results
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger email-voter-results
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Missing SITE_URL or CRON_SECRET repo secret." >&2
+            exit 1
+          fi
+          curl --fail-with-body \
+               --silent --show-error \
+               --max-time 120 \
+               -H "Authorization: Bearer $CRON_SECRET" \
+               -X GET \
+               "$SITE_URL/api/cron/email-voter-results"

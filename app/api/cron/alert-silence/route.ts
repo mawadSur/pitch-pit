@@ -5,6 +5,7 @@ import { verifyCronAuth } from "@/lib/cron-auth";
 import {
   CRON_JOB_NAMES,
   EXPECTED_INTERVALS_S,
+  INTENTIONALLY_DISABLED_JOBS,
   type CronJobName,
 } from "@/lib/cron-heartbeat";
 
@@ -70,6 +71,9 @@ export async function GET(req: NextRequest) {
   const silent: SilentJob[] = [];
 
   for (const jobName of CRON_JOB_NAMES) {
+    // Skip jobs that are intentionally disabled — they're registered so they
+    // can heartbeat once enabled, but a deliberately-off cron isn't "silent".
+    if (INTENTIONALLY_DISABLED_JOBS.has(jobName)) continue;
     const expected = EXPECTED_INTERVALS_S[jobName];
     const threshold = 2 * expected + GRACE_PERIOD_S;
     const hb = byJob.get(jobName);
@@ -122,7 +126,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    checked: CRON_JOB_NAMES.length,
+    checked: CRON_JOB_NAMES.length - INTENTIONALLY_DISABLED_JOBS.size,
     silent,
   });
 }

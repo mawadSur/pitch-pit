@@ -6,6 +6,7 @@ import { Particles } from "@/components/scene/Particles";
 import { CornerSparkle } from "@/components/scene/CornerSparkle";
 import { MinimalistHeader } from "@/components/scene/MinimalistHeader";
 import { Logo } from "@/components/scene/Logo";
+import { EmailCapture } from "@/components/idea/EmailCapture";
 import { createClient } from "@/lib/supabase/client";
 
 const RESEND_COOLDOWN_S = 30;
@@ -217,6 +218,17 @@ export function LoginScene() {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Subordinate email capture — for visitors who don't want an
+              account but still want the weekly winner in their inbox. Sits
+              below the auth card, set off by a hairline divider so it reads
+              as a quiet alternative, not a competing CTA. */}
+          <div className="mt-8 w-full border-t border-white/[0.07] pt-7">
+            <EmailCapture
+              source="login"
+              headline="voting needs an account — or just get the weekly winner by email"
+            />
           </div>
 
           <Link
