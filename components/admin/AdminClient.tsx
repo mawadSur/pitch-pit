@@ -8,6 +8,7 @@ import {
   rejectIdea,
   startBuilding,
   markBuilt,
+  cancelBuild,
 } from "@/app/(with-footer)/admin/actions";
 import { cn } from "@/lib/utils";
 import { titleToSlug } from "@/lib/slug";
@@ -267,6 +268,10 @@ function QueuedTable({ rows }: { rows: AdminIdea[] }) {
 function QueuedRow({ idea }: { idea: AdminIdea }) {
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
+  // Two-click guard for the destructive cancel: first click arms, second
+  // click fires. Avoids a native confirm() dialog while still preventing
+  // an accidental build cancellation.
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const router = useRouter();
   // A11y-4: focus the offending URL field on submission failure. The server
   // action returns a free-form error string; if it mentions mvpUrl we focus
@@ -294,6 +299,21 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
       const res = await startBuilding(idea.id);
       if (res?.error) setErr(res.error);
       else router.refresh();
+    });
+  }
+
+  function onCancel() {
+    if (!confirmCancel) {
+      setConfirmCancel(true);
+      return;
+    }
+    setErr(null);
+    start(async () => {
+      const res = await cancelBuild(idea.id);
+      if (res?.error) {
+        setErr(res.error);
+        setConfirmCancel(false);
+      } else router.refresh();
     });
   }
 
@@ -378,6 +398,37 @@ function QueuedRow({ idea }: { idea: AdminIdea }) {
           </p>
         )}
       </div>
+
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/6 bg-white/[0.015] px-5 py-3.5">
+        <span className="scene-mono text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
+          {idea.status === "building"
+            ? "Stop the dispatched build · revert to scored"
+            : "Pull from the build queue · revert to scored"}
+        </span>
+        <div className="flex items-center gap-2">
+          {confirmCancel && !pending && (
+            <button
+              type="button"
+              onClick={() => setConfirmCancel(false)}
+              className="scene-mono rounded-full px-3 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-white/55 transition-colors hover:text-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--scene-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+            >
+              keep build
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="scene-mono rounded-full border border-red-400/40 px-3.5 py-2 text-[0.65rem] uppercase tracking-[0.3em] text-red-300 transition-colors hover:bg-red-400/10 hover:text-red-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--scene-bg)]"
+          >
+            {pending
+              ? "cancelling…"
+              : confirmCancel
+                ? "confirm cancel"
+                : "cancel build"}
+          </button>
+        </div>
+      </footer>
     </article>
   );
 }
