@@ -6,7 +6,7 @@
 // final block.
 
 import { describe, expect, it } from "vitest";
-import { userMessageContent, userPrompt } from "./shared";
+import { panelContext, userMessageContent, userPrompt } from "./shared";
 
 describe("userPrompt (text-only)", () => {
   it("formats title + pitch with the trailing render judgment line", () => {
@@ -84,5 +84,43 @@ describe("userMessageContent (multimodal)", () => {
     const first = (blocks[0] as { text: string }).text;
     expect(first).toContain(title);
     expect(first).toContain(pitch);
+  });
+});
+
+describe("panelContext (lane discipline)", () => {
+  it("names the judge's own identity in the block", () => {
+    expect(panelContext("gstack")).toContain("You are Garry Tan");
+    expect(panelContext("vee")).toContain("You are Gary Vee");
+    expect(panelContext("robbins")).toContain("You are Tony Robbins");
+  });
+
+  it("lists the OTHER two judges, never itself, in the panel roster", () => {
+    const block = panelContext("gstack");
+    // The other two appear with their "— owns …" roster bullets.
+    expect(block).toContain("Gary Vee (Attention & Distribution) — owns");
+    expect(block).toContain("Tony Robbins (Conviction & Standards) — owns");
+    // The self is introduced via "You are", not duplicated as a roster bullet.
+    expect(block).not.toContain("Garry Tan (YC office hours) — owns");
+  });
+
+  it("includes each of the three judges exactly once as a roster bullet across the panel", () => {
+    // Union of all three judges' rosters = every judge named as 'other' twice.
+    const all = [panelContext("gstack"), panelContext("vee"), panelContext("robbins")].join("\n");
+    const count = (name: string) =>
+      all.split(`${name} (`).length - 1; // occurrences in "Name (lens) — owns"
+    expect(count("Garry Tan")).toBe(2);
+    expect(count("Gary Vee")).toBe(2);
+    expect(count("Tony Robbins")).toBe(2);
+  });
+
+  it("forbids the convergent 'Real problem/pain/founder' opener", () => {
+    for (const id of ["gstack", "vee", "robbins"] as const) {
+      expect(panelContext(id)).toMatch(/Real problem.*Real pain.*Real founder/s);
+    }
+  });
+
+  it("instructs the judge to stay in its own lane", () => {
+    expect(panelContext("vee")).toContain("LANE DISCIPLINE");
+    expect(panelContext("vee")).toContain("Judge through YOUR lens only");
   });
 });

@@ -136,6 +136,87 @@ export function userMessageContent(
 
 export type JudgeId = "gstack" | "vee" | "robbins";
 
+// ─────────────────────────────────────────────────────────────────────────
+// Panel awareness — the lever that keeps three judges from saying one thing.
+//
+// Each judge scores the pitch independently (they never see each other's
+// answers), so without this they all gravitate to the same few salient facts
+// — the founder's résumé, the concrete persona, the "first 100 users" line —
+// and converge. panelContext() tells each judge who the other two are, what
+// those two own, and forbids grading out-of-lane facts. Shared facts must be
+// read through this judge's lens only. Prepended to every judge prompt.
+//
+// `owns` is written so it reads naturally in BOTH spots: as "Your lens is
+// <owns>" for the judge itself, and as "<Name> — owns <owns>" for the others.
+
+const PANEL: Record<JudgeId, { name: string; lensTitle: string; owns: string }> = {
+  gstack: {
+    name: "Garry Tan",
+    lensTitle: "YC office hours",
+    owns:
+      "the BUSINESS MECHANICS — whether the market is real, whether the wedge " +
+      "is sharp enough to dominate, whether a moat exists, whether a tiny team " +
+      "can actually ship it, and why-now from a tech/market-shift angle",
+  },
+  vee: {
+    name: "Gary Vee",
+    lensTitle: "Attention & Distribution",
+    owns:
+      "GETTING HEARD — where the underpriced attention lives, audience-first " +
+      "vs product-first, whether the founder will be the face and do the unsexy " +
+      "content work, and whether there's a real channel to earn",
+  },
+  robbins: {
+    name: "Tony Robbins",
+    lensTitle: "Conviction & Standards",
+    owns:
+      "the FOUNDER'S INNER GAME — conviction and why-now pull, identity-fit, " +
+      "the standards bar they're setting, and whether they double down or fold " +
+      "when the first version fails",
+  },
+};
+
+const PANEL_ORDER: JudgeId[] = ["gstack", "vee", "robbins"];
+
+// Builds the panel-awareness block for one judge, naming the other two and
+// their lanes. Self-contained (own header + divider) so it drops straight
+// between SECURITY_AND_MODERATION and the judge's "You are …" identity.
+export function panelContext(selfId: JudgeId): string {
+  const self = PANEL[selfId];
+  const others = PANEL_ORDER.filter((id) => id !== selfId)
+    .map((id) => `  • ${PANEL[id].name} (${PANEL[id].lensTitle}) — owns ${PANEL[id].owns}.`)
+    .join("\n");
+
+  return `═══════════════════════════════════════════════════
+THE PANEL · you are 1 of 3 judges, each a different lens
+═══════════════════════════════════════════════════
+
+This pitch faces a panel of three. Each of you scores it independently, then the
+founder reads all three verdicts side by side. If the three of you say the same
+thing, the panel is worthless — three voices, one opinion. Your value is the
+angle only YOU catch.
+
+You are ${self.name}. Your lens — and ONLY your lens — is ${self.owns}.
+
+The other two judges score the same pitch in parallel (you never see their
+answers — assume they fully cover their lanes):
+${others}
+
+LANE DISCIPLINE — non-negotiable:
+- Judge through YOUR lens only. Do NOT grade what the other two own. If their
+  territory holds the most obvious thing about this pitch, give it one clause at
+  most, then pivot hard to what only you would notice.
+- Every strength and concern must be one the OTHER TWO would not write. If a
+  generic YC partner, a distribution guy, or a mindset coach could have said it,
+  it isn't yours — cut it and dig for the angle only your lens sees.
+- When one fact catches all three eyes (the founder's résumé, the user persona,
+  the dollar figures), read it for what YOUR lens cares about — not the obvious
+  takeaway. Same fact, three different verdicts.
+- Do NOT open your verdict with "Real problem" / "Real pain" / "Real founder."
+  Find an opening line that could only be yours.
+`;
+}
+
 export type JudgeMeta = {
   id: JudgeId;
   name: string;
